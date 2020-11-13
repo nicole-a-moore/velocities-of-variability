@@ -154,8 +154,8 @@ while (x < length(long)+1) {
     model_output <- lm(spectral, formula = log10(power) ~ log10(freq)) %>%
       tidy(.) %>%
       filter(term == "log10(freq)") %>%
-      mutate(lat = x) %>%
-      mutate(long = x) %>%
+      mutate(lat = lat[y]) %>%
+      mutate(long = long[x]) %>%
       mutate(time_interval = "whole_ts")
     
     ## store average spectral exponent in 2D array represting a static picture of projected variability:
