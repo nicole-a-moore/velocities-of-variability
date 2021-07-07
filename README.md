@@ -1,7 +1,8 @@
 # velocities-of-variability
 
-GCMs are really large and can't be stored here easily. To use these scripts, first download the GCM files here:
-  - [CMIP5 project data](https://esgf-node.llnl.gov/search/cmip5/)
-      - You must create an account first to be able to access the GCM model output (top right corner)
+GCMs are really large and can't be stored here easily. To use these scripts, download the GCM files by using batch scripts I wrote:
+* First, create an account at [ESGF](https://esgf-node.llnl.gov/search/cmip5/)
+* Then, replace instances of --username='XXX' --password='XXX' with your own username and password in [these batch scripts](https://github.com/nicole-a-moore/velocities-of-variability/tree/main/data-processed/wget_scripts)
+* Run the modified batch scripts on your computer and the data should download
 
 Figures created in these scripts live [here](https://github.com/nicole-a-moore/velocities-of-variability/tree/master/figures). 
