@@ -6,7 +6,8 @@ library(tidyverse)
 ## IMPORTANT: 
 ## set 'path' to where you have the GCM files stored on your computer
 ## for me, they are here:
-path = "/Volumes/" ## change me
+path = "/Volumes/SundayLab/CMIP5-GCMs/" ## change me
+
 
 ## create vector of file folders to put data into:
 nums <- c(ifelse(nchar(seq(1:4)) == 2, seq(1:21), paste("0", seq(1:21), sep = "")))
@@ -14,7 +15,7 @@ nums <- c(ifelse(nchar(seq(1:4)) == 2, seq(1:21), paste("0", seq(1:21), sep = ""
 gcm_models <- c("CMCC-CESM", "CMCC-CM", "CMCC-CMS", "inmcm4")
 
 folders <- c(paste(nums, gcm_models, sep = "_")) %>%
-  paste(path, "ADATA HV620/CMIP5-GCMs/", ., "/", sep = "")
+  paste(path, ., "/", sep = "")
 
 ## make list of filenames:
 
@@ -383,7 +384,8 @@ while (gcm < length(gcm_models) + 1) {
   ###############################################
   ## extract and organize the CMCC-CESM data into spatial chunks:
   files <- gcm_files[[gcm]]
-  e_and_o <- extract_and_organize_memory_conscious(path = folders[gcm], historical_filenames = files[[1]], 
+  e_and_o <- extract_and_organize_memory_conscious(path = folders[gcm], 
+                                                   historical_filenames = files[[1]], 
                                   rcp85_filenames = files[[2]])
   
   ###############################################
