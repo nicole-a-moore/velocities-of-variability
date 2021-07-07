@@ -219,7 +219,7 @@ sliding_window_spec_exp <- function(file_list) {
     file = file + 1
   }
   
-  spec_exp_filename <- paste("data-processed/", path, "/spec-exp.csv", sep = "")
+  spec_exp_filename <- paste("data-processed/large-files/", path, "_spec-exp.csv", sep = "")
   
   ## write out to one file: 
   write.csv(spec_exp, spec_exp_filename, row.names = FALSE)
