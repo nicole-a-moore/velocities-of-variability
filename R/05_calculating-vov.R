@@ -1,217 +1,115 @@
-## calculating spectral exponent over sliding windows of time
-.libPaths(c("~/projects/def-jsunday/nikkim/VoV/packages", .libPaths()))
-library(tidyverse)
-library(broom)
-library(evobiR)
-library(sp)
-library(raster)
-library(ncdf4)
+## calculating local climate velocities 
 
-select <- dplyr::select
-
-
-##############################################
-#####              FUNCTIONS:           ######
-##############################################
-
-## function to calculate spectral exponent over a time series window
-spectral_exponent_calculator <- function(ts_window) {
-  
-  l <- length(ts_window)
-  
-  # Fourier transform the time series window: 
-  dft <- fft(ts_window)/l
-  amp <- sqrt(Im(dft[-1])^2 + Re(dft[-1])^2) ## get rid of first term (represents DC component - y axis shift)
-  amp <- amp[1:(l/2)]	## remove second half of amplitudes (negative half)
-  freq <- 1:(l/2)/l ## sampling frequency = period(1 day, 2 days, 3 days.... L/2 days) / length of time series 
-  
-  ## create periodogram data by squaring amplitude of FFT output
-  spectral <- data.frame(freq = freq, power = amp^2)
-  
-  # ## plot spectrum:
-  # spectral %>% 
-  #   ggplot(aes(x = freq, y = power)) + geom_line() +
-  #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm")
-  
-  ## get estimate of spectral exponent over time series window:
-  model_output <- lm(spectral, formula = log10(power) ~ log10(freq)) %>%
-    tidy(.) %>%
-    filter(term == "log10(freq)")
-  
-  return(model_output$estimate)
+## first: install the package VoCC from github:
+if (!"remotes" %in% rownames(installed.packages())) {
+  install.packages("remotes")
+  Sys.setenv("R_REMOTES_NO_ERRORS_FROM_WARNINGS"=TRUE)
+  remotes::install_github("JorGarMol/VoCC")
 }
 
-## function to calculate spectral exponent over a time series within sliding windows of varying widths (from 5-10 years) with a time step of one year 
-## takes as input:
-##      - a detrended time series
-##      - its latitude and longitude vectors 
-## returns a list containing: 
-##      - matrix of change in spectral exponents using each window width
-##      - data frame of spectral exponents within each sliding window across all locations and for all window widths 
+library(VoCC)
+library(tidyverse)
+library(raster)
 
-sliding_window_spec_exp <- function(path) {
+
+########################################################################
+#####    1.  transform spectral exponent data into a rasterStack  ######
+########################################################################
+## function to convert output from script 04 into 6 rasterStacks (one for each sliding window width, from 5-10 years) that can be used with the gVoCC functions 
+create_rasterStack <- function(path) {
   
-  ## read in spatial chunk file names:
-  filepath = paste(path, "sp_files.rds", sep = "")
-  names = readRDS(filepath)
+  se_filenames <- paste(path, "se_filenames.rds",  sep = "")
+
+  ## combine all spectral exponent csvs into one big dataframe
+  file = 1
+  while (file < length(se_filenames) + 1) {
+    if (file == 1) {
+      spec_exp <- read.csv(se_filenames[file])
+    }
+    else {
+      spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
+    }
+    print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
+    file = file + 1
+  }
+
+  r <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, 
+              crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"),
+              res = 1)
   
-  #remove me for use on cluster 
-  #names = str_replace_all(names, 'CMIP5-GCMs', '/Volumes/ADATA HV620/CMIP5-GCMs')
+  ## reorder time_window_width so list elements are in order of increasing time window widths:
+  spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels = 
+                                         c("5 years", "6 years", "7 years", "8 years",
+                                           "9 years", "10 years"))
   
-  l_filenames <- str_replace_all(names, "spatial_temps", 'l-detrended')
-  s_filenames <-  str_replace_all(names, "spatial_temps", 's-detrended')
+  ## split spectral exponent data by window widths:
+  ww_split <- split(spec_exp, spec_exp$time_window_width)
   
-  lat <- seq(from = 89.5, to = -89.5, length.out = 180) 
-  lon <-seq(from = 0.5, to = 359.5, length.out = 360) 
-  
-  lon_index = 0
-  lat_index = 0
-  count = 1
-  while(count < length(l_filenames)+1) {
+  ## for each window width:
+  i = 1 
+  while (i < length(ww_split) + 1) {
     
-    ## retrieve spatial chunk from nc file
-    l_open = nc_open(l_filenames[count])
-    l_detrended_tas = ncvar_get(l_open, "var1_1")
-    nc_close(l_open)
-    
-    s_open = nc_open(s_filenames[count])
-    s_detrended_tas = ncvar_get(s_open, "var1_1")
-    nc_close(s_open)
-    
-    spec_exp_list <- list()
-    element <- 1
-    x = 1 ## longitude
-    while (x < ncol(l_detrended_tas)+1) {
-      y = 1 ## latitude
-      while (y < nrow(l_detrended_tas)+1) {
-        l_local_ts <- l_detrended_tas[y,x,] ## get the local detrended time series
-        s_local_ts <- s_detrended_tas[y,x,]
-
-        if (x == 1 & y == 1 & count == 1)  {
-          filepath = paste(path, "date_new.rds", sep = "")
-          dates = readRDS(filepath)
-        }
-
-        ## if no time series, skip to next latitude
-        if (length(which(is.na(l_local_ts))) == 83950) {
-          y = y + 1
-        }
-        else {
-          local_ts <- data.frame(time = 1:length(l_local_ts), ## add integer time (days from 1871.01.01)
-                                 l_temp = l_local_ts,
-                                 s_temp = s_local_ts,
-                                 date = dates) %>% ## add a date column
-            mutate(year = str_split_fixed(.$date, 
-                                          pattern = "\\.", n = 2)[,1]) %>% ## add a year column
-            group_by(year) ## group by year
-
-
-          #########################################
-          ##        SENSITIVITY ANALYSIS:        ##
-          #########################################
-          ## calculate spectral exponent using FFT over n year windows
-          ## store spectral exponents and calculate slope
-          n = 5
-          while (n < 11) {
-            year_start <- 1871
-            year_stop <- 1871 + n - 1
-
-            while (year_start <= (2100 - n)) {
-              ## extract temps within time window
-              ts_chunk <- filter(local_ts, year %in% year_start:year_stop)
-
-              ## calculate spectral exponent in window
-              l_exp <- spectral_exponent_calculator(ts_chunk$l_temp)
-              s_exp <- spectral_exponent_calculator(ts_chunk$s_temp)
-
-              ## store:
-              spec_exp_list[[element]] <- c(l_exp, s_exp, year_start, year_stop, 
-                                            lat[y + lat_index],
-                                            lon[x + lon_index], paste(n, "years"))
-
-              ## move to next window
-              year_start = year_stop + 1
-              year_stop = year_stop + n 
-
-              element = element + 1
-            }
-
-            ## move to next window width
-            n = n + 1
-          }
-          print(paste("Calculating spectral exponent for lat = ", lat[y + lat_index],
-                      ", lon = ", lon[x + lon_index], sep = ""))
-          y = y + 1
-        }
+    ## split by window_start_year (each window step), loop through them and create raster layer for each
+    ww <- ww_split[[i]]
+    step_split <- split(ww, ww$window_start_year)
+    step = length(step_split) ## loop backwards since rasterStacks add layers to beginning
+    while (step >= 1) {
+      
+      l_sp_df <- step_split[[step]] %>%
+        select(lon, lat, l_spec_exp)
+      
+      s_sp_df <- step_split[[step]] %>%
+        select(lon, lat, s_spec_exp) 
+      
+      ## create raster layer:
+      l_layer <- rasterFromXYZ(l_sp_df)
+      s_layer <- rasterFromXYZ(s_sp_df)
+      #plot(l_layer)
+      #plot(s_layer)
+      
+      ## add to temporary rasterstack:
+      if (step == length(step_split)) {
+        l_temp_stack <- l_layer
+        s_temp_stack <- s_layer
       }
-      x = x + 1
+      else {
+        l_temp_stack <- addLayer(l_layer, l_temp_stack)
+        s_temp_stack <- addLayer(s_layer, s_temp_stack)
+      }
+      
+      ## move to nested for loop
+      step = step - 1
     }
-
-    ## bind rows in list into data frame
-    spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
-    colnames(spec_exp_df) <- c("l_spec_exp", "s_spec_exp", "window_start_year",
-                               "window_stop_year", "lat", "lon", "time_window_width")
-
-    ## convert numbers to numeric
-    spec_exp_df[,1:6] <- sapply(spec_exp_df[,1:6], as.numeric)
-
-    ## regress spectral exponent and extract slope representing change in spectral exponent over time for each location and window width
-    l_model_output <- spec_exp_df %>%
-      group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = l_spec_exp ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-
-    colnames(l_model_output)[5:8] <- paste("l", colnames(l_model_output)[5:8], sep = "_")
-
-    s_model_output <- spec_exp_df %>%
-      group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = s_spec_exp ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-
-    colnames(s_model_output)[5:8] <- paste("s", colnames(s_model_output)[5:8], sep = "_")
-
-    ## bind model output columns to spectral exponent data:
-    spec_exp_df <- left_join(spec_exp_df, l_model_output) %>%
-      left_join(., s_model_output)
-
-
-    ## add filename to list:
-    if(count == 1) {
-      se_filenames <- paste(path, "spec-exp_long-", 
-                            lon_index,"-", lon_index + 60, "_lat-",
-                            90-lat_index,"-", 90-lat_index-60,
-                            ".csv", sep = "")
+    
+    names(l_temp_stack) <- paste("window", 1:nlayers(l_temp_stack), sep = "_")
+    names(s_temp_stack) <- paste("window", 1:nlayers(s_temp_stack), sep = "_")
+    
+    ## save temporary raster stack: 
+    if (i == 1) {
+      l_stack_list <- list(l_temp_stack)
+      s_stack_list <- list(s_temp_stack)
     }
     else {
-      se_filenames <- append(se_filenames,
-                             paste(path, "spec-exp_long-", 
-                                   lon_index,"-", lon_index + 60,"_lat-",
-                                   90-lat_index,"-", 90-lat_index-60,  
-                                   ".csv", sep = ""))
+      l_stack_list <- append(l_stack_list, l_temp_stack)
+      s_stack_list <- append(s_stack_list, s_temp_stack)
     }
     
-    ## save spectral exponent for this chunk:
-    write.csv(spec_exp_df, se_filenames[count], row.names = FALSE)
-    
-    ## advance lat and long indecies to move to next chunk
-    if (count == 6) {
-      lat_index <- lat_index + 60
-      lon_index <- 0
-    }
-    else if (count == 12) {
-      lat_index <- lat_index + 60
-      lon_index <- 0
-    }
-    else {
-      lon_index <- lon_index + 60
-    }
-    
-    count = count + 1
+    ## move to next time window width
+    i = i + 1
   }
   
-  saveRDS(se_filenames, paste(path, "se_filenames.rds",  sep = ""))
+  ## name the list items 
+  names(l_stack_list) <- names(ww_split)
+  names(s_stack_list) <- names(ww_split)
   
-  return(se_filenames)
+  ## save the rasterstack 
+  saveRDS(l_stack_list, paste(path, "l_stack_list.rds", sep = ""))
+  saveRDS(s_stack_list, paste(path, "s_stack_list.rds", sep = ""))
+  
+  stacks <- list(l_stack_list, s_stack_list)
+  
+  ## return the two lists of rasterStacks
+  return(stacks)
 }
 
 
@@ -220,7 +118,7 @@ sliding_window_spec_exp <- function(path) {
 #################################################
 ## set 'path' to where you have the GCM files stored on your computer
 ## for me, they are here:
-#path = "/Volumes/ADATA HV620/CMIP5-GCMs/" ## change me
+#path = "/Volumes/SundayLab/CMIP5-GCMs/" ## change me
 path = "CMIP5-GCMs/"
 
 ## create vector of file folders to put data into:
@@ -1027,14 +925,6 @@ gcm_files <- list(CMCC_CESM_01,
                   IPSL_CM5A_MR_21)
 
 
-#################################################
-###     calling functions on a GCM             ## 
-#################################################
-## read the command line arguments and call the functions on the corresponding GCM 
-
-command_args <- commandArgs(trailingOnly = TRUE)
-i = as.numeric(command_args[1])
-
-p <- folders[i]
-
-spec_exp = sliding_window_spec_exp(path = p)
+###################################################################
+###     calling functions on spectral exponent files             ## 
+###################################################################

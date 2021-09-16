@@ -50,6 +50,16 @@ resample_GCM <- function(historical_filenames, rcp85_filenames, path) {
   return(dates)
 }
 
+### how to read back in the data from NC:
+# nc = nc_open(paste(path, "resampled_", filenames[file], sep = ""))
+# temps = ncvar_get(nc, "variable")
+# nc_close(nc)
+# 
+# r = raster(nrow = 180, ncol = 360, res = 1,
+#            crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"))
+# extent(r) <- c(0,360,-90,90)
+# values(r) <- t(temps[1:360,1:180,1])
+# plot(r)
 
 #################################################
 ###                setting paths               ## 

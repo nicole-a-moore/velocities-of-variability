@@ -24,6 +24,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
   date_new <- dates[-remove]
   
   
+  
   #####       REORGANIZE INTO SPATIAL CHUNKS      #####
   ## to detrend and perform sliding spectral analysis, need the whole time series for each location at once
   ## to satisfy this requirement while avoiding memory exhaustion, reorganize data
@@ -66,10 +67,8 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
     }
 
     ## turn into an array:
-    temps_df <- as.array(spatial_temps) 
-    saveRDS(temps_df, paste(path, "spatial-temps-tester.rds", sep = ""))
-    #temps_df <- readRDS(paste(path,"spatial-temps-tester.rds", sep = ""))
-    
+    temps_df <- as.array(spatial_temps)  
+
     ## remove dates:
     temps_df <- temps_df[,,-remove] 
     
@@ -81,7 +80,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
       while (y < nrow(temps_df)+1) {
         ## get local time series 
         local_ts <- data.frame(time = 1:(length(temps_df[1,1,])), 
-                               temp = temps_df[x,y,])
+                               temp = temps_df[y,x,])
         
         if (!length(which(is.na(local_ts$temp))) == nrow(local_ts)) {
           #####     REMOVING OUTLIERS, INTERPOLATING MISSING TEMPS    #####
@@ -92,7 +91,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
           if(length(is.na(local_ts$temp)) != 0 & length(is.na(local_ts$temp)) 
              != length(local_ts$temp)) {
             local_ts$temp <- na_kalman(local_ts$temp, smooth = TRUE, model = "StructTS")
-            temps_df[x,y,] <- local_ts$temp ## save changed time series if it needed changing
+            temps_df[y,x,] <- local_ts$temp ## save changed time series if it needed changing
           }
           
           print(paste("Done removing outliers & interpolating x ",x,  
@@ -106,16 +105,16 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
             group_by(md) %>%
             do(mutate(., temp_profile = mean(.$temp))) %>% ## compute temp climatology for each day of year
             ungroup() %>%
-            mutate(s_detrended_temp = temp - temp_profile) ## create column representing seasonally
+            mutate(s_detrended_temp = temp - temp_profile) ## create column representing seasonally detrended
           
           ## run linear regression for grid cell
           l_output <- lm(ts_df, formula = temp ~ time)
           s_output <- lm(ts_df, formula = s_detrended_temp ~ time)
           
           ## extract residuals and add to detrended temps objects:
-          l_detrended_temps[x,y,] <- l_output$residuals
-          s_detrended_temps[x,y,] <- s_output$residuals
-          print(paste("Done detrending x ",x,  " y ", y, " of chunk #", count,sep = ""))
+          l_detrended_temps[y,x,] <- l_output$residuals
+          s_detrended_temps[y,x,] <- s_output$residuals
+          print(paste("Done detrending x ", x,  " y ", y, " of chunk #", count,sep = ""))
         }
         y = y + 1
       }
@@ -125,8 +124,8 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
     ## save:
     sp_files[count] <- paste(path, "spatial_temps_lon-", lon_bound1,"-", lon_bound2,
                              "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = "")
-    ArrayToNc(temps_df, file_path = paste(path, "spatial_temps_lon-", lon_bound1,"-", lon_bound2,
-                                          "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
+    # ArrayToNc(temps_df, file_path = paste(path, "spatial_temps_lon-", lon_bound1,"-", lon_bound2,
+    #                                       "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
     ArrayToNc(l_detrended_temps, file_path = paste(path, "l-detrended_lon-", lon_bound1,"-", lon_bound2,
                                                    "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
     ArrayToNc(s_detrended_temps, file_path = paste(path, "s-detrended_lon-", lon_bound1,"-", lon_bound2,
@@ -977,3 +976,4 @@ rfn <- element[[2]]
 p <- folders[i]
 
 reorganize = reorganize_GCM(historical_filenames = hfn, rcp85_filenames = rfn, path = p)
+
