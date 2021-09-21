@@ -14,7 +14,7 @@ gcm_models <- c("01_CMCC-CESM", "02_CMCC-CM", '03_CMCC-CMS', '04_MPI-ESM-LR', '0
 folders <- paste(path, gcm_models, "/", sep = "")
 
 gcm = 1
-while (gcm < 9) {
+while (gcm < 10) {
   filepath = paste(folders[gcm], "sp_files.rds", sep = "")
   names = readRDS(filepath)
   cut = str_split_fixed(names, "/spatial_temps", n = 2)

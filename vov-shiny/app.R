@@ -5,8 +5,8 @@ library(shinyWidgets)
 library(shinythemes)
 
 ## read in raster stack of temps on may 28:
-l_maps = readRDS("l_mosaic.rds")
-s_maps = readRDS("s_mosaic.rds")
+l_maps = readRDS("l_mosaic-02_CMCC-CM.rds")
+s_maps = readRDS("s_mosaic-02_CMCC-CM.rds")
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
