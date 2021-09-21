@@ -9,4 +9,5 @@ Figures created in these scripts live [here](https://github.com/nicole-a-moore/v
 
 
 Fun stuff:
-* Look at my [shiny app](https://nicole-a-moore.shinyapps.io/vov-shiny/) to visualize the standardized climate models on my birthday!!!!
+* Look at my [shiny app](https://nicole-a-moore.shinyapps.io/vov-shiny/) to visualize the first standardized climate model on my birthday!!!!
+* Look at my [animations](https://github.com/nicole-a-moore/velocities-of-variability/tree/main/animations) of spectral change for the first global circulation model!!!!
