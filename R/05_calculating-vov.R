@@ -141,6 +141,11 @@ avg <- spec_exp %>%
   filter(time_window_width == "5 years") %>%
   select(lat, lon, l_estimate, s_estimate, l_p.value, s_p.value) %>%
   unique()
+
+## which location has fastest reddening?
+avg$lat[which(avg$l_estimate == max(avg$l_estimate))] #-7.5
+avg$lon[which(avg$l_estimate == max(avg$l_estimate))] #5.5
+
 avg$lon <- ifelse(avg$lon >= 180, avg$lon - 358, avg$lon)
 
 countries <- map_data("world")
