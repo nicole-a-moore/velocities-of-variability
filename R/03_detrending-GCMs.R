@@ -151,24 +151,6 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
 }
 
 
-## error check:
-## get paths and filenames of resampled GCMs
-filenames <- paste("resampled_", append(historical_filenames, rcp85_filenames), sep = "")
-paths <- paste(path, filenames, sep = "")
-
-## get dates 
-dates <- readRDS(paste(path, "dates.rds", sep = ""))
-## figure out which dates to remove:
-b4_1871_af_2101 <- which(as.numeric(str_split_fixed(dates, "\\.",n=2)[,1]) <= 1870 |
-                           as.numeric(str_split_fixed(dates, "\\.",n=2)[,1]) >= 2101)
-ly_days <- which(str_detect(dates, "02.29"))
-remove <- c(b4_1871_af_2101, ly_days)
-date_new <- dates[-remove]
-
-temps <- stack(paths[4])
-v = values(temps) - 275.15
-min(v)
-max(v)
 
 
 #################################################
