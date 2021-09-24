@@ -10,10 +10,12 @@ if (!"remotes" %in% rownames(installed.packages())) {
 library(VoCC)
 library(tidyverse)
 library(raster)
+library(easyNCDF)
+library(ncdf4)
 
-########################################################################
-#####     1.  read in tas data between 1871-2100 as rasterStack   ######
-########################################################################
+##################################################################################
+#####     1.  reorganize temps into spatial chunks and rasterStacks         ######
+##################################################################################
 
 ## start with just the first GCM
 element = gcm_files[[1]]
@@ -26,7 +28,7 @@ filenames <- paste("resampled_", append(hfn, rfn), sep = "")
 paths <- paste(p, filenames, sep = "")
 
 ## get dates 
-dates <- readRDS(paste(path, "dates.rds", sep = ""))
+dates <- readRDS(paste(p, "dates.rds", sep = ""))
 ## figure out which dates to remove:
 b4_1871_af_2101 <- which(as.numeric(str_split_fixed(dates, "\\.",n=2)[,1]) <= 1870 |
                            as.numeric(str_split_fixed(dates, "\\.",n=2)[,1]) >= 2101)
@@ -37,6 +39,7 @@ date_new <- dates[-remove]
 lon_index = 0
 lat_index = 90
 count = 1
+sp_files <- c()
 while (count <= 18) {
   ## get lat and lon bounds to extract in between:
   lon_bound1 <- lon_index 
@@ -71,12 +74,11 @@ while (count <= 18) {
   
   ## turn into an array:
   temps_df <- as.array(spatial_temps)  
-
+  
   ## remove dates:
   temps_df <- temps_df[,,-remove] 
   
   ## loop through cells in spatial chunk, removing outliers and interpolating missing vals in time series
-  l_detrended_temps <- s_detrended_temps <- temps_df
   x = 1 ## longitude
   while (x < ncol(temps_df) + 1) {
     y = 1 ## latitude
@@ -106,6 +108,8 @@ while (count <= 18) {
   }
   
   ## save
+  sp_files[count] <- paste(path, "spatial_temps_lon-", lon_bound1,"-", lon_bound2,
+                           "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = "")
   ArrayToNc(temps_df, file_path = paste(path, "spatial_temps_lon-", lon_bound1,"-", lon_bound2,
                                         "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
   
@@ -122,13 +126,71 @@ while (count <= 18) {
   count = count + 1
 }
 
-saveRDS(date_new, paste(path, "date_new.rds", sep = ""))
 saveRDS(sp_files, paste(path, "sp_files.rds", sep = ""))
-## returns list of spatial chunk filenames 
-return(sp_files)
-}
+
+########################################################################
+#####     2.  calculate velocity of temperature change            ######
+########################################################################
+## for now, just the first chunk 
+## read in as nc file and make a rasterStack of temperatures
+sp_files <- readRDS(paste(p, "sp_files.rds", sep = ""))
+nc_open = nc_open(sp_files[1])
+temps = ncvar_get(nc_open, "var1_1")
+nc_close(nc_open)
+
+temps <- stack(brick(temps))
+extent(temps) <- c(0,60,30,90)
+temps <- temps - 273.15 #convert to degrees C
+
+###### TEMPORAL TREND ######
+## calculate temporal trend in temperature 
+temporal <- tempTrend(r = temps, 
+                      th = 83950) # minimum number of observations to calculate trend
+## note: units are in deg. C per per day
+## convert units to deg. C per year:
+temporal[[1]] <- temporal[[1]]*365
+temporal[[2]] <- temporal[[2]]*365
+plot(temporal)
+
+## make sure avg gcm values look similar 
+# gcm_mean <- calc(temps, fun = mean)
+# plot(gcm_mean)
+# plot(avg_temps, add = T)
+# resamp <- resample(avg_temps, gcm_mean, method = 'bilinear')
+# plot(resamp)
+# dif <- gcm_mean - resamp 
+# plot(dif)
+
+###### SPATIAL GRADIENT ######
+## get high spatial resolution historical climate data 
+avg_temps <- raster("data-raw/wc2.1_30s_bio_1.tif")
+# crop to right extent 
+avg_temps <- crop(avg_temps, extent(c(0,60,30,90)))
+
+#add uniformly distributed random noise from -0.05 to 0.05°C
+rando <- avg_temps
+values(rando) <- runif(n = length(values(avg_temps)), min = -0.05, max = 0.05)
+avg_temps <- avg_temps + rando
+crs(avg_temps) <- NA
+
+spatial <- spatGrad(r = avg_temps,
+                    th = -Inf, # no lower threshold 
+                    projected = F) # rasterStack is in a projected coordinate system (units will be degrees)
+## note: units are in deg. C per degree lat/lon
+plot(spatial)
+log <- log(spatial[[1]])
+log[is.infinite(log)] <- NA
+plot(log)
 
 
+
+######    ~ VELOCITY ~     ######
+## bring it all together - calculate velocity of temperature change
+resamp <-  resample(temporal, spatial, method = 'bilinear')
+velocity <- gVoCC(tempTrend = resamp, spatGrad = spatial)
+log_v <- log(velocity)
+plot(log_v)
+hist(values(velocity))
 
 #################################################
 ###                setting paths               ## 
