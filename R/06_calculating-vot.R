@@ -131,66 +131,164 @@ saveRDS(sp_files, paste(path, "sp_files.rds", sep = ""))
 ########################################################################
 #####     2.  calculate velocity of temperature change            ######
 ########################################################################
-## for now, just the first chunk 
-## read in as nc file and make a rasterStack of temperatures
+## for each chunk of temperature:
 sp_files <- readRDS(paste(p, "sp_files.rds", sep = ""))
-nc_open = nc_open(sp_files[1])
-temps = ncvar_get(nc_open, "var1_1")
-nc_close(nc_open)
+lon_index = 0
+lat_index = 90
+count = 1
+while(count < length(sp_files) + 1) {
+  ## get lat and lon bounds to extract in between:
+  lon_bound1 <- lon_index 
+  lon_bound2 <- lon_index + 60
+  lat_bound1 <- lat_index
+  lat_bound2 <- lat_index - 60
+  
+  ## read in as nc file and make a rasterStack of temperatures
+  nc_open = nc_open(sp_files[count])
+  temps = ncvar_get(nc_open, "var1_1")
+  nc_close(nc_open)
+  
+  temps <- stack(brick(temps))
+  extent(temps) <- c(lon_bound1,lon_bound2,lat_bound2,lat_bound1)
+  temps <- temps - 273.15 #convert to degrees C
+  
+  ###### TEMPORAL TREND ######
+  ## calculate temporal trend in temperature 
+  temporal <- tempTrend(r = temps, 
+                        th = 83950) # minimum number of observations to calculate trend
+  
+  ## note: units are in deg. C per per day
+  ## convert units to deg. C per year:
+  temporal[[1]] <- temporal[[1]]*365
+  temporal[[2]] <- temporal[[2]]*365
+  #plot(temporal)
+  
+  ###### SPATIAL GRADIENT ######
+  ## calculate average temperature from 1871-2100
+  avg_temps <- calc(temps, fun = mean)
+  
+  # save all of the temporal trends together into one raster layer 
+  if (count == 1) {
+    temporal_mosaic <- temporal
+    avg_mosaic <- avg_temps
+  }
+  else {
+    temporal_mosaic <- mosaic(temporal_mosaic, temporal, fun = mean)
+    avg_mosaic <- mosaic(avg_mosaic, avg_temps, fun = mean)
+  }
+  
+  # save just in case
+  saveRDS(temporal, paste(p, "temporal_", count, ".rds", sep = ""))
+  
+  ## advance lat and lon indecies to move to next spatial chunk
+  if (count %in% c(6, 12)) {
+    lat_index <- lat_index - 60
+    lon_index <- 0
+  }
+  else {
+    lon_index <- lon_index + 60
+  }
+  
+  count = count + 1
+}
 
-temps <- stack(brick(temps))
-extent(temps) <- c(0,60,30,90)
-temps <- temps - 273.15 #convert to degrees C
-
-###### TEMPORAL TREND ######
-## calculate temporal trend in temperature 
-temporal <- tempTrend(r = temps, 
-                      th = 83950) # minimum number of observations to calculate trend
-## note: units are in deg. C per per day
-## convert units to deg. C per year:
-temporal[[1]] <- temporal[[1]]*365
-temporal[[2]] <- temporal[[2]]*365
-plot(temporal)
-
-## make sure avg gcm values look similar 
-# gcm_mean <- calc(temps, fun = mean)
-# plot(gcm_mean)
-# plot(avg_temps, add = T)
-# resamp <- resample(avg_temps, gcm_mean, method = 'bilinear')
-# plot(resamp)
-# dif <- gcm_mean - resamp 
-# plot(dif)
+saveRDS(temporal_mosaic, paste(p, "temporal_mosaic.rds", sep = ""))
+saveRDS(avg_mosaic,  paste(p, "avg_mosaic.rds", sep = ""))
 
 ###### SPATIAL GRADIENT ######
-## get high spatial resolution historical climate data 
-avg_temps <- raster("data-raw/wc2.1_30s_bio_1.tif")
-# crop to right extent 
-avg_temps <- crop(avg_temps, extent(c(0,60,30,90)))
+## add uniformly distributed random noise from -0.05 to 0.05°C to avg temps 
+rando <- avg_mosaic
+values(rando) <- runif(n = length(values(avg_mosaic)), min = -0.05, max = 0.05)
+avg_temps <- avg_mosaic + rando
 
-#add uniformly distributed random noise from -0.05 to 0.05°C
-rando <- avg_temps
-values(rando) <- runif(n = length(values(avg_temps)), min = -0.05, max = 0.05)
-avg_temps <- avg_temps + rando
-crs(avg_temps) <- NA
-
+## calculate spatial gradient - sometimes takes a while :-(
 spatial <- spatGrad(r = avg_temps,
                     th = -Inf, # no lower threshold 
-                    projected = F) # rasterStack is in a projected coordinate system (units will be degrees)
-## note: units are in deg. C per degree lat/lon
+                    projected = F) # rasterStack is not in a projected coordinate system
+saveRDS(spatial, paste(p, "spatial.rds", sep = ""))
+
+## note: units are in deg. C per deg lat/lon
 plot(spatial)
-log <- log(spatial[[1]])
-log[is.infinite(log)] <- NA
-plot(log)
-
-
+## size of grid and all the averaging likely makes spatial gradient not steep
 
 ######    ~ VELOCITY ~     ######
 ## bring it all together - calculate velocity of temperature change
-resamp <-  resample(temporal, spatial, method = 'bilinear')
+
+## resample temporal trend so it is the same resolution as the spatial gradient 
+resamp <-  resample(temporal_mosaic, spatial, method = 'bilinear')
+plot(resamp)
+
+# calculate the velocity of temperature change!!!!
 velocity <- gVoCC(tempTrend = resamp, spatGrad = spatial)
-log_v <- log(velocity)
-plot(log_v)
-hist(values(velocity))
+
+plot(log(velocity[[1]]))
+## values high compared to Loarie likely because our spatial gradient is flatter
+
+
+# roughly check out how many vals are super high
+vals <- data.frame(velocities = values(velocity[[1]])) %>%
+  filter(!is.na(velocities), !is.infinite(velocities))
+
+ggplot(vals, aes(x = velocities)) + geom_histogram() +
+  scale_x_log10(breaks = c(1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3))
+
+
+######### make a nice plot: ###########
+# rearrange 
+v <- data.frame(rasterToPoints(velocity[[1]])) 
+v$x <- ifelse(v$x >= 180, v$x - 358, v$x)
+v <- rasterFromXYZ(v)
+
+# separate marine and terrestrial 
+land <- raster("data-raw/raster_terr_mask.nc")
+land <- crop(land, v)
+terr <- mask(v, land) %>%
+  rasterToPoints(.) %>%
+  data.frame(.)
+mar <- mask(v, land, inverse = T) %>%
+  rasterToPoints(.) %>%
+  data.frame(.)
+
+## a palette to use in both datasets 
+breaks<- c(0, 1, 10, 100, 1000, 100000)
+pal <- c("#293794",  "#55C8EA", "#A3CF61", "#F6EB12", "#F16122", "#ED1D25")
+names(pal) <- breaks
+
+## plot!
+terr_gg <- terr %>% 
+  ggplot(., aes(x = x, y = y, fill = voccMag)) + geom_raster() + coord_fixed() +
+  theme_void() +
+  scale_fill_gradientn(trans = "log2",colours = pal,
+                       breaks = c(0.01,1,10,100,1000), 
+                       labels = c("0.01","1","10","100","1000"),
+                       limits = c(0.01,3000)) +
+  geom_raster(data = mar, aes(x = x, y = y), fill = "black") +
+  labs(fill = "Velocity (km/year)")
+
+mar_gg <- mar %>% 
+  ggplot(., aes(x = x, y = y, fill = voccMag)) + geom_raster() + coord_fixed() +
+  theme_void() +
+  scale_fill_gradientn(trans = "log2", colours = pal,
+                       breaks = c(0.01,1,10,100,1000),
+                       labels = c("0.01","1","10","100","1000"),
+                       limits = c(0.01,3000)) +
+  geom_raster(data = terr, aes(x = x, y = y), fill = "black") +
+  labs(fill = "Velocity (km/year)")
+
+legend <- ggpubr::get_legend(mar_gg)
+mar_gg <- mar_gg + guides(fill = "none")
+terr_gg <- terr_gg + guides(fill = "none")
+
+## arrange
+library(gridExtra)
+lay <- rbind(c(1,1,1,1,1,1,1,3,3),
+             c(2,2,2,2,2,2,2,3,3))
+
+g <- grid.arrange(grobs = list(mar_gg, terr_gg, legend), 
+             ncol = 2, layout_matrix = lay)
+
+ggsave(g, path = "figures", filename = "velocity-of-temp.png", "png",
+       height = 3, width = 5.7)
 
 #################################################
 ###                setting paths               ## 
@@ -1003,3 +1101,54 @@ gcm_files <- list(CMCC_CESM_01,
                   MRI_ESM1_20,
                   IPSL_CM5A_MR_21)
 
+
+
+
+
+####### garbage #######
+###### SPATIAL GRADIENT ######
+## get high spatial resolution historical climate data for the whole wide world
+avg_temps <- raster("data-raw/wc2.1_30s_bio_1.tif")
+
+## add uniformly distributed random noise from -0.05 to 0.05°C
+rando <- avg_temps
+values(rando) <- runif(n = length(values(avg_temps)), min = -0.05, max = 0.05)
+avg_temps <- avg_temps + rando
+
+# # version in lat/long
+# spatial_proj <- spatGrad(r = avg_temps,
+#                          th = -Inf, 
+#                          projected = T)
+# plot(spatial_proj)
+
+## calculate spatial gradient - takes a while :-(
+spatial <- spatGrad(r = avg_temps,
+                    th = -Inf, # no lower threshold 
+                    projected = F) # rasterStack is not in a projected coordinate system
+
+## note: units are in deg. C per km
+plot(spatial)
+# log <- log(spatial[[1]])
+# log[is.infinite(log)] <- NA
+# plot(log)
+
+######    ~ VELOCITY ~     ######
+## bring it all together - calculate velocity of temperature change
+
+## resample temporal trend so it is the same resolution as the spatial gradient 
+resamp <-  resample(temporal_mosaic, spatial, method = 'bilinear')
+
+# calculate the velocity of temperature change!!!!
+velocity <- gVoCC(tempTrend = resamp, spatGrad = spatial)
+
+plot(velocity)
+# log_v <- log(velocity)
+# plot(log_v)
+# hist(values(velocity))
+
+# roughly check out how many vals are super high
+vals <- data.frame(velocities = values(velocity[[1]])) %>%
+  filter(!is.na(velocities), !is.infinite(velocities))
+
+ggplot(vals, aes(x = velocities)) + geom_histogram() +
+  scale_x_log10(breaks = c(1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3))
