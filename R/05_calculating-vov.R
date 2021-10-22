@@ -19,7 +19,7 @@ library(raster)
 create_rasterStack <- function(path) {
   
   se_filenames <- readRDS(paste(path, "se_filenames.rds",  sep = ""))
-
+  
   ## combine all spectral exponent csvs into one big dataframe
   file = 1
   while (file < length(se_filenames) + 1) {
@@ -32,7 +32,7 @@ create_rasterStack <- function(path) {
     print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
     file = file + 1
   }
-
+  
   r <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, 
               crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"),
               res = 1)
@@ -111,98 +111,6 @@ create_rasterStack <- function(path) {
   ## return the two lists of rasterStacks
   return(stacks)
 }
-
-## calculate average change in spectral exponent for each time series, across all sliding window widths 
-se_filenames <- readRDS(paste(path, "se_filenames.rds",  sep = ""))
-
-## combine all spectral exponent csvs into one big dataframe
-file = 1
-while (file < length(se_filenames) + 1) {
-  if (file == 1) {
-    spec_exp <- read.csv(se_filenames[file])
-  }
-  else {
-    spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
-  }
-  print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
-  file = file + 1
-}
-
-r <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, 
-            crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"),
-            res = 1)
-
-## reorder time_window_width so list elements are in order of increasing time window widths:
-spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels = 
-                                       c("5 years", "6 years", "7 years", "8 years",
-                                         "9 years", "10 years"))
-
-avg <- spec_exp %>%
-  filter(time_window_width == "5 years") %>%
-  select(lat, lon, l_estimate, s_estimate, l_p.value, s_p.value) %>%
-  unique()
-
-## which location has fastest reddening?
-avg$lat[which(avg$l_estimate == max(avg$l_estimate))] #-7.5
-avg$lon[which(avg$l_estimate == max(avg$l_estimate))] #5.5
-
-avg$lon <- ifelse(avg$lon >= 180, avg$lon - 358, avg$lon)
-
-countries <- map_data("world")
-
-## plot
-l <- avg %>%
-  ggplot(., aes(x = lon, y = lat, fill = l_estimate)) + geom_raster() +
-  coord_fixed() + 
-  theme_minimal() + 
-  theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
-  scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
-                       midpoint = 0) +
-  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
-
-
-## remove non-significant slopes
-l_sig <- avg %>%
-  mutate(l_estimate = ifelse(l_p.value < 0.05, l_estimate, NA)) %>%
-  ggplot(., aes(x = lon, y = lat, fill = l_estimate)) + geom_raster() +
-  coord_fixed() + 
-  theme_minimal() + 
-  theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
-  scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
-                       midpoint = 0, na.value = "white") +
-  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
-
-s <- avg %>%
-  ggplot(., aes(x = lon, y = lat, fill = s_estimate)) + geom_raster() +
-  coord_fixed() + 
-  theme_minimal() + 
-  theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
-  scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
-                       midpoint = 0, na.value = "white") +
-  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
-
-s_sig <- avg %>%
-  mutate(s_estimate = ifelse(l_p.value < 0.05, s_estimate, NA)) %>%
-  ggplot(., aes(x = lon, y = lat, fill = s_estimate)) + geom_raster() +
-  coord_fixed() + 
-  theme_minimal() + 
-  theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
-  scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
-                       midpoint = 0, na.value = "white") +
-  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
-
-ggsave(l, filename = "figures/01_slope-spec-exp_ldetrended.png", height = 3, width = 7, device = "png")
-ggsave(s, filename = "figures/01_slope-spec-exp_sdetrended.png", height = 3, width = 7, device = "png")
-ggsave(l_sig, filename = "figures/01_slope-spec-exp_ldetrended_sig.png", height = 3, width = 7, device = "png")
-ggsave(s_sig, filename = "figures/01_slope-spec-exp_sdetrended_sig.png", height = 3, width = 7, device = "png")
 
 #################################################
 ###                setting paths               ## 

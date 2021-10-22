@@ -52,19 +52,21 @@ lat <- seq(from = 89.5, to = -89.5, length.out = 180)
 lon <-seq(from = 0.5, to = 359.5, length.out = 360) 
 
 ## read in data 
-l_open = nc_open(l_filenames[11])
+l_open = nc_open(l_filenames[2])
 l_detrended_tas = ncvar_get(l_open, "var1_1")
 nc_close(l_open)
 
-s_open = nc_open(s_filenames[11])
+s_open = nc_open(s_filenames[2])
 s_detrended_tas = ncvar_get(s_open, "var1_1")
 nc_close(s_open)
 
 filepath = paste(path, "date_new.rds", sep = "")
 dates = readRDS(filepath)
 
-l_local_ts <- l_detrended_tas[33,55,] ## get a local detrended time series
-s_local_ts <- s_detrended_tas[33,55,]
+which(lat == 81.5)
+which(lon == 94.5)
+l_local_ts <- l_detrended_tas[35,9,] ## get a local detrended time series
+s_local_ts <- s_detrended_tas[35,9,]
 
 local_ts <- data.frame(time = 1:length(l_local_ts), ## add integer time (days from 1871.01.01)
                        l_temp = l_local_ts,
@@ -143,7 +145,7 @@ while (n < 11) {
                time_window_width = paste(n, "years")) %>%
         rbind(spectral_exponent_s, .)
     }
-   
+    
     ## move to next window
     year_start = year_stop + 1
     year_stop = year_stop + n 
@@ -161,6 +163,9 @@ while (n < 11) {
 ten <- spec_exp_list[[6]]
 
 spec <- ten[[3]]
+
+## save data to plot in didactic figure:
+saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat-81.5_lon-94.5.rds")
 
 ## bring in the animation!!!
 library(gganimate)
@@ -200,7 +205,7 @@ anim_save(animation = animate(gganim_dots, fps = 25, height = 800, width = 800,
 dots<- animate(gganim_dots, fps = 25, height = 800, width = 800, 
                start_pause = 10, end_pause = 10, renderer = magick_renderer())
 squiggles<- animate(gganim, fps = 25, height = 800, width = 800, 
-               start_pause = 10, end_pause = 10, renderer = magick_renderer())
+                    start_pause = 10, end_pause = 10, renderer = magick_renderer())
 
 i=1
 full_combined <- image_append(c(dots[i], squiggles[i]))

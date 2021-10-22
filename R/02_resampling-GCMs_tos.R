@@ -1,15 +1,65 @@
-## checking out sample GCM - "CMCC_CESM"
+### resample organize GCMs to 1x1 degree grid
+### R version 3.6.1 
+.libPaths(c("~/projects/def-jsunday/nikkim/VoV/packages", .libPaths()))
 library(tidyverse)
-library(ncdf4)
-library(abind)
-library(sp)
-library(sf)
 library(raster)
-library(broom)
-library(evobiR)
-library(gridExtra)
-library(lubridate)
-select <- dplyr::select
+
+#################################################
+###                   FUNCTIONS                ## 
+#################################################
+resample_GCM <- function(historical_filenames, rcp85_filenames, path) {
+  
+  #####      EXTRACTING DATA FROM FILES      #####
+  ## create vector of file names:
+  filenames <- append(historical_filenames, rcp85_filenames)
+  paths <- paste(path, filenames, sep = "")
+  ## raster object of desired resolution/extent
+  r <- raster(ymx = 90, ymn = -90, xmn = 0, xmx = 360, res = 1) 
+  
+  ## for each file in the set of GCM files:
+  file = 1
+  dates <- c()
+  start <- Sys.time()
+  model_6o8 <- str_detect(path, "06") | str_detect(path, "08")
+  while (file < (length(filenames)+1)) { 
+    
+    ## create raster stack to store data 
+    if (model_6o8) {
+      ## these two annoying models have an unevenly spaced grid. alas, we must get around this...
+      og_temps = brick(paths[file], stopIfNotEqualSpaced = FALSE)
+      dates <- append(dates, names(og_temps))
+    }
+    else {
+      og_temps <- stack(paths[file])
+      dates <- append(dates, names(og_temps))
+    }
+    
+    #####      STANDARDIZE TO 1X1 DEGREE GRID   #####
+    ## resample temperatures so all GCMs are on a 1 degree x 1 degree grid of the same extent
+    new_temps <- resample(og_temps, r, method = 'bilinear',
+                            filename = paste(path, "resampled_", filenames[file], sep = ""))
+  
+    print(paste0("Done file number: ", file), stdout())
+    file = file + 1
+  }
+  end <- Sys.time()
+  elapsed <- end - start
+  print(paste0("This GCM took ", round(elapsed,3), " minutes and", round(elapsed/60,3), " hours to run."), stdout())
+  dates <- str_replace_all(dates, "X","")
+  saveRDS(dates, paste(path, "dates.rds", sep = ""))
+  return(dates)
+}
+
+### how to read back in the data from NC:
+# nc = nc_open(paste(path, "resampled_", filenames[file], sep = ""))
+# temps = ncvar_get(nc, "variable")
+# nc_close(nc)
+# 
+# r = raster(nrow = 180, ncol = 360, res = 1,
+#            crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"))
+# extent(r) <- c(0,360,-90,90)
+# values(r) <- t(temps[1:360,1:180,1])
+# plot(r)
 
 #################################################
 ###                setting paths               ## 
@@ -31,44 +81,50 @@ folders <- paste(path, gcm_models, "/", sep = "")
 #################################################
 ###       make list of GCM file names          ## 
 #################################################
-CMCC_CESM_hist <- c("tas_day_CMCC-CESM_historical_r1i1p1_18700101-18741231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_18750101-18791231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_18800101-18841231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_18850101-18891231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_18900101-18941231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_18950101-18991231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19000101-19041231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19050101-19091231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19100101-19141231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19150101-19191231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19200101-19241231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19250101-19291231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19300101-19341231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19350101-19391231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19400101-19441231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19450101-19491231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19500101-19541231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19550101-19591231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19600101-19641231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19650101-19691231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19700101-19741231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19750101-19791231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19800101-19841231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19850101-19891231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19900101-19941231.nc",
-                    "tas_day_CMCC-CESM_historical_r1i1p1_19950101-19991231.nc")
-CMCC_CESM_rcp85 <- c("tas_day_CMCC-CESM_rcp85_r1i1p1_20000101-20041231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20050101-20051231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20060101-20151231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20160101-20251231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20260101-20351231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20360101-20451231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20460101-20551231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20560101-20651231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20660101-20751231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20760101-20851231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20860101-20951231.nc",
-                     "tas_day_CMCC-CESM_rcp85_r1i1p1_20960101-21001231.nc")
+CMCC_CESM_hist <- c("tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_18740101-18791231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_18800101-18851231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_18860101-18911231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_18920101-18971231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_18980101-19031231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19040101-19091231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19100101-19151231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19160101-19211231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19220101-19271231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19280101-19331231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19340101-19391231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19400101-19451231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19460101-19511231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19520101-19571231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19580101-19631231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19640101-19691231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19700101-19751231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19760101-19811231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19820101-19871231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19880101-19931231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_19940101-19991231.nc",
+                    "tos_day_CMCC-CESM_historical_r1i1p1_20000101-20051231.nc")
+CMCC_CESM_rcp85 <- c("tos_day_CMCC-CESM_rcp85_r1i1p1_20060101-20101231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20110101-20151231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20160101-20201231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20210101-20251231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20260101-20301231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20310101-20351231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20360101-20401231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20410101-20451231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20460101-20501231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20510101-20551231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20560101-20601231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20610101-20651231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20660101-20701231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20710101-20751231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20760101-20801231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20810101-20851231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20860101-20901231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20910101-20941231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20950101-20951231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20960101-20991231.nc",
+                     "tos_day_CMCC-CESM_rcp85_r1i1p1_21000101-21001231.nc")
 CMCC_CESM_01 <- list(CMCC_CESM_hist, CMCC_CESM_rcp85)
 
 CMCC_CM_hist <- c("tas_day_CMCC-CM_historical_r1i1p1_18700101-18701231.nc",
@@ -821,536 +877,23 @@ gcm_files <- list(CMCC_CESM_01,
                   MRI_CGCM3_19,
                   MRI_ESM1_20,
                   IPSL_CM5A_MR_21)
-############
-gcm = 2
-element = gcm_files[[gcm]]
+
+
+#################################################
+###     calling functions on a GCM             ## 
+#################################################
+## read the command line arguments and call the functions on the corresponding GCM 
+
+command_args <- commandArgs(trailingOnly = TRUE)
+i = as.numeric(command_args[1])
+
+element = gcm_files[[i]]
 hfn <- element[[1]]
 rfn <- element[[2]]
-p <- folders[gcm]
-
-filenames <- append(hfn, rfn)
-paths <- paste(p, filenames, sep = "")
-
-
-i = 1
-while (i < length(cmcc_cesm_historical)+length(cmcc_cesm_rcp85)+1) {
+p <- folders[i]
   
-  ncfile <- nc_open(paths[i])
+d = resample_GCM(historical_filenames = hfn, rcp85_filenames = rfn, path = p)
   
-  ## for first file, extract latitude, longitude, air temp and time 
-  if (i == 1) {
-    lat <- ncvar_get(ncfile, "lat_bnds") 
-    long <- ncvar_get(ncfile, "lon_bnds") 
-    tas <- ncvar_get(ncfile, "tas") ## air surface temperature in an array of [long, lat, time]
-    time <- ncvar_get(ncfile, "time_bnds")
-  }
-  ## for other files, append air temp and time onto existing variables 
-  else {
-    tas <- abind(tas, ncvar_get(ncfile, "tas"), along = 3) 
-    time_modified <- ncvar_get(ncfile, "time_bnds")
-    ## modify time variable to link time series together 
-    time_modified[1,] <-  time_modified[1,] + time[1,ncol(time)]+1
-    time_modified[2,] <-  time_modified[2,] + time[1,ncol(time)]+1
-    time <- cbind(time, time_modified)
-  }
-  
-  ## close the file
-  nc_close(ncfile)
-  
-  ## move to next file
-  i = i + 1
-}
 
-dimnames(tas) <- NULL
 
-## check that time series have 84,371 days
-length(tas[1,1,]) ## it does
 
-## make lat and long coords represent centre of grid cells:
-lat <- (lat[1,] + lat[2,]) / 2
-long <- (long[1,] + long[2,]) / 2 
-
-## reorganize data so North America is left of Europe when plotted:
-long[which(long >= 180)] = long[which(long >= 180)] - 360
-
-## try plotting air temps at one time point:
-tp <-  expand.grid(long, lat)
-colnames(tp) <- c("longitude", "latitude") 
-tp$temp <- as.vector(tas[,,1])
-
-## plot in base R:
-r = raster(nrows = 48, ncols = 96, xmn=-180, xmx=176.25, ymn=-87.65043, ymx= 87.65043, 
-           crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"))
-
-raster <- rasterize(tp[,1:2], r, tp[,3])
-plot(raster, asp = 1)
-
-## plot in base ggplot:
-gg1 <- tp %>%
-  ggplot() +
-  geom_raster(aes(x = longitude, y = latitude, fill = temp)) + 
-  ggtitle("Mean air surface temperature on Jan 1, 1850") + coord_fixed() +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  labs(fill = "Temperature (K)")
-
-# plot in C
-gg2 <- tp %>%
-  ggplot() +
-  geom_raster(aes(x = longitude, y = latitude, fill = temp - 273.15)) + 
-  ggtitle("Mean air surface temperature on Jan 1, 1850") + coord_fixed() +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  labs(fill = "Temperature (C)")
-
-## see how variable temperature is in each location
-tas_sd <- tas[,,1]
-i=1
-while (i < nrow(tas) +1 ) {
-  z=1
-  while (z < ncol(tas) +1) {
-    tas_sd[i,z] <- sd(tas[i,z,])
-    z = z +1 
-  }
-  i = i +1 
-}
-
-tp <-  expand.grid(long, lat)
-colnames(tp) <- c("longitude", "latitude") 
-tp$temp <- as.vector(tas_sd[,])
-
-## plot in base R:
-r = raster(nrows = 48, ncols = 96, xmn=-180, xmx=176.25, ymn=-87.65043, ymx= 87.65043, 
-           crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"))
-
-raster <- rasterize(tp[,1:2], r, tp[,3])
-plot(raster, asp = 1)
-
-## plot in base ggplot:
-gg1 <- tp %>%
-  ggplot() +
-  geom_raster(aes(x = longitude, y = latitude, fill = temp)) + 
-  ggtitle("SD air surface temperature") + coord_fixed() +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  labs(fill = "Temperature (C)")
-
-## for now, don't worry about standardizing grid size (will have to standardize across GCMs, though)
-## just try FFT 
-
-## create function for making dates since 1850-01-01:
-as.date <- function(x, origin = getOption("date.origin")){
-  origin <- ifelse(is.null(origin), "1970-01-01", origin)
-  as.Date(x, origin)
-}
-options(date.origin = "1849-12-31")
-
-## 1. Linearly detrend temp time series for each spatial cell separately:
-l_detrended_tas <- tas
-x = 1 ## represents longitude index
-while (x < length(long)+1) {
-  y = 1 ## represents latitude index
-  while (y < length(lat)+1) {
-    local_ts <- l_detrended_tas[x, y, ] ## get the local time series 
-    ts_df <- data.frame(time = 1:length(local_ts), ## add simple time column representing days from 1850-01-01
-                        temp = local_ts, 
-                        date = as.date(1:length(local_ts))) ## add a date column  
-    
-    ## run linear regression for grid cell 
-    output <- lm(ts_df, formula = temp ~ time)
-    
-    ## extract residuals and add to l_detrended_tas:
-    l_detrended_tas[x, y, ] <- output$residuals
-    
-    y = y + 1
-  }
-  x = x + 1
-}
-
-
-## save detrended time series object:
-##saveRDS(l_detrended_tas, "/Volumes/ADATA HV620/GCM-test/l-detrended-tas.rds")
-l_detrended_tas <- readRDS("/Volumes/ADATA HV620/GCM-test/l-detrended-tas.rds")
-
-## try plotting one time point of the new set of detrended temp time series:
-detrended_tp <-  expand.grid(long, lat)
-colnames(detrended_tp) <- c("longitude", "latitude") 
-detrended_tp$temp <- as.vector(l_detrended_tas[,,1])
-
-## plot in base R:
-raster <- rasterize(detrended_tp[,1:2], r, detrended_tp[,3])
-plot(raster, asp = 1)
-
-## plot in ggplot:
-gg2 <- detrended_tp %>%
-  ggplot() +
-  geom_raster(aes(x = longitude, y = latitude, fill = temp)) + 
-  ggtitle("Linearly detrended air surface temperature (Jan 1, 1850)") + coord_fixed() +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  labs(fill = "Temperature residual (K)")
-
-
-## now try with seasonally detrended data
-## 2. Seasonally detrend temp time series for each spatial cell separately:
-s_detrended_tas <- tas
-x = 1 ## represents longitude index
-while (x < length(long)+1) {
-  y = 1 ## represents latitude index
-  while (y < length(lat)+1) {
-    local_ts <- s_detrended_tas[x, y, ] ## get the local time series 
-    
-    ts_df <- data.frame(time = 1:length(local_ts), ## add simple time column representing days from 1850-01-01
-                        temp = local_ts, 
-                        date = as.date(1:length(local_ts))) ## add a date column
-    
-    ## compute the within-year temperature profile at each geographical location and subtract from temp
-    ts_df <- ts_df %>%
-      mutate(year = str_split_fixed(.$date, pattern = "-", n = 2)[,1]) %>% ## add a year column
-      group_by(year) %>% ## group by year
-      do(mutate(., julian_date = seq(1:length(.$year)))) %>% ## add julian date column
-      ungroup() %>%
-      group_by(julian_date) %>%
-      do(mutate(., temp_profile = mean(.$temp))) %>% ## compute mean temp for each day of year across all years
-      ungroup() %>%
-      mutate(s_detrended_temp = temp - temp_profile)
-    
-    ## run linear regression for grid cell 
-    output <- lm(ts_df, formula = s_detrended_temp ~ time)
-    
-    ## extract residuals and add to detrended_tas:
-    s_detrended_tas[x, y, ] <- output$residuals
-    
-    print(paste("On x = ",x, ", y = ", y, sep = ""))
-    y = y + 1
-  }
-  x = x + 1
-}
-
-
-## save detrended time series object:
-##saveRDS(s_detrended_tas, "/Volumes/ADATA HV620/GCM-test/s-detrended-tas.rds")
-s_detrended_tas <- readRDS("/Volumes/ADATA HV620/GCM-test/s-detrended-tas.rds")
-
-
-## 3. Compute periodogram using FFT across all years (to start) at each location 
-spec2D <- array(dim = c(48, 96)) ## 2D array to store spec exp in 
-x = 1
-while (x < length(long)+1) {
-  y = 1 
-  while (y < length(lat)+1) {
-    local_ts <- l_detrended_tas[x, y, ] ## get the local detrended time series 
-    
-    ## calculate periodogram using FFT
-    L <- length(local_ts)
-    
-    # Fourier transform the series: 
-    dft <- fft(local_ts)/L
-    amp <- sqrt(Im(dft[-1])^2 + Re(dft[-1])^2) ## get rid of first term (represents DC component - y axis shift)
-    amp <- amp[1:(L/2)]	## remove second half of amplitudes (negative half)
-    freq <- 1:(L/2)/L ## frequency = period(1 day, 2 days, 3 days.... L/2 days) / length of time series 
-    
-    ## create periodogram data by squaring amplitude of FFT output
-    spectral <- data.frame(freq = freq, power = amp^2)
-    
-    # ## plot spectrum:
-    # spectral %>% 
-    #   ggplot(aes(x = freq, y = power)) + geom_line() +
-    #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm")
-    
-    ## get estimate of spectral exponent over whole time series:
-    model_output <- lm(spectral, formula = log10(power) ~ log10(freq)) %>%
-      tidy(.) %>%
-      filter(term == "log10(freq)") %>%
-      mutate(lat = lat[y]) %>%
-      mutate(long = long[x]) %>%
-      mutate(time_interval = "whole_ts")
-    
-    ## store average spectral exponent in 2D array represting a static picture of projected variability:
-    spec2D[y, x] <- model_output$estimate
-    
-    ## store:
-    if(x == 1 & y == 1) {
-      spec_exp <- model_output
-    }
-    else {
-      spec_exp <- rbind(spec_exp, model_output)
-    }
-    
-    y = y + 1
-  }
-  x = x + 1
-}
-
-dimnames(spec2D) <- NULL
-
-## try plotting spectral exponents across space:
-sp <-  expand.grid(lat, long)
-colnames(sp) <- c("latitude", "longitude") 
-sp$spec <- as.vector(spec2D)
-sp <- sp %>%
-  select(longitude, latitude, spec)
-
-## plot in base R:
-raster <- rasterize(sp[,1:2], r, sp[,3])
-plot(raster, asp = 1)
-
-## plot in ggplot:
-gg3 <- sp %>%
-  ggplot() +
-  geom_raster(aes(x = longitude, y = latitude, fill = spec)) + 
-  ggtitle("Average spectral exponent over years 1850-2100") + coord_fixed() +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  labs(fill = "")
-
-
-## Notes:
-##  - dates each file spans is in title of file
-##  - bnds means bounds, rows of lat and lon describe extent of each grid square 
-##  - must check for gaps in time series and see how they deal with leap years!!!
-
-## idea to find gaps in the time series:
-## which(!(time[,2] - time[,1]) == 1)
-## i think this will work?
-
-
-ggsave(path = "figures/", filename = "air-temps-raw_Jan-01-2000.png", gg1, height = 6, width = 9)
-ggsave(path = "figures/", filename = "air-temps-detrended_Jan-01-2000.png", gg2, height = 6, width = 9)
-ggsave(path = "figures/", filename = "static-spec-exp.png", gg3, height = 6, width = 9)
-
-
-## function to calculate spectral exponent over time series window
-spectral_exponent_calculator <- function(ts_window) {
-  l <- length(ts_window)
-  
-  # Fourier transform the time series window: 
-  dft <- fft(ts_window)/l
-  amp <- sqrt(Im(dft[-1])^2 + Re(dft[-1])^2) ## get rid of first term (represents DC component - y axis shift)
-  amp <- amp[1:(l/2)]	## remove second half of amplitudes (negative half)
-  freq <- 1:(l/2)/l ## frequency = period(1 day, 2 days, 3 days.... L/2 days) / length of time series 
-  
-  ## create periodogram data by squaring amplitude of FFT output
-  spectral <- data.frame(freq = freq, power = amp^2)
-  
-  # ## plot spectrum:
-  # spectral %>% 
-  #   ggplot(aes(x = freq, y = power)) + geom_line() +
-  #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm")
-  
-  ## get estimate of spectral exponent over time series window:
-  model_output <- lm(spectral, formula = log10(power) ~ log10(freq)) %>%
-    tidy(.) %>%
-    filter(term == "log10(freq)")
-  
-  return(model_output$estimate)
-}
-
-## function to calculate spectral exponent over sliding time series windows of varying widths (5-10 years) with a time step of one year 
-## returns a list containing: matrix of change in spectral exponents using each window wdith, data frame of spectral exponents within each sliding window across all locations and for all window widths 
-sliding_window_spec_exp <- function(detrended_ts) {
-  spec3D <- array(dim = c(48, 96, 6)) ## 3D array to store spec exp in where third dimension represents years spectral exponent was calculated over (5,6,7,8,9,10)
-  x = 1
-  while (x < length(long)+1) {
-    y = 1 
-    while (y < length(lat)+1) {
-      local_ts <- detrended_tas[x, y, ] ## get the local detrended time series 
-      
-      #########################################
-      ##        SENSITIVITY ANALYSIS:        ##
-      #########################################
-      ## calculate spectral exponent using FFT over n year windows
-      ## store spectral exponents and calculate slope
-      n = 5
-      while (n < 11) {
-        ## find width of window in days (365.25*n)
-        window_width <- round(365*n, digits = 0)
-        
-        ## calcualte spectral exponent in each window of n years, moving one window width at a time
-        exp <- SlidingWindow(FUN = spectral_exponent_calculator, data = local_ts, step = 365, 
-                             window = window_width)
-        
-        spec_exp <- exp %>%
-          as.data.frame() %>%
-          mutate(time_window_start = seq(from = 1, by = 365, 
-                                         to = (floor(length(local_ts)-window_width)))) %>%
-          rename(spec_exp = ".") %>%
-          mutate(lat = lat[y]) %>%
-          mutate(long = long[x]) %>%
-          mutate(time_window_width = paste(n, "years")) %>%
-          mutate(time_step = "1y")
-        
-        # ## plot:
-        # spec_exp %>%
-        #   ggplot(., aes (x = time_window_start, y = spec_exp)) + geom_point() +
-        #   geom_smooth(method = "lm") + labs(x = "Time window start index",
-        #                                     y = "Spectral exponent over window")
-        
-        ## regress spectral exponent and extract slope representing change in spectral exponent over time
-        model_output <- lm(spec_exp, formula = spec_exp ~ time_window_start) %>%
-          tidy(.) %>%
-          filter(term == "time_window_start")
-        
-        spec_exp <- cbind(spec_exp, model_output)
-        
-        ## store in database 
-        if(x == 1 & y == 1 & n == 5) {
-          all_spec_exp <- spec_exp 
-        }
-        else {
-          all_spec_exp <- rbind(all_spec_exp, spec_exp)
-        }
-        
-        ## store in array
-        spec3D[y, x, n-4] <- model_output$estimate
-        
-        ## advance to next time window width
-        print(paste("On x = ",x, ", y = ", y, ", window width = ", n, " years.", sep = ""))
-        n = n + 1
-      }
-      
-      
-      ## advance to next longitude
-      y = y + 1
-    }
-    ## advance to next latitude
-    x = x + 1
-  }
-  
-  dimnames(spec3D) <- NULL
-  
-  return(list(spec3D, all_spec_exp))
-}
-
-
-
-## 4. calculate spectral exponent in each sliding window of varying widths for both linearly detrended data and seasonally detrended data:
-
-l_spec_exp <- sliding_window_spec_exp(l_detrended_tas)
-##saveRDS(l_spec_exp[[1]], "./data-processed/spec3d_year-time-step_l.rds")
-write.csv(l_spec_exp[[2]], "./data-processed/cmcc-cesm_spectral-exponent-sliding-window_l.csv",
-          row.names = FALSE)
-
-s_spec_exp <- sliding_window_spec_exp(s_detrended_tas)
-##saveRDS(s_spec_exp[[1]], "./data-processed/spec3d_year-time-step_s.rds")
-write.csv(s_spec_exp[[2]], "./data-processed/cmcc-cesm_spectral-exponent-sliding-window_s.csv",
-          row.names = FALSE)
-
-
-spec3D <- s_spec_exp[[1]]
-
-## try plotting:
-n5 <- spec3D[,,1] ## extract change in spectral exponent over time windows with 5 year width
-
-sp <-  expand.grid(lat, long)
-colnames(sp) <- c("latitude", "longitude") 
-sp$spec <- as.vector(n5)
-sp <- sp %>%
-  select(longitude, latitude, spec)
-
-gg4 <- sp %>%
-  ggplot() +
-  geom_raster(aes(x = longitude, y = latitude, fill = spec)) + 
-  ggtitle("Change in spectral exponent over years 1850-2100 (5 year window, 1 year step)") + 
-  coord_fixed() +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  labs(fill = "Slope of spectral exponent")
-
-## woohoo!!!!!
-## before moving on to rest of the GCMs, lets try and calculate some velocities of variation! 
-
-
-
-
-##### exploring sea surface temperature files ######
-library(ncdf4)
-library(raster)
-filename <- "/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc"
-nc <- nc_open(filename)
-tos = ncvar_get(nc, "tos")
-lat = ncvar_get(nc, "lat")
-lon = ncvar_get(nc, "lon")
-lat_bnds = ncvar_get(nc, "lat_vertices")
-lon_bnds = ncvar_get(nc, "lon_vertices")
-time = ncvar_get(nc, "time")
-nc_close(nc)
-
-r <- raster(tos[,,1])
-plot(r)
-r
-
-
-
-## get a feel for the regularity of the grid
-## try plotting one layer of temps
-element = 1
-temps <- list()
-for (i in 1:182) {
-  for (j in 1:149) {
-    temps[[element]] <- c(lon[i,j], lat[i,j], tos[i,j,1])
-    element = element + 1
-  }
-}
-
-df_temps <- data.frame(do.call(rbind, temps))
-colnames(df_temps) <- c("lon", "lat", "temp")
-df_temps <- filter(df_temps, !is.na(temp))
-
-ggplot(df_temps, aes(y = lat, x = lon, colour = temp)) + geom_point(size = 0.0001) + 
-  theme_minimal() + coord_fixed()
-
-sp <- SpatialPointsDataFrame(coords = df_temps, data = df_temps, 
-                             proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
-
-# ## save spatial points for use in QGIS 
-# library(rgdal)
-# writeOGR(obj=sp, dsn=".",
-#          layer = "tos",
-#          driver="ESRI Shapefile", 
-#          overwrite = TRUE)
-
-
-## make polygons for each grid cell
-element = 1
-i = 1
-while (i < 183) {
-  j = 1
-  while (j < 150) {
-    if (!is.na(tos[i,j,1])) {
-      mat <- matrix(ncol = 2, c(c(lon_bnds[c(1:4,1),i,j],c(lat_bnds[c(1:4,1),i,j]))))
-      p <- Polygon(mat)
-      ps = Polygons(list(p),1)
-      sps = SpatialPolygons(list(ps))
-      #plot(sps)
-      
-      if (element == 1) {
-        # create data frame
-        df <- data.frame(lat = lat[i,j], lon = lon[i,j], tos = tos[i,j,1])
-        sp_df <- SpatialPolygonsDataFrame(sps, data = df)
-        element = element + 1
-      }
-      else {
-        # add shape to df
-        df <- data.frame(lat = lat[i,j], lon = lon[i,j], tos = tos[i,j,1])
-        sp_df <- rbind(sp_df, SpatialPolygonsDataFrame(sps, data = df))
-      }
-    }
-    j = j+1
-  }
-  i = i+1
-}
-
-
-
-library(stars)
-star <- read_ncdf("data-raw/tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc", curvilinear = c("lon", "lat"))
-
-raster = raster(xmn=-180, xmx=180, ymn=-90, ymx=90, 
-                crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"),
-                res = 1, vals = 1)
-dest = st_as_stars(raster)
-  
-warp <- st_warp(src = star, dest = dest)
-
-?st_as_stars
