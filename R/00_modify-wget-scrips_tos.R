@@ -1,7 +1,7 @@
 ## modifying wget batch scripts to download gcms to compute canada computer
 library(tidyverse)
 
-dir = "data-raw/wget_sst/"
+dir = "data-raw/wget_scripts/wget_tos"
 
 sh_files <- c("wget_01_CMCC-CESM_historical.sh",
               "wget_01_CMCC-CESM_rcp85.sh",
@@ -86,7 +86,7 @@ module load java/13.0.2
   
   new_sh <- factor(paste(sbatch, links, sep = "\n"))
   
-  write.table(new_sh, file = paste("data-processed/wget_sst/", sh_files[i], sep = ''),
+  write.table(new_sh, file = paste("data-processed/wget_scripts/wget_tos/", sh_files[i], sep = ''),
               row.names = FALSE, col.names = FALSE, quote = FALSE)
 }
 
