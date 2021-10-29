@@ -1,10 +1,12 @@
 ## modifying wget batch scripts to download gcms to compute canada computer
 library(tidyverse)
 
-dir = "data-raw/wget_scripts/"
+dir = "data-raw/wget_sst/"
 
 sh_files <- c("wget_01_CMCC-CESM_historical.sh",
               "wget_01_CMCC-CESM_rcp85.sh",
+              "wget_02_CMCC-CM_historical.sh",
+              "wget_02_CMCC-CM_rcp85.sh",
               "wget_03_CMCC-CMS_historical.sh",
               "wget_03_CMCC-CMS_rcp85.sh",
               "wget_04_MPI-ESM-LR_historical.sh",
@@ -44,7 +46,7 @@ sh_files <- c("wget_01_CMCC-CESM_historical.sh",
               "wget_21_IPSL-CM5A-MR_historical.sh",
               "wget_21_IPSL-CM5A-MR_rcp85.sh")
 
-link_codes <- c(rep("http://aims3.llnl.gov/thredds/fileServer/", 4), #1,3
+link_codes <- c(rep("http://aims3.llnl.gov/thredds/fileServer/", 6), #1,2,3
                 rep("http://esgf.nci.org.au/thredds/fileServer/", 2), #4
                 rep("http://aims3.llnl.gov/thredds/fileServer/", 2), #5
                 rep("http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/", 6), #6,7,8
@@ -84,7 +86,7 @@ module load java/13.0.2
   
   new_sh <- factor(paste(sbatch, links, sep = "\n"))
   
-  write.table(new_sh, file = paste("data-processed/wget_scripts/", sh_files[i], sep = ''),
+  write.table(new_sh, file = paste("data-processed/wget_sst/", sh_files[i], sep = ''),
               row.names = FALSE, col.names = FALSE, quote = FALSE)
 }
 
