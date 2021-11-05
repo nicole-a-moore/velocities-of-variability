@@ -52,21 +52,23 @@ lat <- seq(from = 89.5, to = -89.5, length.out = 180)
 lon <-seq(from = 0.5, to = 359.5, length.out = 360) 
 
 ## read in data 
-l_open = nc_open(l_filenames[2])
+l_open = nc_open(l_filenames[9]) # 2 for negative one, 9 for positive 
 l_detrended_tas = ncvar_get(l_open, "var1_1")
 nc_close(l_open)
 
-s_open = nc_open(s_filenames[2])
+s_open = nc_open(s_filenames[9])
 s_detrended_tas = ncvar_get(s_open, "var1_1")
 nc_close(s_open)
 
 filepath = paste(path, "date_new.rds", sep = "")
 dates = readRDS(filepath)
 
-which(lat == 81.5)
-which(lon == 94.5)
-l_local_ts <- l_detrended_tas[35,9,] ## get a local detrended time series
-s_local_ts <- s_detrended_tas[35,9,]
+lat_num = which(lat == -11.5)
+lon_num = which(lon == 153.5)
+index_lat <- lat_num%%60
+index_lon <- lon_num%%60
+l_local_ts <- l_detrended_tas[index_lat,index_lon,] ## get a local detrended time series
+s_local_ts <- s_detrended_tas[index_lat,index_lon,]
 
 local_ts <- data.frame(time = 1:length(l_local_ts), ## add integer time (days from 1871.01.01)
                        l_temp = l_local_ts,
@@ -100,48 +102,48 @@ while (n < 11) {
     if (year_start == 1871) {
       spectral_exponent_l <- l_exp_list[[1]] %>%
         mutate(window_start_year = year_start, window_stop_year = year_stop, 
-               lat = lat[60+33],
-               lon = lon[240+55], 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
                time_window_width = paste(n, "years"))
       spectral_data_l <- l_exp_list[[2]] %>%
         mutate(window_start_year = year_start, window_stop_year = year_stop, 
-               lat = lat[60+33],
-               lon = lon[240+55], 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
                time_window_width = paste(n, "years"))
       spectral_exponent_s <- s_exp_list[[1]] %>%
         mutate(window_start_year = year_start, window_stop_year = year_stop, 
-               lat = lat[60+33],
-               lon = lon[240+55], 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
                time_window_width = paste(n, "years"))
       spectral_data_s <- s_exp_list[[2]] %>%
         mutate(window_start_year = year_start, window_stop_year = year_stop, 
-               lat = lat[60+33],
-               lon = lon[240+55], 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
                time_window_width = paste(n, "years"))
     }
     else {
       spectral_exponent_l <- l_exp_list[[1]] %>%
         mutate(window_start_year = year_start, window_stop_year = year_stop, 
-               lat = lat[60+33],
-               lon = lon[240+55], 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
                time_window_width = paste(n, "years")) %>%
         rbind(spectral_exponent_l, .)
       spectral_data_l <- l_exp_list[[2]] %>%
         mutate(window_start_year = year_start, window_stop_year = year_stop, 
-               lat = lat[60+33],
-               lon = lon[240+55], 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
                time_window_width = paste(n, "years")) %>%
         rbind(spectral_data_l, .)
       spectral_data_s <- s_exp_list[[2]] %>%
         mutate(window_start_year = year_start, window_stop_year = year_stop, 
-               lat = lat[60+33],
-               lon = lon[240+55], 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
                time_window_width = paste(n, "years")) %>%
         rbind(spectral_data_s, .)
       spectral_exponent_s <- s_exp_list[[1]] %>%
         mutate(window_start_year = year_start, window_stop_year = year_stop, 
-               lat = lat[60+33],
-               lon = lon[240+55], 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
                time_window_width = paste(n, "years")) %>%
         rbind(spectral_exponent_s, .)
     }
@@ -165,7 +167,7 @@ ten <- spec_exp_list[[6]]
 spec <- ten[[3]]
 
 ## save data to plot in didactic figure:
-saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat-81.5_lon-94.5.rds")
+saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat--11.5_lon-153.5.rds")
 
 ## bring in the animation!!!
 library(gganimate)
