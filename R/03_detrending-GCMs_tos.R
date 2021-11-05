@@ -8,29 +8,18 @@ library(easyNCDF)
 #################################################
 ###                   FUNCTIONS                ## 
 #################################################
-reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
+reorganize_GCM <- function(historical_filenames, rcp85_filenames, path) {
   
   ## get paths and filenames of resampled GCMs
-  filenames <- paste("resampled_", append(historical_filenames, rcp85_filenames), sep = "")
+  filenames <- append(historical_filenames, rcp85_filenames)
   paths <- paste(path, filenames, sep = "")
-  
-  ## get dates 
-  dates <- readRDS(paste(path, "dates.rds", sep = ""))
-  ## figure out which dates to remove:
-  b4_1871_af_2101 <- which(as.numeric(str_split_fixed(dates, "\\.",n=2)[,1]) <= 1870 |
-                             as.numeric(str_split_fixed(dates, "\\.",n=2)[,1]) >= 2101)
-  ly_days <- which(str_detect(dates, "02.29"))
-  remove <- c(b4_1871_af_2101, ly_days)
-  date_new <- dates[-remove]
-  
-  
   
   #####       REORGANIZE INTO SPATIAL CHUNKS      #####
   ## to detrend and perform sliding spectral analysis, need the whole time series for each location at once
   ## to satisfy this requirement while avoiding memory exhaustion, reorganize data
   ## go from time chunks spanning all of space to spatial chunks spanning all of time
   ## break into 8 x 60 degree lat x 60 degree lon chunks with data from 1850-2100
-  lon_index = 0
+  lon_index = -180
   lat_index = 90
   count = 1
   sp_files <- c()
@@ -43,9 +32,10 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
     
     ## loop through resampled GCM files, extracting data within spatial chunk and appending 
     file = 1
+    dates <- c()
     while (file < length(filenames)+1) {
-      start <- Sys.time()
       temps <- stack(paths[file])
+      dates <- append(dates, names(temps))
       
       ## crop to new extent within bounds of spatial chunk
       extent <- extent(lon_bound1, lon_bound2, lat_bound2, lat_bound1)
@@ -58,6 +48,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
       else {
         spatial_temps <- stack(spatial_temps, cropped)
       }
+
       ## estimating time left
       end <- Sys.time()
       elapsed <- end - start
@@ -68,7 +59,15 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
 
     ## turn into an array:
     temps_df <- as.array(spatial_temps)  
-
+    
+    ## figure out which dates to remove:
+    dates <- str_replace_all(dates, "X", "")
+    b4_1871_af_2101 <- which(as.numeric(str_split_fixed(dates, "\\.",n=2)[,1]) <= 1870 |
+                               as.numeric(str_split_fixed(dates, "\\.",n=2)[,1]) >= 2101)
+    ly_days <- which(str_detect(dates, "02.29"))
+    remove <- c(b4_1871_af_2101, ly_days)
+    date_new <- dates[-remove]
+    
     ## remove dates:
     temps_df <- temps_df[,,-remove] 
     
@@ -88,8 +87,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
           local_ts$temp[which(local_ts$temp > 333.15)] <- NA
           
           ## interpolate if temps are missing
-          if(length(is.na(local_ts$temp)) != 0 & length(is.na(local_ts$temp)) 
-             != length(local_ts$temp)) {
+          if(length(is.na(local_ts$temp)) != 0 & length(is.na(local_ts$temp)) != length(local_ts$temp)) {
             local_ts$temp <- na_kalman(local_ts$temp, smooth = TRUE, model = "StructTS")
             temps_df[y,x,] <- local_ts$temp ## save changed time series if it needed changing
           }
@@ -134,7 +132,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
     ## advance lat and lon indecies to move to next spatial chunk
     if (count %in% c(6, 12)) {
       lat_index <- lat_index - 60
-      lon_index <- 0
+      lon_index <- -180
     }
     else {
       lon_index <- lon_index + 60
@@ -159,6 +157,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
 ## set 'path' to where you have the GCM files stored on your computer
 ## for me, they are here:
 #path = "/Volumes/SundayLab/CMIP5-GCMs/" ## change me
+#path = "data-raw/"
 path = "CMIP5-GCMs/"
 
 ## create vector of file folders to put data into:
@@ -173,50 +172,50 @@ folders <- paste(path, gcm_models, "/", sep = "")
 #################################################
 ###       make list of GCM file names          ## 
 #################################################
-CMCC_CESM_hist <- c("tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_18740101-18791231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_18800101-18851231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_18860101-18911231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_18920101-18971231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_18980101-19031231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19040101-19091231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19100101-19151231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19160101-19211231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19220101-19271231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19280101-19331231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19340101-19391231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19400101-19451231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19460101-19511231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19520101-19571231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19580101-19631231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19640101-19691231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19700101-19751231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19760101-19811231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19820101-19871231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19880101-19931231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_19940101-19991231.nc",
-                    "tos_day_CMCC-CESM_historical_r1i1p1_20000101-20051231.nc")
-CMCC_CESM_rcp85 <- c("tos_day_CMCC-CESM_rcp85_r1i1p1_20060101-20101231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20110101-20151231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20160101-20201231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20210101-20251231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20260101-20301231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20310101-20351231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20360101-20401231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20410101-20451231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20460101-20501231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20510101-20551231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20560101-20601231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20610101-20651231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20660101-20701231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20710101-20751231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20760101-20801231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20810101-20851231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20860101-20901231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20910101-20941231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20950101-20951231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_20960101-20991231.nc",
-                     "tos_day_CMCC-CESM_rcp85_r1i1p1_21000101-21001231.nc")
+CMCC_CESM_hist <- c("regridded_tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_18740101-18791231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_18800101-18851231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_18860101-18911231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_18920101-18971231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_18980101-19031231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19040101-19091231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19100101-19151231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19160101-19211231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19220101-19271231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19280101-19331231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19340101-19391231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19400101-19451231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19460101-19511231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19520101-19571231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19580101-19631231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19640101-19691231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19700101-19751231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19760101-19811231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19820101-19871231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19880101-19931231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_19940101-19991231.nc",
+                    "regridded_tos_day_CMCC-CESM_historical_r1i1p1_20000101-20051231.nc")
+CMCC_CESM_rcp85 <- c("regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20060101-20101231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20110101-20151231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20160101-20201231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20210101-20251231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20260101-20301231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20310101-20351231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20360101-20401231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20410101-20451231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20460101-20501231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20510101-20551231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20560101-20601231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20610101-20651231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20660101-20701231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20710101-20751231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20760101-20801231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20810101-20851231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20860101-20901231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20910101-20941231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20950101-20951231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_20960101-20991231.nc",
+                     "regridded_tos_day_CMCC-CESM_rcp85_r1i1p1_21000101-21001231.nc")
 CMCC_CESM_01 <- list(CMCC_CESM_hist, CMCC_CESM_rcp85)
 
 CMCC_CM_hist <- c("tas_day_CMCC-CM_historical_r1i1p1_18700101-18701231.nc",
