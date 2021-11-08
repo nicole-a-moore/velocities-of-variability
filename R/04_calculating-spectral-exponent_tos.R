@@ -209,7 +209,7 @@ sliding_window_spec_exp <- function(path) {
     count = count + 1
   }
   
-  saveRDS(se_filenames, paste(path, "se_filenames.rds",  sep = ""))
+  saveRDS(se_filenames, paste(path, "se_filenames_tos.rds",  sep = ""))
   
   return(se_filenames)
 }
