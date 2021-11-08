@@ -131,16 +131,16 @@ map <- data %>%
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank(), legend.key.size = unit(0.5, 'cm'),
-        legend.title = element_text(size=9),
         legend.margin = margin(0,0,0,0),
         legend.box.margin = margin(-10,-10,-10,-10),
-        plot.margin = margin(-1,0,0,0)) +
+        plot.margin = margin(-1,0,0,0),
+        legend.title = element_text(size = 8),
+        legend.text = element_text(size = 6)) +
   labs(x = "", y = "", fill = "Slope of\nspectral\nexponent") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white",
                        breaks = c(-0.001, -0.0005, 0, 0.0005), 
-                     labels =  c("-0.001", "-0.0005", "0", "0.0005")
-                     ) +
+                     labels =  c("-0.001", "-0.0005", "0", "0.0005")) +
   scale_x_continuous(breaks = c(), labels = c("")) +
   scale_y_continuous(breaks = c(), labels = c("")) +
   annotate("point", y = 81.5, x = -94.5, size = 2, shape = 1, colour = "darkred") 
@@ -181,7 +181,12 @@ spec_change <- exp %>%
         panel.border = element_blank(),
         axis.line.y.left = element_line(size=0.5),
         axis.line.x.bottom = element_line(size=0.5),
-        legend.position="top")
+        legend.position="top",
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        legend.title = element_text(size = 8))
 
 ## extract legend 
 legend <- get_legend(spec_change)
@@ -206,7 +211,11 @@ power_spec <- spec %>%
   theme(panel.grid = element_blank(), 
         panel.border = element_blank(),
         axis.line.y.left = element_line(size=0.5),
-        axis.line.x.bottom = element_line(size=0.5))
+        axis.line.x.bottom = element_line(size=0.5),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6))
 
 ## combine plots:
 lay <- rbind(c(5,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5),
@@ -242,7 +251,12 @@ spec_change <- exp %>%
         panel.border = element_blank(),
         axis.line.y.left = element_line(size=0.5),
         axis.line.x.bottom = element_line(size=0.5),
-        legend.position="top")
+        legend.position="top",
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        legend.title = element_text(size = 8))
 
 ## extract legend 
 legend <- get_legend(spec_change)
@@ -253,7 +267,7 @@ greys <- colorRampPalette(c("lightgrey", "black"))
 greys <- greys(length(unique(spec$window_start_year)))
 
 power_spec <- spec %>%
-  #filter(window_start_year %in% c(1871, 1921, 1971, 2041, 2071)) %>%
+  filter(window_start_year %in% c(1871, 1921, 1971, 2041, 2071)) %>%
   ggplot(aes(x = freq, y = power, group = as.factor(window_start_year))) + 
   geom_line(aes(colour = factor(window_start_year)), alpha = 0.15) + 
   scale_colour_manual(values = greys) +
@@ -262,7 +276,7 @@ power_spec <- spec %>%
   scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
                 labels = c("0.001", "0.01", "0.1", "1")) +
   geom_line(stat="smooth", method = "lm", formula = y ~ x,
-            size = 1.5,
+            size = 1,
             aes(alpha = window_start_year),
             colour = "black") + scale_alpha(range = c(0.01, 0.9)) +
   theme_light() +
@@ -271,10 +285,19 @@ power_spec <- spec %>%
   theme(panel.grid = element_blank(), 
         panel.border = element_blank(),
         axis.line.y.left = element_line(size=0.5),
-        axis.line.x.bottom = element_line(size=0.5))
+        axis.line.x.bottom = element_line(size=0.5),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6))
 
-grid.arrange(power_spec, spec_change, map, legend, empty,
+negative_slope_only <- grid.arrange(power_spec, spec_change, map, legend, empty,
              layout_matrix = lay)
+ggsave(negative_slope_only, path = "figures/didactic", 
+       filename = "spec-exp-didactic_negative-only.png",
+       height = 4,
+       width = 6)
+
 
 
 ## this example is fast change - colour accordingly and make example of slow change/opposite slope?
@@ -306,7 +329,12 @@ spec_change_positive <- exp %>%
         panel.border = element_blank(),
         axis.line.y.left = element_line(size=0.5),
         axis.line.x.bottom = element_line(size=0.5),
-        legend.position="top") 
+        legend.position="top",
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        legend.title = element_text(size = 8)) 
 
 ## extract legend 
 legend <- get_legend(spec_change_positive)
@@ -317,7 +345,7 @@ greys <- colorRampPalette(c("lightgrey", "black"))
 greys <- greys(length(unique(spec$window_start_year)))
 
 power_spec_positive <- spec %>%
-  #filter(window_start_year %in% c(1871, 1921, 1971, 2041, 2071)) %>%
+  filter(window_start_year %in% c(1871, 1921, 1971, 2041, 2071)) %>%
   ggplot(aes(x = freq, y = power, group = as.factor(window_start_year))) + 
   geom_line(aes(colour = factor(window_start_year)), alpha = 0.15) + 
   scale_colour_manual(values = greys) +
@@ -326,7 +354,7 @@ power_spec_positive <- spec %>%
   scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
                 labels = c("0.001", "0.01", "0.1", "1")) +
   geom_line(stat="smooth", method = "lm", formula = y ~ x,
-            size = 1.5,
+            size = 1,
             aes(alpha = window_start_year),
             colour = "black") + scale_alpha(range = c(0.01, 0.9)) +
   theme_light() +
@@ -335,7 +363,11 @@ power_spec_positive <- spec %>%
   theme(panel.grid = element_blank(), 
         panel.border = element_blank(),
         axis.line.y.left = element_line(size=0.5),
-        axis.line.x.bottom = element_line(size=0.5)) 
+        axis.line.x.bottom = element_line(size=0.5),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6)) 
 
 map = map +  annotate("point", y = -11.5, x = 153.5, size = 2, shape = 1, colour = "darkblue") 
 
@@ -352,5 +384,9 @@ lay <- rbind(c(5,4,4,4,4,4,4,4,4,5),
              c(5,3,3,3,3,3,3,3,3,5), 
              c(5,3,3,3,3,3,3,3,3,5))
 empty <- ggplot(spec) + geom_blank() + theme_void()
-grid.arrange(power_spec, spec_change, map, legend, empty, power_spec_positive, spec_change_positive,
+both_directions <- grid.arrange(power_spec, spec_change, map, legend, empty, power_spec_positive, spec_change_positive,
              layout_matrix = lay)
+ggsave(both_directions, path = "figures/didactic", 
+       filename = "spec-exp-didactic_both-directions.png",
+       height = 6,
+       width = 10)
