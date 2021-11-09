@@ -1,9 +1,9 @@
 ## compare sea surface vs air surface temperature analysis for one gcm 
 library(tidyverse)
 
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
-#####  Compare air and sea surface temperate  #####
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+#####  Compare air and sea surface temperature  #####
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## read in mosaics:
 tas_l <- readRDS("vov-shiny/l_mosaic-01_CMCC-CESM.rds")
 tas_s <- readRDS("vov-shiny/s_mosaic-01_CMCC-CESM.rds")
@@ -39,9 +39,9 @@ mean_tas_s <- mask(mean_tas_s, mean_tos_s)
 
 
 
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
-#####  Compare spectral exponent of air and sea surface temperate  #####
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+#####  Compare spectral exponent of air and sea surface temperature  #####
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
 terr <- raster("data-processed/raster_terr_mask.nc") 
 ## extract 10 year time window 
 l_stack_tas <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/l_stack_list.rds")[[6]] 
@@ -134,21 +134,21 @@ tas <- spec_exp %>%
 terr <- raster("data-processed/raster_terr_mask.nc") 
 tas <- select(tas, lon, lat, everything())
 raster_tas <- rasterFromXYZ(tas)
-extent(raster_tas) <- c(-89, 89, -179, 179)
+extent(raster_tas) <- c(-179, 179, -89, 89)
 terr <- crop(terr, raster_tas)
 raster_tas <- mask(raster_tas, terr, inverse = T)
 plot(raster_tas[[1]])
 
 ## turn back into data frame for ggplot
 tas <- data.frame(rasterToPoints(raster_tas))
-colnames(tas) <- colnames(tas)
+colnames(tas)[1:2] <- c("lon", "lat")
 
 l <- tas %>%
-  ggplot(., aes(x = x, y = y, fill = l_estimate)) + geom_raster() +
+  ggplot(., aes(x = lon, y = lat, fill = l_estimate)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
@@ -157,22 +157,22 @@ l <- tas %>%
 ## remove non-significant slopes
 l_sig <- tas %>%
   mutate(l_estimate = ifelse(l_p.value < 0.05, l_estimate, NA)) %>%
-  ggplot(., aes(x = x, y = y, fill = l_estimate)) + geom_raster() +
+  ggplot(., aes(x = lon, y = lat, fill = l_estimate)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
                aes(x=long, y=lat, group = group)) 
 
 s <- tas %>%
-  ggplot(., aes(x = x, y = y, fill = s_estimate)) + geom_raster() +
+  ggplot(., aes(x = lon, y = lat, fill = s_estimate)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
@@ -180,11 +180,11 @@ s <- tas %>%
 
 s_sig <- tas %>%
   mutate(s_estimate = ifelse(l_p.value < 0.05, s_estimate, NA)) %>%
-  ggplot(., aes(x = x, y = y, fill = s_estimate)) + geom_raster() +
+  ggplot(., aes(x = lon, y = lat, fill = s_estimate)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
@@ -239,7 +239,7 @@ l <- tos %>%
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tos)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
@@ -252,7 +252,7 @@ l_sig <- tos %>%
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tos)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
@@ -263,7 +263,7 @@ s <- tos %>%
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tos)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
@@ -275,7 +275,7 @@ s_sig <- tos %>%
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tos)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
@@ -301,7 +301,7 @@ combined %>%
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Does direction of magnitude agree?")
+  labs(x = "Longitude", y = "Latitude", fill = "Does direction\nof magnitude agree?")
 
 combined %>%
   ggplot(., aes(x = lon, y = lat, fill = s_same_direction)) + geom_raster() +

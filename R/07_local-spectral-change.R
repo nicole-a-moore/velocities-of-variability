@@ -52,19 +52,19 @@ lat <- seq(from = 89.5, to = -89.5, length.out = 180)
 lon <-seq(from = 0.5, to = 359.5, length.out = 360) 
 
 ## read in data 
-l_open = nc_open(l_filenames[9]) # 2 for negative one, 9 for positive 
+l_open = nc_open(l_filenames[2]) # 2 for negative one, 9 for positive 
 l_detrended_tas = ncvar_get(l_open, "var1_1")
 nc_close(l_open)
 
-s_open = nc_open(s_filenames[9])
+s_open = nc_open(s_filenames[2])
 s_detrended_tas = ncvar_get(s_open, "var1_1")
 nc_close(s_open)
 
 filepath = paste(path, "date_new.rds", sep = "")
 dates = readRDS(filepath)
 
-lat_num = which(lat == -11.5)
-lon_num = which(lon == 153.5)
+lat_num = which(lat == 81.5)
+lon_num = which(lon == 94.5)
 index_lat <- lat_num%%60
 index_lon <- lon_num%%60
 l_local_ts <- l_detrended_tas[index_lat,index_lon,] ## get a local detrended time series
@@ -77,6 +77,9 @@ local_ts <- data.frame(time = 1:length(l_local_ts), ## add integer time (days fr
   mutate(year = str_split_fixed(.$date, 
                                 pattern = "\\.", n = 2)[,1]) %>% ## add a year column
   group_by(year) ## group by year
+
+#saveRDS(local_ts, "data-processed/local-time-series_lat--11.5_lon-153.5.rds")
+#saveRDS(local_ts, "data-processed/local-time-series_lat-81.5_lon-94.5.rds")
 
 spec_exp_list = list()
 element <- 1

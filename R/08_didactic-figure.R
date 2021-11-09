@@ -2,6 +2,7 @@
 library(tidyverse)
 library(raster)
 library(gridExtra)
+library(cowplot)
 select <- dplyr::select
 
 path = "/Volumes/SundayLab/CMIP5-GCMs/" 
@@ -171,76 +172,6 @@ exp <- ten[[1]] %>%
 spec_change <- exp %>%
   ggplot(aes(x = window_start_year, y = estimate, colour = window_start_year)) + 
   geom_pointrange(aes(ymin = estimate-std.error, ymax = estimate+std.error, 
-                      alpha = window_start_year), colour = "darkred") +
-  theme_light() +
-  geom_smooth(method = "lm", alpha = 0.3, se = F, colour = "black") +
-  scale_alpha(range = c(0.01, 0.9)) +
-  labs(x = "Time window start year", y = "Spectral exponent",
-       alpha = "Time window start year") + 
-  theme(panel.grid = element_blank(), 
-        panel.border = element_blank(),
-        axis.line.y.left = element_line(size=0.5),
-        axis.line.x.bottom = element_line(size=0.5),
-        legend.position="top",
-        axis.title.x = element_text(size = 8),
-        axis.title.y = element_text(size = 8),
-        axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6),
-        legend.title = element_text(size = 8))
-
-## extract legend 
-legend <- get_legend(spec_change)
-spec_change <- spec_change + guides(alpha = "none")
-
-## filter down to include only 5 sample points using commented line
-power_spec <- spec %>%
-  filter(window_start_year %in% c(1871, 1921, 1971, 2041, 2071)) %>%
-  ggplot(aes(x = freq, y = power, group = window_start_year)) + 
-  geom_line(aes(alpha = window_start_year)) + scale_alpha(range = c(0.01, 0.3)) +
-  scale_y_log10(breaks = c(0.0000001, 0.00001, 0.001, 0.1),
-                labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
-  scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
-                labels = c("0.001", "0.01", "0.1", "1")) +
-  geom_line(stat="smooth", method = "lm", formula = y ~ x,
-            size = 1.5,
-            aes(alpha = window_start_year),
-            colour = "darkred") + scale_alpha(range = c(0.01, 0.9)) +
-  theme_light() +
-  labs(x = "Frequency", y = "Power") + 
-  guides(alpha = "none") + 
-  theme(panel.grid = element_blank(), 
-        panel.border = element_blank(),
-        axis.line.y.left = element_line(size=0.5),
-        axis.line.x.bottom = element_line(size=0.5),
-        axis.title.x = element_text(size = 8),
-        axis.title.y = element_text(size = 8),
-        axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6))
-
-## combine plots:
-lay <- rbind(c(5,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5),
-             c(5,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,5),
-             c(5,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,5),
-             c(5,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,5),
-             c(5,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,5),
-             c(5,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,5),
-             c(5,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,5),
-             c(3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5),
-             c(3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5),
-             c(3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5),
-             c(3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5),
-             c(3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5),
-             c(3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5),
-             c(3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5),
-             c(3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5))
-empty <- ggplot(spec) + geom_blank() + theme_void()
-grid.arrange(power_spec, spec_change, map, legend, empty,
-             layout_matrix = lay)
-
-## no but those colours are misleading
-spec_change <- exp %>%
-  ggplot(aes(x = window_start_year, y = estimate, colour = window_start_year)) + 
-  geom_pointrange(aes(ymin = estimate-std.error, ymax = estimate+std.error, 
                       alpha = window_start_year), colour = "black") +
   theme_light() +
   geom_smooth(method = "lm", alpha = 0.3, se = F, colour = "darkred") +
@@ -256,7 +187,11 @@ spec_change <- exp %>%
         axis.title.y = element_text(size = 8),
         axis.text.x = element_text(size = 6),
         axis.text.y = element_text(size = 6),
-        legend.title = element_text(size = 8))
+        legend.title = element_text(size = 8)) +
+  annotate("text", label = "low autocorrelation", x = 1975, y = 0.1, size = 2) +
+  annotate("text", label = "high autocorrelation", x = 1975, y = -0.37, size = 2) +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(limits = c(-0.4, 0.1))
 
 ## extract legend 
 legend <- get_legend(spec_change)
@@ -272,9 +207,18 @@ power_spec <- spec %>%
   geom_line(aes(colour = factor(window_start_year)), alpha = 0.15) + 
   scale_colour_manual(values = greys) +
   scale_y_log10(breaks = c(0.0000001, 0.00001, 0.001, 0.1),
-                labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
+                                                    labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
   scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
                 labels = c("0.001", "0.01", "0.1", "1")) +
+  geom_vline(xintercept = 1/3650, linetype = "dotted") +
+  geom_vline(xintercept = 1/365, linetype = "dotted") +
+  geom_vline(xintercept = 1/31, linetype = "dotted") +
+  annotate(geom = "text", label = "5 years", x = 1/2800, y = 0.1, size = 2,
+           angle = 90) +
+  annotate(geom = "text", label = "1 year", x = 1/280, y = 0.1, size = 2,
+           angle = 90) +
+  annotate(geom = "text", label = "1 month", x = 1/25, y = 0.1, size = 2,
+           angle = 90) +
   geom_line(stat="smooth", method = "lm", formula = y ~ x,
             size = 1,
             aes(alpha = window_start_year),
@@ -334,7 +278,10 @@ spec_change_positive <- exp %>%
         axis.title.y = element_text(size = 8),
         axis.text.x = element_text(size = 6),
         axis.text.y = element_text(size = 6),
-        legend.title = element_text(size = 8)) 
+        legend.title = element_text(size = 8)) +
+  annotate("text", label = "low autocorrelation", x = 1975, y = 0.1, size = 2) +
+  annotate("text", label = "high autocorrelation", x = 1975, y = -0.37, size = 2) +
+  scale_y_continuous(limits = c(-0.4, 0.1))
 
 ## extract legend 
 legend <- get_legend(spec_change_positive)
@@ -353,12 +300,21 @@ power_spec_positive <- spec %>%
                 labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
   scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
                 labels = c("0.001", "0.01", "0.1", "1")) +
+  geom_vline(xintercept = 1/3650, linetype = "dotted", colour = "slategrey") +
+  geom_vline(xintercept = 1/365, linetype = "dotted", colour = "slategrey") +
+  geom_vline(xintercept = 1/31, linetype = "dotted", colour = "slategrey") +
+  annotate(geom = "text", label = "5 years", x = 1/2800, y = 0.1, size = 2,
+           angle = 90, colour = "slategrey") +
+  annotate(geom = "text", label = "1 year", x = 1/280, y = 0.1, size = 2,
+           angle = 90, colour = "slategrey") +
+  annotate(geom = "text", label = "1 month", x = 1/25, y = 0.1, size = 2,
+           angle = 90, colour = "slategrey")  +
   geom_line(stat="smooth", method = "lm", formula = y ~ x,
             size = 1,
             aes(alpha = window_start_year),
             colour = "black") + scale_alpha(range = c(0.01, 0.9)) +
   theme_light() +
-  labs(x = "Frequency", y = "Power") + 
+  labs(x = "Frequency (1/days)", y = "Power") + 
   guides(alpha = "none", colour = "none") + 
   theme(panel.grid = element_blank(), 
         panel.border = element_blank(),
@@ -367,7 +323,7 @@ power_spec_positive <- spec %>%
         axis.title.x = element_text(size = 8),
         axis.title.y = element_text(size = 8),
         axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6)) 
+        axis.text.y = element_text(size = 6))
 
 map = map +  annotate("point", y = -11.5, x = 153.5, size = 2, shape = 1, colour = "darkblue") 
 
@@ -390,3 +346,187 @@ ggsave(both_directions, path = "figures/didactic",
        filename = "spec-exp-didactic_both-directions.png",
        height = 6,
        width = 10)
+
+
+
+
+### add time series 
+library(lubridate)
+local_ts <- readRDS("data-processed/local-time-series_lat-81.5_lon-94.5.rds") 
+local_ts$date <- as.Date(ymd(local_ts$date), "%Y%m%d")
+
+full_timeseries <- ggplot(local_ts, aes(x = date, y = s_temp)) + 
+  geom_line(size = 0.1, aes(alpha = year)) +
+  theme_light() +
+  theme(panel.grid = element_blank(), 
+        panel.border = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6)) +
+  scale_x_date(breaks = ymd(paste(seq(1871, 2091, by = 10), "-01-01", sep = "")),
+               labels = c(1871, rep("", 2),
+                          1901, 1911, rep("", 17), 2091),
+               expand = c(0,0.1)) +
+  labs(y = "") +
+  guides(alpha = "none") +
+  annotate("rect", xmin = ymd("1901-01-01"), xmax = ymd("1910-12-31"), 
+           ymin = -25, ymax = 25,
+           alpha = .1) +
+  scale_y_continuous(expand = c(0,0)) 
+
+timeseries <- local_ts %>%
+  filter(year %in% 1901:1910) %>%
+  ggplot(., aes(x = date, y = s_temp)) + 
+  geom_line(size = 0.1) +
+  theme_light() +
+  theme(panel.grid = element_blank(), 
+        panel.border = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.ticks.y.left = element_blank()) +
+  scale_x_date(breaks = c(ymd("1901-01-01", "1910-12-31")),
+               labels = c("1901", "1911"),
+               limits = c(ymd("1901-01-01", "1918-12-31")),
+               expand = c(0,0.1)) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(y = "")  +
+  annotate("rect", xmin = ymd("1901-01-01"), xmax = ymd("1910-12-31"), 
+           ymin = -25, ymax = 25,
+           alpha = .1) 
+
+## generate waves of 1 week, month, year, 5 year frequency 
+dates <- local_ts %>%
+  filter(year %in% 1901:1910)
+dates <- unique(dates$date)
+
+x_seq = seq(0,3650,length.out=3650)
+
+x <- dates
+y <- 8*sin(x_seq*(2*pi/(3650/2)))
+df <- data.frame(x = x, y = y)
+
+x2 <- dates
+y2 <- 4*sin(x_seq*(2*pi/365))
+df2 <- data.frame(x = x2, y = y2)
+
+x3 <- dates
+y3 <- 2*sin(x_seq*(2*pi/31))
+df3 <- data.frame(x = x3, y = y3)
+
+p <- ggplot(data = data.frame(x = 0), mapping = aes(x = x)) + theme_void()
+p + geom_line(aes(x = x, y = y), data = df, color = "black",size = 1) +
+  geom_line(aes(x = x, y = y), data = df2, color = "black", size = 1) +
+  geom_line(aes(x = x, y = y), data = df3, color = "black", size = 0.5) 
+
+
+local_ts %>%
+  filter(year %in% 1901:1910) %>%
+  ggplot(., aes(x = date, y = s_temp)) + 
+  geom_line(size = 0.1) +
+  theme_light() +
+  theme(panel.grid = element_blank(), 
+        panel.border = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_blank(),
+        axis.ticks.y.left = element_blank()) +
+  scale_x_date(breaks = c(ymd("1901-01-01", "1910-12-31")),
+               labels = c("1901", "1911")) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(y = "")  +
+  annotate("rect", xmin = ymd("1901-01-01"), xmax = ymd("1910-12-31"), 
+           ymin = -25, ymax = 25,
+           alpha = .1) + 
+  geom_line(aes(x = x, y = y), data = df, color = "slategrey",size = 1) +
+  geom_line(aes(x = x, y = y), data = df2, color = "slategrey", size = 1) +
+  geom_line(aes(x = x, y = y), data = df3, color = "slategrey", size = 0.5) 
+
+
+dates <- local_ts %>%
+  filter(year %in% 1901:1910) 
+dates <- unique(dates$date)
+
+x_seq = seq(0,3650,length.out=3650)
+
+x <- dates
+y <- 8*sin(x_seq*(2*pi/(3650/2))) - 25
+df <- data.frame(x = x, y = y)
+
+x2 <- dates
+y2 <- 4*sin(x_seq*(2*pi/365)) - 10
+df2 <- data.frame(x = x2, y = y2)
+
+x3 <- dates
+y3 <- 2*sin(x_seq*(2*pi/31)) 
+df3 <- data.frame(x = x3, y = y3)
+
+squiggles <- ggplot(data = data.frame(x = 0), mapping = aes(x = x)) + 
+  theme_light() +
+  theme(panel.grid = element_blank(), 
+        panel.border = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y.left = element_blank(),
+        axis.ticks.x.bottom = element_blank()) +
+  geom_line(aes(x = x, y = y), data = df, color = "black",size = 0.25) +
+  geom_line(aes(x = x, y = y), data = df2, color = "black", size = 0.25) +
+  geom_line(aes(x = x, y = y), data = df3, color = "black", size = 0.25) +
+  annotate("text", label = " 5 years", y = mean(y), 
+           x = ymd("1912-01-30"), size = 2.5) +
+  annotate("text", label = "1 year ", y = mean(y2), 
+           x = ymd("1912-01-30"), size = 2.5) +
+  annotate("text", label = " 1 month", y = mean(y3), 
+           x = ymd("1912-01-30"), size = 2.5) +
+  scale_x_date(limits = c(ymd("1900-01-01", "1918-12-31")),
+               expand = c(0,0.1))
+
+
+###### bring it all together!! #######
+## time series - full
+## time series - subset 
+## squiggles
+## rest of didactic 
+
+## combine plots:
+lay <- rbind(c(11, rep(8,8), 5),
+             c(11, rep(8,8), 5),
+             c(11, rep(9,9)),
+             c(11, rep(9,9)),
+             c(5, rep(10,9)),
+             c(5, rep(10,9)),
+             c(5,4,4,4,4,4,4,4,4,5),
+             c(5,1,1,2,2,6,6,7,7,5),
+             c(5,1,1,2,2,6,6,7,7,5),
+             c(5,1,1,2,2,6,6,7,7,5),
+             c(5,3,3,3,3,3,3,3,3,5),
+             c(5,3,3,3,3,3,3,3,3,5),
+             c(5,3,3,3,3,3,3,3,3,5), 
+             c(5,3,3,3,3,3,3,3,3,5),
+             c(5,3,3,3,3,3,3,3,3,5), 
+             c(5,3,3,3,3,3,3,3,3,5))
+empty <- ggplot(spec) + geom_blank() + theme_void()
+
+axis <- ggplot(data = spec, aes(x = freq, y = power))+
+  theme_void() +
+  scale_x_continuous(limits = c(0.1,0.26)) +
+  annotate("text",  label = "Detrended temperature (°C)", x = 0.25, y = 0, 
+           angle = 90, size = 3)
+
+ddtc <- grid.arrange(power_spec, spec_change, map,
+            legend, empty, 
+            power_spec_positive, spec_change_positive,
+            full_timeseries, timeseries, squiggles, axis,
+            layout_matrix = lay)
+ggsave(ddtc, path = "figures/didactic", 
+       filename = "spec-exp-didactic_both-directions_with-time-series.png",
+       height = 9,
+       width = 9)
+
+
+  
