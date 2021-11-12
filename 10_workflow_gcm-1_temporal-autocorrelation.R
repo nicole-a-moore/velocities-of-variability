@@ -4,7 +4,7 @@ library(raster)
 library(PNWColors)
 select <- dplyr::select
 
-## create colour palette:=
+## create colour palette:
 pal = pnw_palette("Sunset",5, type = "discrete")
 pal_realm <- c(pal[1], pal[3])
 pal_lat <- c(pal[2], pal[4])
@@ -282,6 +282,111 @@ df %>%
   scale_x_discrete(labels = c("Temperate", "Tropical"))
 
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+#####           1c. Tropical vs. temperate latitudes x land vs. ocean                 #####
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+## use mosaic_specexp
+mosaic_specexp <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent.rds")
+
+## split data into tropics and temperate latitudes
+tropical <- data.frame(rasterToPoints(mosaic_specexp)) %>%
+  filter(y <= 23.5 & y >= -23.5) %>%
+  rasterFromXYZ(.)
+
+temperate <- data.frame(rasterToPoints(mosaic_specexp)) %>%
+  filter(y > 23.5 | y < -23.5) %>%
+  rasterFromXYZ(.)
+
+## split tropical and temperate into land and ocean
+tropical_land <- crop(land_mask, tropical)
+tropical_land <- mask(tropical, tropical_land)
+tropical_ocean <- mask(tropical, tropical_land, inverse = T)
+plot(tropical_land[[1]])
+plot(tropical_ocean[[1]])
+
+temperate_land <- crop(land_mask, temperate)
+temperate_land <- mask(temperate, temperate_land)
+temperate_ocean <- mask(temperate, temperate_land, inverse = T)
+plot(temperate_land[[1]])
+plot(temperate_ocean[[1]])
+
+## calculate means
+
+
+## summary stats and figures:
+## mean
+mean(values(tropical_land), na.rm = T)
+mean(values(temperate_land), na.rm = T)
+mean(values(tropical_ocean), na.rm = T)
+mean(values(temperate_ocean), na.rm = T)
+
+## standard deviation
+sd(values(tropical_land), na.rm = T)
+sd(values(temperate_land), na.rm = T)
+sd(values(tropical_ocean), na.rm = T)
+sd(values(temperate_ocean), na.rm = T)
+
+## histogram - tropical vs. temperate 
+## calculate mean
+tropical_land <- calc(tropical_land, mean) 
+tropical_ocean <- calc(tropical_ocean, mean) 
+temperate_land <- calc(temperate_land, mean) 
+temperate_ocean <- calc(temperate_ocean, mean) 
+
+df1 <- data.frame(Land = c(values(tropical_land)), 
+                  Ocean = c(values(tropical_ocean)))
+df1 <- gather(df1, key = "realm", value = "mean_spec_exp", Land, Ocean)
+df1$trop_or_temp = "Tropical"
+df2 <- data.frame(Land = c(values(temperate_land)),
+                  Ocean = c(values(temperate_ocean)))
+df2 <- gather(df2, key = "realm", value = "mean_spec_exp", Land, Ocean)
+df2$trop_or_temp = "Temperate"
+df <- rbind(df1, df2) %>% 
+  filter(!is.na(mean_spec_exp))
+df$lat_and_realm = paste(df$trop_or_temp, df$realm, sep = "_")
+
+df %>%
+  ggplot(., aes(x = mean_spec_exp, fill = lat_and_realm)) + 
+  geom_histogram(position = position_dodge()) +
+  theme_light() +
+  labs(x = "Mean local spectral exponent",
+       y = "Frequency",
+       fill = "Latitude and realm") +
+  facet_wrap(~realm) +
+  scale_fill_discrete(labels = c("Temperate land", "Temperate ocean", "Tropical land", "Tropical ocean"))
+
+## map it!
+trop_land_df <- data.frame(rasterToPoints(tropical_land))
+trop_land_df$lat_and_realm = "Tropical_land"
+temp_land_df <- data.frame(rasterToPoints(temperate_land))
+temp_land_df$lat_and_realm = "Temperate_land"
+trop_ocean_df <- data.frame(rasterToPoints(tropical_ocean))
+trop_ocean_df$lat_and_realm = "Tropical_ocean"
+temp_ocean_df <- data.frame(rasterToPoints(temperate_ocean))
+temp_ocean_df$lat_and_realm = "Temperate_ocean"
+map_df <- rbind(temp_land_df,trop_ocean_df, trop_land_df, temp_ocean_df)
+
+map_df %>%
+  ggplot(., aes(x = x, y = y, fill = lat_and_realm)) + 
+  geom_raster() +
+  coord_fixed() +
+  theme_void() +
+  labs(fill = "Mean local\nspectral\nexponent") +
+  theme(legend.title = element_text(size = 8),
+        legend.text = element_text(size = 6))  
+
+## boxplot:
+df %>%
+  ggplot(., aes(y = mean_spec_exp, x = lat_and_realm, fill = lat_and_realm)) + 
+  geom_boxplot() +
+  theme_light() +
+  labs(y = "Mean local spectral exponent", x = "") +
+  guides(fill = "none") +
+  scale_x_discrete(labels = 
+                     c("Temperate land", "Temperate ocean", "Tropical land", "Tropical ocean"))
+
+
+
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ##### 2a. Analyze change in spectral exponent on land vs. ocean #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
@@ -512,5 +617,7 @@ df %>%
   guides(fill = "none") +
   scale_x_discrete(labels = 
                         c("Temperate land", "Temperate ocean", "Tropical land", "Tropical ocean"))
+
+
 
 
