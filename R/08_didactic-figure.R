@@ -1,3 +1,8 @@
+## Nikki to self: 
+# make time series chunk smaller and move squiggles to right (keep scaling)
+# fill empty space with steep vs non-steep spectral exponent cartoon 
+# add sea surface temperature to map, change one location to sea?
+
 ## making a didactic figure 
 library(tidyverse)
 library(raster)
@@ -48,9 +53,9 @@ avg <- spec_exp %>%
   select(lat, lon, l_estimate, s_estimate, l_p.value, s_p.value) %>%
   unique()
 
-## which location has fastest reddening?
-avg$lat[which(avg$l_estimate == max(avg$l_estimate))] #-7.5
-avg$lon[which(avg$l_estimate == max(avg$l_estimate))] #5.5
+# ## which location has fastest reddening?
+# avg$lat[which(avg$l_estimate == max(avg$l_estimate))] #48.5
+# avg$lon[which(avg$l_estimate == max(avg$l_estimate))] #154.5
 
 avg$lon <- ifelse(avg$lon >= 180, avg$lon - 358, avg$lon)
 
@@ -144,13 +149,13 @@ map <- data %>%
                      labels =  c("-0.001", "-0.0005", "0", "0.0005")) +
   scale_x_continuous(breaks = c(), labels = c("")) +
   scale_y_continuous(breaks = c(), labels = c("")) +
-  annotate("point", y = 81.5, x = -94.5, size = 2, shape = 1, colour = "darkred") 
+  annotate("point", y = 60.5, x = 32.5, size = 2, shape = 1, colour = "darkred") 
   
 
 
 ## make plot of local spectral change by showing spectral exponent as a point over time 
-data$lat[which(data$l_estimate == min(data$l_estimate))] #81.5
-data$lon[which(data$l_estimate == min(data$l_estimate))] #94.5
+data$lat[which(data$l_estimate == min(data$l_estimate))] #60.5
+data$lon[which(data$l_estimate == min(data$l_estimate))] #32.5
 
 ## extract the colour describing the slope of the spectral exponent at the location of choice
 col <- colorRampPalette(c("darkred", "white", "darkblue"))
@@ -158,7 +163,7 @@ plot_colours <- col(23918)
 positions <- data$l_estimate[order(data$l_estimate)]
 which(positions == min(data$l_estimate))
 
-spec_exp <- readRDS("data-processed/local-spectral-change_lat-81.5_lon-94.5.rds")
+spec_exp <- readRDS("data-processed/local-spectral-change_lat-60.5_lon-32.5.rds")
 
 ## plot out spectral change for 10 year window width on l detrended data
 ten <- spec_exp[[6]]
@@ -188,10 +193,10 @@ spec_change <- exp %>%
         axis.text.x = element_text(size = 6),
         axis.text.y = element_text(size = 6),
         legend.title = element_text(size = 8)) +
-  annotate("text", label = "low autocorrelation", x = 1975, y = 0.1, size = 2) +
-  annotate("text", label = "high autocorrelation", x = 1975, y = -0.37, size = 2) +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_y_continuous(limits = c(-0.4, 0.1))
+  annotate("text", label = "low autocorrelation", x = 1975, y = -1.58, size = 2) +
+  annotate("text", label = "high autocorrelation", x = 1975, y = -1.2, size = 2) +
+  scale_x_continuous(expand = c(0,0.5)) +
+  scale_y_continuous(limits = c(-1.6, -1.18))
 
 ## extract legend 
 legend <- get_legend(spec_change)
@@ -202,7 +207,7 @@ greys <- colorRampPalette(c("lightgrey", "black"))
 greys <- greys(length(unique(spec$window_start_year)))
 
 power_spec <- spec %>%
-  filter(window_start_year %in% c(1871, 1921, 1971, 2041, 2071)) %>%
+  filter(window_start_year %in% c(1871, 1911, 1971, 2051, 2071)) %>%
   ggplot(aes(x = freq, y = power, group = as.factor(window_start_year))) + 
   geom_line(aes(colour = factor(window_start_year)), alpha = 0.15) + 
   scale_colour_manual(values = greys) +
@@ -235,21 +240,13 @@ power_spec <- spec %>%
         axis.text.x = element_text(size = 6),
         axis.text.y = element_text(size = 6))
 
-negative_slope_only <- grid.arrange(power_spec, spec_change, map, legend, empty,
-             layout_matrix = lay)
-ggsave(negative_slope_only, path = "figures/didactic", 
-       filename = "spec-exp-didactic_negative-only.png",
-       height = 4,
-       width = 6)
-
-
 
 ## this example is fast change - colour accordingly and make example of slow change/opposite slope?
 ## get max 
-data$lat[which(data$l_estimate == max(data$l_estimate))] #-11.5
-data$lon[which(data$l_estimate == max(data$l_estimate))] #153.5
+data$lat[which(data$l_estimate == max(data$l_estimate))] #48.5
+data$lon[which(data$l_estimate == max(data$l_estimate))] #154.5
 
-spec_exp <- readRDS("data-processed/local-spectral-change_lat--11.5_lon-153.5.rds")
+spec_exp <- readRDS("data-processed/local-spectral-change_lat-48.5_lon-154.5.rds")
 
 ## plot out spectral change for 10 year window width on l detrended data
 ten <- spec_exp[[6]]
@@ -279,9 +276,9 @@ spec_change_positive <- exp %>%
         axis.text.x = element_text(size = 6),
         axis.text.y = element_text(size = 6),
         legend.title = element_text(size = 8)) +
-  annotate("text", label = "low autocorrelation", x = 1975, y = 0.1, size = 2) +
-  annotate("text", label = "high autocorrelation", x = 1975, y = -0.37, size = 2) +
-  scale_y_continuous(limits = c(-0.4, 0.1))
+  annotate("text", label = "low autocorrelation", x = 1975, y = -1.02, size = 2) +
+  annotate("text", label = "high autocorrelation", x = 1975, y = -1.58, size = 2) +
+  scale_y_continuous(limits = c(-1.6, -1))
 
 ## extract legend 
 legend <- get_legend(spec_change_positive)
@@ -325,7 +322,7 @@ power_spec_positive <- spec %>%
         axis.text.x = element_text(size = 6),
         axis.text.y = element_text(size = 6))
 
-map = map +  annotate("point", y = -11.5, x = 153.5, size = 2, shape = 1, colour = "darkblue") 
+map = map +  annotate("point", y = 48.5, x = 154.5, size = 2, shape = 1, colour = "darkblue") 
 
 
 ## combine plots:
@@ -352,7 +349,7 @@ ggsave(both_directions, path = "figures/didactic",
 
 ### add time series 
 library(lubridate)
-local_ts <- readRDS("data-processed/local-time-series_lat-81.5_lon-94.5.rds") 
+local_ts <- readRDS("data-processed/local-time-series_lat-60.5_lon-32.5.rds") 
 local_ts$date <- as.Date(ymd(local_ts$date), "%Y%m%d")
 
 full_timeseries <- ggplot(local_ts, aes(x = date, y = s_temp)) + 

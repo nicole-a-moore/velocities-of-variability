@@ -65,10 +65,10 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
       print(paste0("remaining: ", round(expected,3), " minutes = ", round(expected/60,3), " hours"))
       file = file + 1
     }
-
+    
     ## turn into an array:
     temps_df <- as.array(spatial_temps)  
-
+    
     ## remove dates:
     temps_df <- temps_df[,,-remove] 
     
@@ -81,6 +81,9 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
         ## get local time series 
         local_ts <- data.frame(time = 1:(length(temps_df[1,1,])), 
                                temp = temps_df[y,x,])
+        
+        ggplot(local_ts, aes(x = time, y = temp)) + geom_line() +
+          geom_smooth(method = "lm")
         
         if (!length(which(is.na(local_ts$temp))) == nrow(local_ts)) {
           #####     REMOVING OUTLIERS, INTERPOLATING MISSING TEMPS    #####
@@ -105,7 +108,8 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
             group_by(md) %>%
             do(mutate(., temp_profile = mean(.$temp))) %>% ## compute temp climatology for each day of year
             ungroup() %>%
-            mutate(s_detrended_temp = temp - temp_profile) ## create column representing seasonally detrended
+            mutate(s_detrended_temp = temp - temp_profile) %>% ## create column representing seasonally detrended
+            arrange(., time)
           
           ## run linear regression for grid cell
           l_output <- lm(ts_df, formula = temp ~ time)
@@ -114,6 +118,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
           ## extract residuals and add to detrended temps objects:
           l_detrended_temps[y,x,] <- l_output$residuals
           s_detrended_temps[y,x,] <- s_output$residuals
+          
           print(paste("Done detrending x ", x,  " y ", y, " of chunk #", count,sep = ""))
         }
         y = y + 1

@@ -220,7 +220,7 @@ sliding_window_spec_exp <- function(path) {
 #################################################
 ## set 'path' to where you have the GCM files stored on your computer
 ## for me, they are here:
-#path = "/Volumes/ADATA HV620/CMIP5-GCMs/" ## change me
+#path = "/Volumes/SundayLab/CMIP5-GCMs/" ## change me
 path = "CMIP5-GCMs/"
 
 ## create vector of file folders to put data into:

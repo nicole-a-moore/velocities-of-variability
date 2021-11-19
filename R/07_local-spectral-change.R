@@ -6,6 +6,7 @@ library(evobiR)
 library(sp)
 library(raster)
 library(ncdf4)
+library(magick)
 
 select <- dplyr::select
 
@@ -52,7 +53,7 @@ lat <- seq(from = 89.5, to = -89.5, length.out = 180)
 lon <-seq(from = 0.5, to = 359.5, length.out = 360) 
 
 ## read in data 
-l_open = nc_open(l_filenames[2]) # 2 for negative one, 9 for positive 
+l_open = nc_open(l_filenames[2]) # 3 for first one, 2 for second 
 l_detrended_tas = ncvar_get(l_open, "var1_1")
 nc_close(l_open)
 
@@ -63,8 +64,8 @@ nc_close(s_open)
 filepath = paste(path, "date_new.rds", sep = "")
 dates = readRDS(filepath)
 
-lat_num = which(lat == 81.5)
-lon_num = which(lon == 94.5)
+lat_num = which(lat == 60.5) # 48.5, 60.5
+lon_num = which(lon == 32.5) # 154.5, 32.5
 index_lat <- lat_num%%60
 index_lon <- lon_num%%60
 l_local_ts <- l_detrended_tas[index_lat,index_lon,] ## get a local detrended time series
@@ -78,8 +79,8 @@ local_ts <- data.frame(time = 1:length(l_local_ts), ## add integer time (days fr
                                 pattern = "\\.", n = 2)[,1]) %>% ## add a year column
   group_by(year) ## group by year
 
-#saveRDS(local_ts, "data-processed/local-time-series_lat--11.5_lon-153.5.rds")
-#saveRDS(local_ts, "data-processed/local-time-series_lat-81.5_lon-94.5.rds")
+#saveRDS(local_ts, "data-processed/local-time-series_lat-48.5_lon-154.5.rds")
+#saveRDS(local_ts, "data-processed/local-time-series_lat-60.5_lon-32.5.rds")
 
 spec_exp_list = list()
 element <- 1
@@ -164,13 +165,14 @@ while (n < 11) {
   n = n + 1
 }
 
-## plot out spectral change for 10 year window width on l detrended data
+## plot out spectral change for 10 year window width on s detrended data
 ten <- spec_exp_list[[6]]
 
 spec <- ten[[3]]
 
 ## save data to plot in didactic figure:
-saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat--11.5_lon-153.5.rds")
+saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat-48.5_lon-154.5.rds")
+saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat-60.5_lon-32.5.rds")
 
 ## bring in the animation!!!
 library(gganimate)

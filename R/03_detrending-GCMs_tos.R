@@ -34,6 +34,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path) {
     file = 1
     dates <- c()
     while (file < length(filenames)+1) {
+      start <- Sys.time()
       temps <- stack(paths[file])
       dates <- append(dates, names(temps))
       
@@ -103,7 +104,8 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path) {
             group_by(md) %>%
             do(mutate(., temp_profile = mean(.$temp))) %>% ## compute temp climatology for each day of year
             ungroup() %>%
-            mutate(s_detrended_temp = temp - temp_profile) ## create column representing seasonally detrended
+            mutate(s_detrended_temp = temp - temp_profile) %>% ## create column representing seasonally detrended
+            arrange(., time)
           
           ## run linear regression for grid cell
           l_output <- lm(ts_df, formula = temp ~ time)
@@ -112,6 +114,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path) {
           ## extract residuals and add to detrended temps objects:
           l_detrended_temps[y,x,] <- l_output$residuals
           s_detrended_temps[y,x,] <- s_output$residuals
+          
           print(paste("Done detrending x ", x,  " y ", y, " of chunk #", count,sep = ""))
         }
         y = y + 1

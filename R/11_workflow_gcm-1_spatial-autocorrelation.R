@@ -178,6 +178,19 @@ ggplot(models_ocean, aes(x = year, y = range)) + geom_point() +
   labs(x = "Time window start year", y = "Spatial range of spectral exponent (km)") +
   geom_smooth(colour = pal_realm[2], fill = pal_realm[2])
 
+models_ocean$realm = "ocean"
+models_land$realm = "land"
+
+## boxplot comparing spatial range
+models_ocean %>%
+  rbind(., models_land) %>%
+  ggplot(., aes(x = realm, y = range, fill = realm)) + 
+  geom_boxplot() +
+  scale_fill_manual(values = pal_realm) + 
+  guides(fill = "none") +
+  labs(x = "", y = "Spatial range (km)") +
+  theme_light()
+
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 #####  4a. How autocorrelated is the change in spectral exponent? #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
