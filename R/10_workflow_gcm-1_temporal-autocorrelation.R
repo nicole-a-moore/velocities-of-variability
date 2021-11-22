@@ -2,12 +2,16 @@
 library(tidyverse)
 library(raster)
 library(PNWColors)
+library(gridExtra)
+library(cowplot)
 select <- dplyr::select
 
 ## create colour palette:
 pal = pnw_palette("Sunset",5, type = "discrete")
 pal_realm <- c(pal[1], pal[3])
 pal_lat <- c(pal[2], pal[4])
+pal = pnw_palette("Shuksan2",5, type = "discrete")
+pal_lat_and_realm <-  c(pal[5], pal[4], pal[1], pal[2])
 
 ## for now: just do for seasonally detrended data, not linearly detrended
 ## create data that has tas on land and tos in the ocean
@@ -26,6 +30,9 @@ s_stack_tas <- crop(s_stack_tas, s_stack_tos)
 s_stack_tos <- crop(s_stack_tos, s_stack_tas)
 
 ## mosaic rasters together 
+s_stack_tas <- mask(s_stack_tas, land)
+plot(s_stack_tas[[1]])
+
 isna <- is.na(s_stack_tos[[1]])
 s_stack_tos[isna == 1] <- s_stack_tas[isna == 1]
 
@@ -149,7 +156,6 @@ raster_tos[isna == 1] <- raster_tas[isna == 1]
 
 mosaic_specchange <- raster_tos
 plot(mosaic_specchange$s_estimate)
-plot(mosaic_specchange$s_estimate)
 
 ## save:
 saveRDS(mosaic_specchange, "data-processed/01_tos-tas-mosaic_spectral-change.rds")
@@ -182,17 +188,20 @@ df <- data.frame(land = c(values(mean_land)), ocean = c(values(mean_ocean)))
 df <- gather(df, key = "realm", value = "mean_spec_exp", land, ocean)
 df <- filter(df, !is.na(mean_spec_exp))
 
-df %>%
+hist <- df %>%
   ggplot(., aes(x = mean_spec_exp, fill = realm)) + 
   geom_histogram(position = position_dodge(), binwidth = 0.05) +
   theme_light() +
-  labs(x = "Mean local spectral exponent",
-       y = "Frequency", fill = "Realm") +
+  labs(x = "", y = "Frequency", fill = "Realm") + #x = "Mean local spectral exponent"
   scale_fill_manual(values = pal_realm) +
-  guides(fill = "none")
-
-legend_rast <- land_mask
-legend_rast[is.na(land_mask)] <- 2
+  guides(fill = "none") + coord_flip() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 6),
+        panel.border = element_blank(),
+        panel.grid = element_blank(), 
+        axis.title.x = element_text(size = 10),
+        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm")) 
 
 map_legend <- data.frame(rasterToPoints(legend_rast)) %>%
   mutate(window_1 = as.factor(window_1)) %>%
@@ -204,14 +213,23 @@ map_legend <- data.frame(rasterToPoints(legend_rast)) %>%
   guides(fill = "none")
 
 ## boxplot:
-df %>%
+box <- df %>%
   ggplot(., aes(y = mean_spec_exp, x = realm, fill = realm)) + 
   geom_boxplot() +
   theme_light() +
   labs(y = "Mean local spectral exponent", x = "") +
   scale_fill_manual(values = pal_realm) +
   guides(fill = "none") +
-  scale_x_discrete(labels = c("Land", "Ocean"))
+  scale_x_discrete(labels = c("Land", "Ocean")) +
+  stat_summary(fun = mean, geom = "point", shape = 5, size = 3) +
+  theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"))
+
+## arrange plots side by side:
+lay <- rbind(c(1,1,1,1,2,2))
+besties <- grid.arrange(box, hist, layout_matrix = lay)
+
+ggsave(besties, path = "figures/analysis-workflow", filename = "o-vs-l_mean-local-spec-exp.png", 
+       device = "png", width = 8, height = 4)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
@@ -228,7 +246,7 @@ tropical <- data.frame(rasterToPoints(mosaic_specexp)) %>%
 temperate <- data.frame(rasterToPoints(mosaic_specexp)) %>%
   filter(y > 23.5 | y < -23.5) %>%
   rasterFromXYZ(.)
-  
+
 ## summary stats and figures:
 ## mean
 mean(values(tropical), na.rm = T)
@@ -244,7 +262,7 @@ mean_temp <- calc(temperate, mean)
 df <- data.frame(latitudinal_region = rep("tropical", length(values(mean_trop))),
                  mean_spec_exp = c(values(mean_trop)))
 df <- rbind(df, data.frame(latitudinal_region = rep("temperate", length(values(mean_temp))),
-                 mean_spec_exp = c(values(mean_temp))))
+                           mean_spec_exp = c(values(mean_temp))))
 df <- filter(df, !is.na(mean_spec_exp))
 
 df %>%
@@ -310,9 +328,6 @@ temperate_ocean <- mask(temperate, temperate_land, inverse = T)
 plot(temperate_land[[1]])
 plot(temperate_ocean[[1]])
 
-## calculate means
-
-
 ## summary stats and figures:
 ## mean
 mean(values(tropical_land), na.rm = T)
@@ -345,47 +360,75 @@ df <- rbind(df1, df2) %>%
   filter(!is.na(mean_spec_exp))
 df$lat_and_realm = paste(df$trop_or_temp, df$realm, sep = "_")
 
-df %>%
+## reorder factor levels
+df$lat_and_realm <- factor(df$lat_and_realm, levels = c("Temperate_Land","Tropical_Land","Temperate_Ocean","Tropical_Ocean"), 
+                           ordered = TRUE)
+hist <- df %>%
   ggplot(., aes(x = mean_spec_exp, fill = lat_and_realm)) + 
-  geom_histogram(position = position_dodge()) +
+  geom_histogram(position = position_dodge(), binwidth = 0.05) +
   theme_light() +
-  labs(x = "Mean local spectral exponent",
-       y = "Frequency",
-       fill = "Latitude and realm") +
-  facet_wrap(~realm) +
-  scale_fill_discrete(labels = c("Temperate land", "Temperate ocean", "Tropical land", "Tropical ocean"))
+  labs(x = "", y = "Frequency", fill = "Latitude and realm") + #x = "Mean local spectral exponent"
+  scale_fill_manual(values = pal_lat_and_realm, 
+                    labels = c("Temperate land", "Tropical land", "Temperate ocean", "Tropical ocean")) +
+  coord_flip() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 6),
+        panel.border = element_blank(),
+        panel.grid = element_blank(), 
+        axis.title.x = element_text(size = 10),
+        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm")) 
+
+## extract legend 
+legend <- get_legend(hist)
+hist <- hist + guides(fill = "none")
 
 ## map it!
 trop_land_df <- data.frame(rasterToPoints(tropical_land))
-trop_land_df$lat_and_realm = "Tropical_land"
+trop_land_df$lat_and_realm = "Tropical_Land"
 temp_land_df <- data.frame(rasterToPoints(temperate_land))
-temp_land_df$lat_and_realm = "Temperate_land"
+temp_land_df$lat_and_realm = "Temperate_Land"
 trop_ocean_df <- data.frame(rasterToPoints(tropical_ocean))
-trop_ocean_df$lat_and_realm = "Tropical_ocean"
+trop_ocean_df$lat_and_realm = "Tropical_Ocean"
 temp_ocean_df <- data.frame(rasterToPoints(temperate_ocean))
-temp_ocean_df$lat_and_realm = "Temperate_ocean"
+temp_ocean_df$lat_and_realm = "Temperate_Ocean"
 map_df <- rbind(temp_land_df,trop_ocean_df, trop_land_df, temp_ocean_df)
+
+## reorder factor levels
+map_df$lat_and_realm <- factor(map_df$lat_and_realm, 
+                               levels = c("Temperate_Land","Tropical_Land","Temperate_Ocean","Tropical_Ocean"), 
+                           ordered = TRUE)
 
 map_df %>%
   ggplot(., aes(x = x, y = y, fill = lat_and_realm)) + 
   geom_raster() +
   coord_fixed() +
   theme_void() +
+  scale_fill_manual(values = pal_lat_and_realm) +
   labs(fill = "Mean local\nspectral\nexponent") +
   theme(legend.title = element_text(size = 8),
-        legend.text = element_text(size = 6))  
+        legend.text = element_text(size = 6)) 
+  
 
 ## boxplot:
-df %>%
+box <- df %>%
   ggplot(., aes(y = mean_spec_exp, x = lat_and_realm, fill = lat_and_realm)) + 
   geom_boxplot() +
   theme_light() +
   labs(y = "Mean local spectral exponent", x = "") +
-  guides(fill = "none") +
+  scale_fill_manual(values = pal_lat_and_realm) +
+  guides(fill = "none")+
   scale_x_discrete(labels = 
-                     c("Temperate land", "Temperate ocean", "Tropical land", "Tropical ocean"))
+                     c("Temperate land", "Tropical land", "Temperate ocean", "Tropical ocean")) +
+  stat_summary(fun = mean, geom = "point", shape = 5, size = 3) +
+  theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"))
 
+## arrange plots side by side:
+lay <- rbind(c(1,1,1,1,2,2))
+besties <- grid.arrange(box, hist, layout_matrix = lay)
 
+ggsave(besties, path = "figures/analysis-workflow", filename = "o-vs-l-across-lat_mean-local-spec-exp.png", 
+       device = "png", width = 8, height = 4)
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ##### 2a. Analyze change in spectral exponent on land vs. ocean #####
@@ -443,14 +486,99 @@ map_df %>%
   theme(legend.title = element_text(size = 8),
         legend.text = element_text(size = 6))
 
+hist <- df %>%
+  ggplot(., aes(x = slope_spec_exp, fill = realm)) + 
+  geom_histogram(position = position_dodge(), binwidth = 0.0002) +
+  theme_light() +
+  labs(x = "", y = "Frequency", fill = "Realm") + #x = "Slope of spectral exponent"
+  scale_fill_manual(values = pal_realm) +
+  guides(fill = "none") + coord_flip() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 6),
+        panel.border = element_blank(),
+        panel.grid = element_blank(), 
+        axis.title.x = element_text(size = 10),
+        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm")) 
+
 ## boxplot:
-df %>%
+box <- df %>%
   ggplot(., aes(y = slope_spec_exp, x = realm, fill = realm)) + 
   geom_boxplot() +
   theme_light() +
-  labs(y = "Mean local spectral exponent", x = "") +
+  labs(y = "Slope of spectral exponent", x = "") +
   scale_fill_manual(values = pal_realm) +
-  guides(fill = "none")
+  guides(fill = "none") +
+  scale_x_discrete(labels = c("Land", "Ocean")) +
+  stat_summary(fun = mean, geom = "point", shape = 5, size = 3) +
+  theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"))
+
+## arrange plots side by side:
+lay <- rbind(c(1,1,1,1,2,2))
+besties <- grid.arrange(box, hist, layout_matrix = lay)
+
+ggsave(besties, path = "figures/analysis-workflow", filename = "o-vs-l_spec-change.png", 
+       device = "png", width = 8, height = 4)
+
+
+## how different is the global average spectral change across the ocean vs. land?
+## use mosaic_specexp
+mosaic_specexp <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent.rds")
+
+## split data into land and ocean
+land <- mask(mosaic_specexp, land_mask)
+plot(land[[1]])
+ocean <- mask(mosaic_specexp, land_mask, inverse = T)
+plot(ocean[[1]])
+
+## convert raster layer to data frame
+df_land <- data.frame(rasterToPoints(land))
+df_land <- gather(df_land, key = "window_number", value = "spec_exp", c(3:ncol(df_land)))
+
+land_average <- df_land %>%
+  group_by(window_number) %>% ## group data by window start year
+  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+  select(window_number, mean_spec_exp) %>%
+  unique() %>%
+  rename("Land" = mean_spec_exp) 
+land_average$year = seq(1871, 2081, by = 10)
+
+df_ocean <- data.frame(rasterToPoints(ocean))
+df_ocean <- gather(df_ocean, key = "window_number", value = "spec_exp", c(3:ncol(df_ocean)))
+
+ocean_average <- df_ocean %>%
+  group_by(window_number) %>% ## group data by window start year
+  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+  select(window_number, mean_spec_exp) %>%
+  unique() %>%
+  rename("Ocean" = mean_spec_exp)
+ocean_average$year = seq(1871, 2081, by = 10)
+
+average <- left_join(land_average, ocean_average)
+average <- gather(average, key = 'realm', value = 'mean_spec_exp', "Land", 
+                  "Ocean") %>%
+  filter(!is.na(mean_spec_exp))
+
+average %>%
+  ggplot(., aes(x = year, y = mean_spec_exp, fill = realm, colour = realm)) + geom_point() +
+  theme_light() +
+  labs(x = "Time window start year", y = "Mean spectral exponent") + 
+  geom_smooth(method = "lm")  +
+  scale_colour_manual(values = pal_realm) +
+  scale_fill_manual(values = pal_realm) +
+  guides(fill = "none", colour = "none")
+
+average %>%
+  filter(realm == "Ocean") %>% 
+  lm(mean_spec_exp ~ year,
+     data = .)
+
+average %>%
+  filter(realm == "Land") %>% 
+  lm(mean_spec_exp ~ year,
+     data = .)
+
+
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ##### 2b. Analyze change in spectral exponent across tropical vs. temperate latitudes #####
@@ -571,53 +699,193 @@ df1 <- data.frame(Land = c(values(tropical_land[[2]])),
 df1 <- gather(df1, key = "realm", value = "slope_spec_exp", Land, Ocean)
 df1$trop_or_temp = "Tropical"
 df2 <- data.frame(Land = c(values(temperate_land[[2]])),
-                 Ocean = c(values(temperate_ocean[[2]])))
+                  Ocean = c(values(temperate_ocean[[2]])))
 df2 <- gather(df2, key = "realm", value = "slope_spec_exp", Land, Ocean)
 df2$trop_or_temp = "Temperate"
 df <- rbind(df1, df2) %>% 
   filter(!is.na(slope_spec_exp))
 df$lat_and_realm = paste(df$trop_or_temp, df$realm, sep = "_")
 
-df %>%
+## reorder factor levels
+df$lat_and_realm <- factor(df$lat_and_realm, 
+                           levels = c("Temperate_Land","Tropical_Land","Temperate_Ocean","Tropical_Ocean"), 
+                           ordered = TRUE)
+hist <- df %>%
   ggplot(., aes(x = slope_spec_exp, fill = lat_and_realm)) + 
-  geom_histogram(position = position_dodge()) +
+  geom_histogram(position = position_dodge(), binwidth = 0.0002) +
   theme_light() +
-  labs(x = "Slope of spectral exponent",
-       y = "Frequency",
-       fill = "Latitude and realm") +
-  facet_wrap(~realm) +
-  scale_fill_discrete(labels = c("Temperate land", "Temperate ocean", "Tropical land", "Tropical ocean"))
+  labs(x = "", y = "Frequency", fill = "Latitude and realm") + #x = "Slope of spectral exponent"
+  scale_fill_manual(values = pal_lat_and_realm, 
+                    labels = c("Temperate land", "Tropical land", "Temperate ocean", "Tropical ocean")) +
+  coord_flip() +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 6),
+        panel.border = element_blank(),
+        panel.grid = element_blank(), 
+        axis.title.x = element_text(size = 10),
+        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm")) 
+
+## extract legend 
+legend <- get_legend(hist)
+hist <- hist + guides(fill = "none")
 
 ## map it!
 trop_land_df <- data.frame(rasterToPoints(tropical_land))
-trop_land_df$lat_and_realm = "Tropical_land"
+trop_land_df$lat_and_realm = "Tropical_Land"
 temp_land_df <- data.frame(rasterToPoints(temperate_land))
-temp_land_df$lat_and_realm = "Temperate_land"
+temp_land_df$lat_and_realm = "Temperate_Land"
 trop_ocean_df <- data.frame(rasterToPoints(tropical_ocean))
-trop_ocean_df$lat_and_realm = "Tropical_ocean"
+trop_ocean_df$lat_and_realm = "Tropical_Ocean"
 temp_ocean_df <- data.frame(rasterToPoints(temperate_ocean))
-temp_ocean_df$lat_and_realm = "Temperate_ocean"
+temp_ocean_df$lat_and_realm = "Temperate_Ocean"
 map_df <- rbind(temp_land_df,trop_ocean_df, trop_land_df, temp_ocean_df)
+
+## reorder factor levels
+map_df$lat_and_realm <- factor(map_df$lat_and_realm, 
+                               levels = c("Temperate_Land","Tropical_Land","Temperate_Ocean","Tropical_Ocean"), 
+                               ordered = TRUE)
 
 map_df %>%
   ggplot(., aes(x = x, y = y, fill = lat_and_realm)) + 
   geom_raster() +
   coord_fixed() +
   theme_void() +
+  scale_fill_manual(values = pal_lat_and_realm) +
   labs(fill = "Slope of\nspectral\nexponent") +
   theme(legend.title = element_text(size = 8),
-        legend.text = element_text(size = 6))  
+        legend.text = element_text(size = 6)) 
 
 ## boxplot:
-df %>%
+
+## boxplot:
+box <- df %>%
   ggplot(., aes(y = slope_spec_exp, x = lat_and_realm, fill = lat_and_realm)) + 
   geom_boxplot() +
   theme_light() +
-  labs(y = "Mean local spectral exponent", x = "") +
-  guides(fill = "none") +
+  labs(y = "Slope of spectral exponent", x = "") +
+  scale_fill_manual(values = pal_lat_and_realm) +
+  guides(fill = "none")+
   scale_x_discrete(labels = 
-                        c("Temperate land", "Temperate ocean", "Tropical land", "Tropical ocean"))
+                     c("Temperate land", "Tropical land", "Temperate ocean", "Tropical ocean")) +
+  stat_summary(fun = mean, geom = "point", shape = 5, size = 3) +
+  theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"))
 
+## arrange plots side by side:
+lay <- rbind(c(1,1,1,1,2,2))
+besties <- grid.arrange(box, hist, layout_matrix = lay)
 
+ggsave(besties, path = "figures/analysis-workflow", filename = "o-vs-l-across-lat_spec-change.png", 
+       device = "png", width = 8, height = 4)
 
+## how different is the global average spectral change across the temperate vs. tropical land vs. ocean?
+## use mosaic_specexp
+mosaic_specexp <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent.rds")
+
+## split data into tropics and temperate latitudes
+tropical <- data.frame(rasterToPoints(mosaic_specexp)) %>%
+  filter(y <= 23.5 & y >= -23.5) %>%
+  rasterFromXYZ(.)
+
+temperate <- data.frame(rasterToPoints(mosaic_specexp)) %>%
+  filter(y > 23.5 | y < -23.5) %>%
+  rasterFromXYZ(.)
+
+## split tropical and temperate into land and ocean
+tropical_land <- crop(land_mask, tropical)
+tropical_land <- mask(tropical, tropical_land)
+tropical_ocean <- mask(tropical, tropical_land, inverse = T)
+plot(tropical_land[[1]])
+plot(tropical_ocean[[1]])
+
+temperate_land <- crop(land_mask, temperate)
+temperate_land <- mask(temperate, temperate_land)
+temperate_ocean <- mask(temperate, temperate_land, inverse = T)
+plot(temperate_land[[1]])
+plot(temperate_ocean[[1]])
+
+## convert raster layer to data frame
+df_tropland <- data.frame(rasterToPoints(tropical_land))
+df_templand <- data.frame(rasterToPoints(temperate_land))
+df_tropland <- gather(df_tropland, key = "window_number", value = "spec_exp", c(3:ncol(df_tropland)))
+df_templand <- gather(df_templand, key = "window_number", value = "spec_exp", c(3:ncol(df_templand)))
+
+tropland_average <- df_tropland %>%
+  group_by(window_number) %>% ## group data by window start year
+  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+  select(window_number, mean_spec_exp) %>%
+  unique() %>%
+  rename("Tropical_Land" = mean_spec_exp) 
+tropland_average$year = seq(1871, 2081, by = 10)
+
+templand_average <- df_templand %>%
+  group_by(window_number) %>% ## group data by window start year
+  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+  select(window_number, mean_spec_exp) %>%
+  unique() %>%
+  rename("Temperate_Land" = mean_spec_exp) 
+templand_average$year = seq(1871, 2081, by = 10)
+
+df_tropocean <- data.frame(rasterToPoints(tropical_ocean))
+df_tempocean <- data.frame(rasterToPoints(temperate_ocean))
+df_tropocean <- gather(df_tropocean, key = "window_number", value = "spec_exp", c(3:ncol(df_tropocean)))
+df_tempocean <- gather(df_tempocean, key = "window_number", value = "spec_exp", c(3:ncol(df_tempocean)))
+
+tropocean_average <- df_tropocean %>%
+  group_by(window_number) %>% ## group data by window start year
+  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+  select(window_number, mean_spec_exp) %>%
+  unique() %>%
+  rename("Tropical_Ocean" = mean_spec_exp)
+tropocean_average$year = seq(1871, 2081, by = 10)
+
+tempocean_average <- df_tempocean %>%
+  group_by(window_number) %>% ## group data by window start year
+  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+  select(window_number, mean_spec_exp) %>%
+  unique() %>%
+  rename("Temperate_Ocean" = mean_spec_exp)
+tempocean_average$year = seq(1871, 2081, by = 10)
+
+average <- left_join(tropland_average, tropocean_average) %>%
+  left_join(., templand_average) %>%
+  left_join(., tempocean_average)
+
+average <- gather(average, key = 'lat_and_realm', value = 'mean_spec_exp', "Tropical_Land", 
+                  "Tropical_Ocean", "Temperate_Land", "Temperate_Ocean") %>%
+  filter(!is.na(mean_spec_exp))
+
+# reorder factor
+average$lat_and_realm <- factor(average$lat_and_realm, 
+                                levels = c("Temperate_Land","Tropical_Land","Temperate_Ocean","Tropical_Ocean"), 
+                                ordered = TRUE)
+
+average %>%
+  ggplot(., aes(x = year, y = mean_spec_exp, fill = lat_and_realm, colour = lat_and_realm)) + geom_point() +
+  theme_light() +
+  labs(x = "Time window start year", y = "Mean spectral exponent") + 
+  geom_smooth(method = "lm")  +
+  scale_colour_manual(values = pal_lat_and_realm) +
+  scale_fill_manual(values = pal_lat_and_realm) +
+  guides(fill = "none", colour = "none")
+
+average %>%
+  filter(lat_and_realm == "Temperate_Ocean") %>% 
+  lm(mean_spec_exp ~ year,
+     data = .)
+
+average %>%
+  filter(lat_and_realm == "Temperate_Land") %>% 
+  lm(mean_spec_exp ~ year,
+     data = .)
+
+average %>%
+  filter(lat_and_realm == "Tropical_Ocean") %>% 
+  lm(mean_spec_exp ~ year,
+     data = .)
+
+average %>%
+  filter(lat_and_realm == "Tropical_Land") %>% 
+  lm(mean_spec_exp ~ year,
+     data = .)
 

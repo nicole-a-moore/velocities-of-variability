@@ -13,6 +13,83 @@ pal_realm <- c(pal[1], pal[3])
 pal_lat <- c(pal[2], pal[4])
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+#####   Simulate varying degrees of spatial autocorrelation   #####
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+library(gstat)
+list_of_grids <- list()
+ranges <- c(1, 10)
+i=1
+while (i < length(ranges)+1) {
+  gridDim <- 60
+  xy <- expand.grid(y=1:gridDim, x=1:gridDim)
+  
+  # Variogram model, with defined sill and range
+  varioMod <- vgm(psill=0.05, range=ranges[i], model='Exp')
+  
+  # Set up an additional variable from simple kriging
+  zDummy <- gstat(formula=z~1, locations = ~x+y, dummy=TRUE, 
+                  beta=1, model=varioMod, nmax=20)
+  
+  # Generate 2 randomly autocorrelated predictor data fields
+  set.seed(3)
+  xyz <- predict(zDummy, newdata=xy, nsim=2)
+  
+  # Generate an autocorrelated response variable:
+  # Deterministic on predictors, with normal error
+  e <- rnorm(nrow(xyz), sd=.5)
+  xyz$resp <- .7*xyz$sim1 + 1.4*xyz$sim2 + e
+  
+  raster <- rasterFromXYZ(xyz)
+  plot(raster[[1]])
+  
+  list_of_grids <- append(list_of_grids, raster[[1]])
+  
+  i=i+1
+}
+plot(list_of_grids[[2]])
+
+## convert to data frame
+stack <- stack(list_of_grids[1:2])
+names(stack) <- c("Range_1", "Range_10")
+stack <- as.data.frame(rasterToPoints(stack))
+stack <- gather(stack, key = "range", value = "fake_variable", c(3:4))
+stack$range <- factor(stack$range, 
+                         levels =c("Range_1", "Range_10"),
+                         ordered = T)
+
+ggplot(stack, aes(x = x, y = y, fill = fake_variable)) + coord_fixed() +
+  geom_raster() +
+  facet_grid(rows = ~range) +
+  theme_void() +
+  labs(fill = "") +
+  scale_fill_gradient(high = pal[4], low = pal[1])
+  
+
+## now calculate and plot empirical variogram for each
+stack <- stack(list_of_grids[1:2])
+names(stack) <- c("Range_1", "Range_10")
+stack <- as.data.frame(rasterToPoints(stack))
+i=1
+while (i < length(ranges) + 1) {
+  pts <- stack[,c(1:2,i+2)]
+  colnames(pts)[3] <- "fake_variable"
+  
+  var <- variogram(fake_variable ~ 1, locations = ~ x + y, 
+                   data = pts)
+  var
+  plot(var, col = "black")
+
+  vfit <- fit.variogram(var, vgm("Exp"))
+  vfit
+  plot(var, vfit, col = "black")
+  
+  i = i+1
+}
+
+
+  
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 #####  Calculate spatial autocorrelation of spectral exponent  #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 mosaic_specexp <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent.rds")

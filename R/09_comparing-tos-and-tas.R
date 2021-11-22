@@ -2,6 +2,7 @@
 library(tidyverse)
 library(raster)
 select <- dplyr::select
+countries <- map_data("world")
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 #####  Compare air and sea surface temperature  #####
@@ -22,7 +23,7 @@ tas_s <- mask(tas_s, terr, inverse = T)
 plot(tas_l[[1]])
 plot(tas_s[[1]])
 
-## plot mean difference between tas and tos
+## plot mean tas and tos
 mean_tas_l <- calc(tas_l, mean)
 mean_tas_s <- calc(tas_s, mean)
 
