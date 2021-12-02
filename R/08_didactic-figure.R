@@ -137,9 +137,9 @@ map <- data %>%
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank(), legend.key.size = unit(0.5, 'cm'),
-        legend.margin = margin(0,0,0,0),
-        legend.box.margin = margin(-10,-10,-10,-10),
-        plot.margin = margin(-1,0,0,0),
+        # legend.margin = margin(0,0,0,0),
+        # legend.box.margin = margin(-10,-10,-10,-10),
+        # plot.margin = margin(-1,0,0,0),
         legend.title = element_text(size = 8),
         legend.text = element_text(size = 6)) +
   labs(x = "", y = "", fill = "Slope of\nspectral\nexponent") +
@@ -150,7 +150,6 @@ map <- data %>%
   scale_x_continuous(breaks = c(), labels = c("")) +
   scale_y_continuous(breaks = c(), labels = c("")) +
   annotate("point", y = 60.5, x = 32.5, size = 2, shape = 1, colour = "darkred") 
-  
 
 
 ## make plot of local spectral change by showing spectral exponent as a point over time 
@@ -195,12 +194,19 @@ spec_change <- exp %>%
         legend.title = element_text(size = 8)) +
   annotate("text", label = "low autocorrelation", x = 1975, y = -1.58, size = 2) +
   annotate("text", label = "high autocorrelation", x = 1975, y = -1.2, size = 2) +
-  scale_x_continuous(expand = c(0,0.5)) +
+  scale_x_continuous(expand = c(0,10)) +
   scale_y_continuous(limits = c(-1.6, -1.18))
 
 ## extract legend 
 legend <- get_legend(spec_change)
 spec_change <- spec_change + guides(alpha = "none")
+
+ggsave(spec_change, path = "figures/didactic", filename = "spec-change-red.png", device = "png",
+       width = 2, height = 1.75)
+
+ggsave(legend, path = "figures/didactic", filename = "legend.png", device = "png",
+       width = 4, height = 0.5)
+
 
 ## filter down to include only 5 sample points using commented line
 greys <- colorRampPalette(c("lightgrey", "black"))
@@ -218,11 +224,11 @@ power_spec <- spec %>%
   geom_vline(xintercept = 1/3650, linetype = "dotted") +
   geom_vline(xintercept = 1/365, linetype = "dotted") +
   geom_vline(xintercept = 1/31, linetype = "dotted") +
-  annotate(geom = "text", label = "5 years", x = 1/2800, y = 0.1, size = 2,
+  annotate(geom = "text", label = "5 years", x = 1/2800, y = 0.000005, size = 2,
            angle = 90) +
-  annotate(geom = "text", label = "1 year", x = 1/280, y = 0.1, size = 2,
+  annotate(geom = "text", label = "1 year", x = 1/280, y = 0.000005, size = 2,
            angle = 90) +
-  annotate(geom = "text", label = "1 month", x = 1/25, y = 0.1, size = 2,
+  annotate(geom = "text", label = "1 month", x = 1/25, y = 0.000005, size = 2,
            angle = 90) +
   geom_line(stat="smooth", method = "lm", formula = y ~ x,
             size = 1,
@@ -240,10 +246,12 @@ power_spec <- spec %>%
         axis.text.x = element_text(size = 6),
         axis.text.y = element_text(size = 6))
 
+ggsave(power_spec, path = "figures/didactic", filename = "power-spec-red.png", device = "png",
+       width = 2, height = 1.75)
 
 ## this example is fast change - colour accordingly and make example of slow change/opposite slope?
 ## get max 
-data$lat[which(data$l_estimate == max(data$l_estimate))] #48.5
+data$lat[which(data$l_estimate == max(data$l_estimate))] #49.5
 data$lon[which(data$l_estimate == max(data$l_estimate))] #154.5
 
 spec_exp <- readRDS("data-processed/local-spectral-change_lat-48.5_lon-154.5.rds")
@@ -278,11 +286,15 @@ spec_change_positive <- exp %>%
         legend.title = element_text(size = 8)) +
   annotate("text", label = "low autocorrelation", x = 1975, y = -1.02, size = 2) +
   annotate("text", label = "high autocorrelation", x = 1975, y = -1.58, size = 2) +
-  scale_y_continuous(limits = c(-1.6, -1))
+  scale_y_continuous(limits = c(-1.6, -1)) +
+  scale_x_continuous(expand = c(0,10))
 
 ## extract legend 
 legend <- get_legend(spec_change_positive)
 spec_change_positive <- spec_change_positive + guides(alpha = "none")
+
+ggsave(spec_change_positive, path = "figures/didactic", filename = "spec-change-blue.png", device = "png",
+       width = 2, height = 1.75)
 
 ## filter down to include only 5 sample points using commented line
 greys <- colorRampPalette(c("lightgrey", "black"))
@@ -300,18 +312,18 @@ power_spec_positive <- spec %>%
   geom_vline(xintercept = 1/3650, linetype = "dotted", colour = "slategrey") +
   geom_vline(xintercept = 1/365, linetype = "dotted", colour = "slategrey") +
   geom_vline(xintercept = 1/31, linetype = "dotted", colour = "slategrey") +
-  annotate(geom = "text", label = "5 years", x = 1/2800, y = 0.1, size = 2,
-           angle = 90, colour = "slategrey") +
-  annotate(geom = "text", label = "1 year", x = 1/280, y = 0.1, size = 2,
-           angle = 90, colour = "slategrey") +
-  annotate(geom = "text", label = "1 month", x = 1/25, y = 0.1, size = 2,
-           angle = 90, colour = "slategrey")  +
+  annotate(geom = "text", label = "5 years", x = 1/2800, y = 0.0000005, size = 2,
+           angle = 90) +
+  annotate(geom = "text", label = "1 year", x = 1/280, y = 0.0000005, size = 2,
+           angle = 90) +
+  annotate(geom = "text", label = "1 month", x = 1/25, y = 0.0000005, size = 2,
+           angle = 90)  +
   geom_line(stat="smooth", method = "lm", formula = y ~ x,
             size = 1,
             aes(alpha = window_start_year),
             colour = "black") + scale_alpha(range = c(0.01, 0.9)) +
   theme_light() +
-  labs(x = "Frequency (1/days)", y = "Power") + 
+  labs(x = "Frequency", y = "Power") + 
   guides(alpha = "none", colour = "none") + 
   theme(panel.grid = element_blank(), 
         panel.border = element_blank(),
@@ -322,7 +334,13 @@ power_spec_positive <- spec %>%
         axis.text.x = element_text(size = 6),
         axis.text.y = element_text(size = 6))
 
+ggsave(power_spec_positive, path = "figures/didactic", filename = "power-spec-blue.png", device = "png",
+       width = 2.1, height = 1.75)
+
 map = map +  annotate("point", y = 48.5, x = 154.5, size = 2, shape = 1, colour = "darkblue") 
+
+ggsave(map, path = "figures/didactic", filename = "map.png", device = "png",
+       width = 8, height = 3)
 
 
 ## combine plots:
@@ -337,7 +355,8 @@ lay <- rbind(c(5,4,4,4,4,4,4,4,4,5),
              c(5,3,3,3,3,3,3,3,3,5), 
              c(5,3,3,3,3,3,3,3,3,5))
 empty <- ggplot(spec) + geom_blank() + theme_void()
-both_directions <- grid.arrange(power_spec, spec_change, map, legend, empty, power_spec_positive, spec_change_positive,
+both_directions <- grid.arrange(power_spec, spec_change, map, legend, empty, power_spec_positive, 
+                                spec_change_positive,
              layout_matrix = lay)
 ggsave(both_directions, path = "figures/didactic", 
        filename = "spec-exp-didactic_both-directions.png",
@@ -372,6 +391,9 @@ full_timeseries <- ggplot(local_ts, aes(x = date, y = s_temp)) +
            alpha = .1) +
   scale_y_continuous(expand = c(0,0)) 
 
+ggsave(full_timeseries, path = "figures/didactic", filename = "time-series-full.png", device = "png",
+       width = 4.5, height = 1)
+
 timeseries <- local_ts %>%
   filter(year %in% 1901:1910) %>%
   ggplot(., aes(x = date, y = s_temp)) + 
@@ -382,17 +404,19 @@ timeseries <- local_ts %>%
         axis.title.x = element_blank(),
         axis.title.y = element_text(size = 8),
         axis.text.x = element_text(size = 6),
-        axis.text.y = element_text(size = 6),
-        axis.ticks.y.left = element_blank()) +
+        axis.text.y = element_text(size = 6)) +
   scale_x_date(breaks = c(ymd("1901-01-01", "1910-12-31")),
                labels = c("1901", "1911"),
-               limits = c(ymd("1901-01-01", "1918-12-31")),
-               expand = c(0,0.1)) +
+               limits = c(ymd("1901-01-01", "1911-01-15")),
+               expand = c(0,10)) +
   scale_y_continuous(expand = c(0,0)) +
   labs(y = "")  +
   annotate("rect", xmin = ymd("1901-01-01"), xmax = ymd("1910-12-31"), 
            ymin = -25, ymax = 25,
            alpha = .1) 
+
+ggsave(timeseries, path = "figures/didactic", filename = "time-series-chunk.png", device = "png",
+       width = 3, height = 1)
 
 ## generate waves of 1 week, month, year, 5 year frequency 
 dates <- local_ts %>%
@@ -414,10 +438,12 @@ y3 <- 2*sin(x_seq*(2*pi/31))
 df3 <- data.frame(x = x3, y = y3)
 
 p <- ggplot(data = data.frame(x = 0), mapping = aes(x = x)) + theme_void()
-p + geom_line(aes(x = x, y = y), data = df, color = "black",size = 1) +
-  geom_line(aes(x = x, y = y), data = df2, color = "black", size = 1) +
-  geom_line(aes(x = x, y = y), data = df3, color = "black", size = 0.5) 
+p <- p + geom_line(aes(x = x, y = y), data = df, color = "black",size = 0.75) +
+  geom_line(aes(x = x, y = y), data = df2, color = "black", size = 0.75) +
+  geom_line(aes(x = x, y = y), data = df3, color = "black", size = 0.35) 
 
+ggsave(p, path = "figures/didactic", filename = "waves.png", device = "png",
+       width = 2, height = 1)
 
 local_ts %>%
   filter(year %in% 1901:1910) %>%
@@ -514,6 +540,10 @@ axis <- ggplot(data = spec, aes(x = freq, y = power))+
   scale_x_continuous(limits = c(0.1,0.26)) +
   annotate("text",  label = "Detrended temperature (°C)", x = 0.25, y = 0, 
            angle = 90, size = 3)
+
+## notes to self:
+# 1. add sea surface temperature to map
+# 3. add little panel showing steep slope, shallow slope, more versus less autocorrelation
 
 ddtc <- grid.arrange(power_spec, spec_change, map,
             legend, empty, 
