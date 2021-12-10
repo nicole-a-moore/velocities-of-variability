@@ -225,6 +225,142 @@ for(i in 2:100){
 image_write(full_combined, format="gif", path="animations/both-animation_L10-y-window.gif")
 
 
+
+
+
+#########################################
+##           SEA SURFACE TEMP:         ##
+#########################################
+## read in a spatial chunk:
+path = paste("/Users/nikkimoore/Documents/velocities-of-variability/data-raw/", gcm_models[1], "/", sep = "")
+filepath <- paste(path, "sp_files_tos.rds",  sep = "")
+
+names = readRDS(filepath)
+
+l_filenames <- str_replace_all(names, "spatial_temps", 'l-detrended')
+s_filenames <-  str_replace_all(names, "spatial_temps", 's-detrended')
+
+lat <- seq(from = 89.5, to = -89.5, length.out = 180) 
+lon <- seq(from = -179.5, to = 179.5, length.out = 360) 
+
+## read in data 
+l_open = nc_open(l_filenames[13]) # 13
+l_detrended_tas = ncvar_get(l_open, "var1_1")
+nc_close(l_open)
+
+s_open = nc_open(s_filenames[13])
+s_detrended_tas = ncvar_get(s_open, "var1_1")
+nc_close(s_open)
+
+filepath = paste(path, "date_new_tos.rds", sep = "")
+dates = readRDS(filepath)
+
+lat_num = which(lat == 60.5) # -70.5
+lon_num = which(lon == 32.5) # -141.5
+index_lat <- lat_num%%60
+index_lon <- lon_num%%60
+l_local_ts <- l_detrended_tas[index_lat,index_lon,] ## get a local detrended time series
+s_local_ts <- s_detrended_tas[index_lat,index_lon,]
+
+local_ts <- data.frame(time = 1:length(l_local_ts), ## add integer time (days from 1871.01.01)
+                       l_temp = l_local_ts,
+                       s_temp = s_local_ts,
+                       date = dates) %>% ## add a date column
+  mutate(year = str_split_fixed(.$date, 
+                                pattern = "\\.", n = 2)[,1]) %>% ## add a year column
+  group_by(year) ## group by year
+
+#saveRDS(local_ts, "data-processed/local-time-series_lat--70.5_lon--141.5.rds")
+
+spec_exp_list = list()
+element <- 1
+
+## calculate spectral exponent using FFT over n year windows
+## store spectral exponents and calculate slope
+n = 5
+while (n < 11) {
+  year_start <- 1871
+  year_stop <- 1871 + n - 1
+  
+  while (year_start <= (2100 - n)) {
+    ## extract temps within time window
+    ts_chunk <- filter(local_ts, year %in% year_start:year_stop)
+    
+    ## calculate spectral exponent in window
+    l_exp_list <- spectral_exponent_calculator_full_fit(ts_chunk$l_temp)
+    s_exp_list <- spectral_exponent_calculator_full_fit(ts_chunk$s_temp)
+    
+    ## store:
+    if (year_start == 1871) {
+      spectral_exponent_l <- l_exp_list[[1]] %>%
+        mutate(window_start_year = year_start, window_stop_year = year_stop, 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
+               time_window_width = paste(n, "years"))
+      spectral_data_l <- l_exp_list[[2]] %>%
+        mutate(window_start_year = year_start, window_stop_year = year_stop, 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
+               time_window_width = paste(n, "years"))
+      spectral_exponent_s <- s_exp_list[[1]] %>%
+        mutate(window_start_year = year_start, window_stop_year = year_stop, 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
+               time_window_width = paste(n, "years"))
+      spectral_data_s <- s_exp_list[[2]] %>%
+        mutate(window_start_year = year_start, window_stop_year = year_stop, 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
+               time_window_width = paste(n, "years"))
+    }
+    else {
+      spectral_exponent_l <- l_exp_list[[1]] %>%
+        mutate(window_start_year = year_start, window_stop_year = year_stop, 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
+               time_window_width = paste(n, "years")) %>%
+        rbind(spectral_exponent_l, .)
+      spectral_data_l <- l_exp_list[[2]] %>%
+        mutate(window_start_year = year_start, window_stop_year = year_stop, 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
+               time_window_width = paste(n, "years")) %>%
+        rbind(spectral_data_l, .)
+      spectral_data_s <- s_exp_list[[2]] %>%
+        mutate(window_start_year = year_start, window_stop_year = year_stop, 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
+               time_window_width = paste(n, "years")) %>%
+        rbind(spectral_data_s, .)
+      spectral_exponent_s <- s_exp_list[[1]] %>%
+        mutate(window_start_year = year_start, window_stop_year = year_stop, 
+               lat = lat[lat_num],
+               lon = lon[lon_num], 
+               time_window_width = paste(n, "years")) %>%
+        rbind(spectral_exponent_s, .)
+    }
+    
+    ## move to next window
+    year_start = year_stop + 1
+    year_stop = year_stop + n 
+    
+    element = element + 1
+  }
+  
+  spec_exp_list[[n-4]] <- list(spectral_exponent_l, spectral_exponent_s, spectral_data_l, spectral_data_s)
+  
+  ## move to next window width
+  n = n + 1
+}
+
+## plot out spectral change for 10 year window width on s detrended data
+ten <- spec_exp_list[[6]]
+
+spec <- ten[[3]]
+
+## save data to plot in didactic figure:
+saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat--70.5_lon--141.5.rds")
+
 #################################################
 ###                setting paths               ## 
 #################################################

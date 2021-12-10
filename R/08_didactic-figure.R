@@ -1,8 +1,3 @@
-## Nikki to self: 
-# make time series chunk smaller and move squiggles to right (keep scaling)
-# fill empty space with steep vs non-steep spectral exponent cartoon 
-# add sea surface temperature to map, change one location to sea?
-
 ## making a didactic figure 
 library(tidyverse)
 library(raster)
@@ -10,6 +5,9 @@ library(gridExtra)
 library(cowplot)
 select <- dplyr::select
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+######       Setting paths     #######
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 path = "/Volumes/SundayLab/CMIP5-GCMs/" 
 
 ## create vector of file folders to put data into:
@@ -23,7 +21,11 @@ folders <- paste(path, gcm_models, "/", sep = "")
 
 path = folders[1]
 
-## calculate average change in spectral exponent for each time series, across all sliding window widths 
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+######       Making a map     #######
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+## calculate average change in spectral exponent for each time series, across all sliding window widths
 se_filenames <- readRDS(paste(path, "se_filenames.rds",  sep = ""))
 
 ## combine all spectral exponent csvs into one big dataframe
@@ -61,6 +63,34 @@ avg$lon <- ifelse(avg$lon >= 180, avg$lon - 358, avg$lon)
 
 countries <- map_data("world")
 
+## add sea surface temperature:
+path <- paste("/Users/nikkimoore/Documents/velocities-of-variability/data-raw/", gcm_models[1], "/", sep = "")
+se_filenames <- readRDS(paste(path, "se_filenames_tos.rds",  sep = ""))
+
+## combine all spectral exponent csvs into one big dataframe
+file = 1
+while (file < length(se_filenames) + 1) {
+  if (file == 1) {
+    spec_exp_tos <- read.csv(se_filenames[file])
+  }
+  else {
+    spec_exp_tos <- rbind(spec_exp_tos, read.csv(se_filenames[file]))
+  }
+  print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
+  file = file + 1
+}
+
+## reorder time_window_width so list elements are in order of increasing time window widths:
+spec_exp_tos$time_window_width <- factor(spec_exp_tos$time_window_width, levels = 
+                                       c("5 years", "6 years", "7 years", "8 years",
+                                         "9 years", "10 years"))
+
+avg_tos <- spec_exp_tos %>%
+  filter(time_window_width == "5 years") %>%
+  select(lat, lon, l_estimate, s_estimate, l_p.value, s_p.value) %>%
+  unique()
+
+
 ## plot
 l <- avg %>%
   ggplot(., aes(x = lon, y = lat, fill = l_estimate)) + geom_raster() +
@@ -70,7 +100,7 @@ l <- avg %>%
   labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
-  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
+  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent",
                aes(x=long, y=lat, group = group)) 
 
 
@@ -84,7 +114,7 @@ l_sig <- avg %>%
   labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
-  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
+  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent",
                aes(x=long, y=lat, group = group)) 
 
 s <- avg %>%
@@ -95,7 +125,7 @@ s <- avg %>%
   labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
-  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
+  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", 
                aes(x=long, y=lat, group = group)) 
 
 s_sig <- avg %>%
@@ -107,7 +137,7 @@ s_sig <- avg %>%
   labs(x = "Longitude", y = "Latitude", fill = "Slope of spectral exponent") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
-  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
+  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", 
                aes(x=long, y=lat, group = group)) 
 
 ggsave(l, filename = "figures/01_slope-spec-exp_ldetrended.png", height = 3, width = 7, device = "png")
@@ -116,16 +146,15 @@ ggsave(l_sig, filename = "figures/01_slope-spec-exp_ldetrended_sig.png", height 
 ggsave(s_sig, filename = "figures/01_slope-spec-exp_sdetrended_sig.png", height = 3, width = 7, device = "png")
 
 
-### ### ### ### ### ###
-###  make didactic  ###
-### ### ### ### ### ###
-
 ## crop data to land only
-terr <- raster("data-processed/raster_terr_mask.nc") 
 avg <- select(avg, lon, lat, everything())
-raster_avg <- rasterFromXYZ(avg)
-terr <- crop(terr, raster_avg)
-raster_avg <- mask(raster_avg, terr)
+avg_both <- mutate(avg, lat_lon = paste(lat, lon, sep = "_")) %>%
+  filter(!lat_lon %in% paste(avg_tos$lat, avg_tos$lon, sep = "_")) %>%
+  select(-lat_lon)
+avg_both <- rbind(avg_both, avg_tos)
+## get rid of sea surface temp data that falls outside of air surface temp data
+avg_both <- filter(avg_both, lon >= min(avg$lon), lat <= max(avg$lat))
+raster_avg <- rasterFromXYZ(avg_both)
 plot(raster_avg[[1]])
 
 ## turn back into data frame for ggplot
@@ -141,17 +170,26 @@ map <- data %>%
         # legend.box.margin = margin(-10,-10,-10,-10),
         # plot.margin = margin(-1,0,0,0),
         legend.title = element_text(size = 8),
-        legend.text = element_text(size = 6)) +
+        legend.text = element_text(size = 6),
+        axis.text = element_text(size = 7),
+        axis.ticks = element_line(colour = "grey")) +
   labs(x = "", y = "", fill = "Slope of\nspectral\nexponent") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
-                       midpoint = 0, na.value = "white",
-                       breaks = c(-0.001, -0.0005, 0, 0.0005), 
-                     labels =  c("-0.001", "-0.0005", "0", "0.0005")) +
-  scale_x_continuous(breaks = c(), labels = c("")) +
-  scale_y_continuous(breaks = c(), labels = c("")) +
-  annotate("point", y = 60.5, x = 32.5, size = 2, shape = 1, colour = "darkred") 
+                       midpoint = 0, na.value = "white") +
+  scale_y_continuous(breaks = c(-90, -60, -30, 0, 30, 60, 90), 
+                     labels = c("90°S", "60°S", "30°S", "0°", "30°N", "60°N", "90°N"),
+                     expand = c(0,0)) +
+  scale_x_continuous(breaks = c(-180, -120, -60, 0, 60, 120, 180), 
+                     labels = c("180°E", "120°E", "60°E", "0°", "60°W", "120°W", "180°W"),
+                     expand = c(0,0)) +
+  annotate("point", y = 60.5, x = 32.5, size = 2, shape = 1, colour = "darkred") +
+  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent",
+               aes(x=long, y=lat, group = group)) 
 
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+######   Making panels of decreasing spectral exponent    #######
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## make plot of local spectral change by showing spectral exponent as a point over time 
 data$lat[which(data$l_estimate == min(data$l_estimate))] #60.5
 data$lon[which(data$l_estimate == min(data$l_estimate))] #32.5
@@ -192,8 +230,8 @@ spec_change <- exp %>%
         axis.text.x = element_text(size = 6),
         axis.text.y = element_text(size = 6),
         legend.title = element_text(size = 8)) +
-  annotate("text", label = "low autocorrelation", x = 1975, y = -1.58, size = 2) +
-  annotate("text", label = "high autocorrelation", x = 1975, y = -1.2, size = 2) +
+  annotate("text", label = "high autocorrelation", x = 1975, y = -1.58, size = 2) +
+  annotate("text", label = "low autocorrelation", x = 1975, y = -1.2, size = 2) +
   scale_x_continuous(expand = c(0,10)) +
   scale_y_continuous(limits = c(-1.6, -1.18))
 
@@ -218,7 +256,8 @@ power_spec <- spec %>%
   geom_line(aes(colour = factor(window_start_year)), alpha = 0.15) + 
   scale_colour_manual(values = greys) +
   scale_y_log10(breaks = c(0.0000001, 0.00001, 0.001, 0.1),
-                                                    labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
+                                                    
+                labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
   scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
                 labels = c("0.001", "0.01", "0.1", "1")) +
   geom_vline(xintercept = 1/3650, linetype = "dotted") +
@@ -249,7 +288,9 @@ power_spec <- spec %>%
 ggsave(power_spec, path = "figures/didactic", filename = "power-spec-red.png", device = "png",
        width = 2, height = 1.75)
 
-## this example is fast change - colour accordingly and make example of slow change/opposite slope?
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+######   Making panels of increasing spectral exponent    #######
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## get max 
 data$lat[which(data$l_estimate == max(data$l_estimate))] #49.5
 data$lon[which(data$l_estimate == max(data$l_estimate))] #154.5
@@ -365,7 +406,9 @@ ggsave(both_directions, path = "figures/didactic",
 
 
 
-
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+######   Making panel of time series, time series chunk and waves    #######
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ### add time series 
 library(lubridate)
 local_ts <- readRDS("data-processed/local-time-series_lat-60.5_lon-32.5.rds") 
@@ -510,7 +553,9 @@ squiggles <- ggplot(data = data.frame(x = 0), mapping = aes(x = x)) +
                expand = c(0,0.1))
 
 
-###### bring it all together!! #######
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+######   Combining the plots     #######
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## time series - full
 ## time series - subset 
 ## squiggles
@@ -541,10 +586,6 @@ axis <- ggplot(data = spec, aes(x = freq, y = power))+
   annotate("text",  label = "Detrended temperature (°C)", x = 0.25, y = 0, 
            angle = 90, size = 3)
 
-## notes to self:
-# 1. add sea surface temperature to map
-# 3. add little panel showing steep slope, shallow slope, more versus less autocorrelation
-
 ddtc <- grid.arrange(power_spec, spec_change, map,
             legend, empty, 
             power_spec_positive, spec_change_positive,
@@ -557,3 +598,46 @@ ggsave(ddtc, path = "figures/didactic",
 
 
   
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+######   Making panel of high versus low autocorrelation     #######
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+## read in steep time series
+spec_exp_steep <- readRDS("data-processed/local-spectral-change_lat--70.5_lon--141.5.rds")
+
+## plot out spectral change for 10 year window width on l detrended data
+ten <- spec_exp_steep[[6]]
+
+spec_steep <- ten[[3]]
+
+one <- filter(spec, window_start_year == 1871)
+two <- filter(spec_steep, window_start_year == 1991)
+
+two_examples <- rbind(one, two)
+  
+two_ex_plot <- two_examples %>%
+  ggplot(aes(x = freq, y = power, group = as.factor(window_start_year))) + 
+  geom_line(colour = "lightgrey") +  
+  scale_y_log10(breaks = c(0.0000001, 0.00001, 0.001, 0.1),
+                labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
+  scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
+                labels = c("0.001", "0.01", "0.1", "1")) +
+  geom_vline(xintercept = 1/3650, linetype = "dotted") +
+  geom_vline(xintercept = 1/365, linetype = "dotted") +
+  geom_vline(xintercept = 1/31, linetype = "dotted") +
+  geom_line(stat="smooth", method = "lm", formula = y ~ x,
+            size = 1, colour = "black") + 
+  theme_light() +
+  labs(x = "Frequency", y = "Power") + 
+  guides(colour = "none") + 
+  theme(panel.grid = element_blank(), 
+        panel.border = element_blank(),
+        axis.line.y.left = element_line(size=0.5),
+        axis.line.x.bottom = element_line(size=0.5),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6))
+
+ggsave(two_ex_plot, path = "figures/didactic", filename = "high-vs-low.png", device = "png",
+       width = 2.5, height = 2.5)
