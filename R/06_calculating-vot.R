@@ -155,7 +155,7 @@ while(count < length(sp_files) + 1) {
   ###### TEMPORAL TREND ######
   ## calculate temporal trend in temperature 
   temporal <- tempTrend(r = temps, 
-                        th = 83950) # minimum number of observations to calculate trend
+                        th = 83950) # minimum number of observations to calculate trend = all obs.
   
   ## note: units are in deg. C per per day
   ## convert units to deg. C per year:
