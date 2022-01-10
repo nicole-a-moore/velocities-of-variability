@@ -153,12 +153,153 @@ m_fBn <- filter(spectral, beta == 2) %>%
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#### wavelet analysis - playing around ####
+library(wsyn)
+
+## create sin wave
+## a sine wave of amplitude 1 and period 15 that operates for t = 1, . . . , 100 but then disappears
+time1<-1:100
+time2<-101:200
+times<-c(time1,time2)
+ts1p1<-sin(2*pi*time1/15)
+ts1p2<-0*time2
+ts1<-c(ts1p1,ts1p2)
+ts<-ts1
+
+plot(ts(ts))
+
+#Then add a sine wave of amplitude 1 and period 8 that operates for t = 101, . . . , 200 but before that is absent.
+ts2p1<-0*time1
+ts2p2<-sin(2*pi*time2/8)
+ts2<-c(ts2p1,ts2p2)
+ts<-ts+ts2
+
+plot(ts(ts))
+
+##  add normally distributed white noise of mean 0 and standard deviation 0.5.
+ts3<-rnorm(200,mean=0,sd=0.5)
+ts<-ts+ts3
+plot(ts(ts))
+
+ts<-cleandat(ts,times,clev=1)
+wtres<-wt(ts$cdat,times)
+class(wtres)
+names(wtres)
+
+plotmag(wtres)
+## we can see the oscillations at timescale 15 for the first hundred time steps, and the oscilaltions at timescale 8 for the last 100 time steps, as expected
+
+ggdata <- data.frame(times = rep(1:200, n=77), timescale = rep(wtres$timescales, each = 200),
+                     magnitude = as.vector(abs(wtres$values)))
+
+ggplot(data = ggdata, aes(y = timescale, x = times, fill = magnitude)) +
+  geom_tile() + scale_y_log10()
+
+## try on our simulated time series:
+ts <- simARMA0(n = 1000, H = 0.5)
+plot(ts)
+
+ts<-cleandat(ts, times = 1:1000, clev=1)
+wtres<-wt(ts$cdat, 1:1000)
+class(wtres)
+names(wtres)
+
+plotmag(wtres)
+
+## now compare to one with higher autocorrelation 
+ts <- simARMA0(n = 1000, H = 0.99)
+plot(ts)
+
+ts<-cleandat(ts, times = 1:1000, clev=1)
+wtres<-wt(ts$cdat, 1:1000)
+class(wtres)
+names(wtres)
+
+plotmag(wtres)
+
+## :)
+
+
+#### wavelet analysis - getting serious ####
+## try the Average Wavelet Coefficient method:
+## 1. simulate time series of known beta 
+ts <- simARMA0(n = 3650, H = 0.5)
+ts <- ts(cumsum(ts)) ## beta = 2
+plot(ts)
+
+## 2. compute wavelet transform
+ts <- cleandat(ts, times = 1:3650, clev=1)
+wavelets <- wt(ts$cdat, 1:3650)
+plotmag(wavelets)
+
+## 3. calculate arithmetic mean with respect to the translation coefficient (b)
+df <- abs(wavelets$values) ## get magnitude of wavelet coeffs
+rownames(df) <- wavelets$times
+colnames(df) <- wavelets$timescales
+avg <- colMeans(df, na.rm = T) ## get average
+avg <- as.numeric(avg)
+
+## recreate plot myself
+ggdata <- data.frame(times = rep(1:2^17, n=158), timescale = rep(wavelets$timescales, 
+                                                                 each = 2^17),
+                     magnitude = as.vector(df))
+
+ggplot(data = ggdata, aes(y = timescale, x = times, fill = magnitude)) +
+  geom_tile() + scale_y_log10()
+
+## :) 
+
+## plot average coefficients versus period on a log–log plot
+data <- data.frame(avg_wavelet_coeff = avg, period = wavelets$timescales)
+ggplot(data = data, aes(x = period, y = avg_wavelet_coeff)) + 
+  geom_point() +
+  scale_x_log10() + scale_y_log10() + 
+  theme_light() +
+  labs(x = "Period", y = "Average wavelet coefficient")
+
+## 4. calculate beta
+## get slope
+lm <- lm(log(avg_wavelet_coeff) ~ log(period), 
+         data = data)
+
+## slope equal to H + 1/2
+H = as.numeric(lm$coefficients[2]) - 1/2
+beta = 2*H + 1
+beta
+## should be 2!
+
+## try Modified Average Wavelet Coefficient Method
+## by calculating the median absolut deviation and the variance
+## and using it to solve for beta
+# Var(a) = a^B
+# MAD(W(a,b)) = Med( |W(a,b) - Med(W(a,b))| )
+
+df <- wavelets$values
+med <- median(df, na.rm = T) ## get median of detail coefficients 
+MAD <- abs(df - med)
+MAD <- robustbase::colMedians(MAD, na.rm = T) 
+
+data <- data.frame(MAD = as.vector(MAD), a = wavelets$timescales)
+
+ggplot(data = data, aes(x = a, y = MAD)) + 
+  geom_point() +
+  scale_x_log10() + scale_y_log10()
+
+
+lm = lm(log(MAD) ~ log(a), data = data)
+
+H = as.numeric(lm$coefficients[2]) - 1/2
+beta = 2*H + 1
+beta
+
+## hmm ... not a better estimator 
 #### simulations - getting serious #####
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 beta <- sample(seq(from = 0.001, to = 2.999, by = 0.001), size = 1000)
 H <- ifelse(beta < 1, (beta + 1)/2,  (beta - 1)/2)
 betas_df <- c()
-lengths <- c(5*365, 6*365, 7*365, 8*365, 9*365,10*365)
+#lengths <- c(5*365, 6*365, 7*365, 8*365, 9*365,10*365)
+lengths <- c(5*365,10*365)
 
 ## for all values of H and beta 
 z = 1
@@ -209,7 +350,7 @@ while (z <= length(H)) {
                                                method = 'original'))
       }
       
-      ## 2. calculate spectral exponent as per Eke 2000, 2002
+      ## 3. calculate spectral exponent as per Eke 2000, 2002
       ## preprocess the time series by:
       ## a. subtracting mean
       #plot(ts)
@@ -242,6 +383,48 @@ while (z <= length(H)) {
                                    sim = x, ts_length = N,
                                    method = 'Eke'))
       
+      ## 4. calculate spectral exponent using the Average Wavelet Cofficient method
+      ## a. compute wavelet transform
+      wave_ts <- cleandat(ts, times = 1:N, clev=1)
+      wavelets <- wt(wave_ts$cdat, 1:N)
+      #plotmag(wavelets)
+      
+      ## b. calculate arithmetic mean with respect to the translation coefficient (b)
+      df <- abs(wavelets$values) ## get magnitude of wavelet coeffs
+      rownames(df) <- wavelets$times
+      colnames(df) <- wavelets$timescales
+      avg <- colMeans(df, na.rm = T) ## get average
+      avg <- as.numeric(avg)
+      data <- data.frame(avg_wavelet_coeff = avg, period = wavelets$timescales)
+      
+      ## plot average coefficients versus period on a log–log plot
+      # ggplot(data = data, aes(x = period, y = avg_wavelet_coeff)) + 
+      #   geom_point() +
+      #   scale_x_log10() + scale_y_log10() + 
+      #   theme_light() +
+      #   labs(x = "Period", y = "Average wavelet coefficient")
+      
+      ## c. calculate beta
+      ## get slope
+      lm <- lm(log(avg_wavelet_coeff) ~ log(period), 
+               data = data)
+      
+      ## slope equal to H + 1/2
+      H_calc = as.numeric(lm$coefficients[2]) - 1/2
+      ## if Brownian noise
+      if (beta[z] >= 1) {
+        b = 2*H_calc + 1
+      }
+      else {
+        b = 2*H_calc - 1
+      }
+      
+      betas_df <- rbind(betas_df, 
+                        data.frame(obs_beta = b, 
+                                   true_beta = beta[z],
+                                   sim = x, ts_length = N,
+                                   method = 'AWC'))
+      
       ## move to next simulation
       print(paste("Simulating time series ",x, "of length ", N, " with true beta number ", z))
       x = x+1
@@ -266,8 +449,9 @@ betas_df %>%
   geom_abline(intercept = 0, slope = 1) +
   theme_light() + theme(panel.grid = element_blank()) + 
   facet_wrap(~ts_length) +
-  labs(x = "True beta", y = "Estimated beta", colour = "Method:") +
-  scale_color_manual(values = pal, labels = c("Preprocessed", "Not preprocessed"))
+  labs(x = "True beta", y = "Estimated beta", colour = "Method:") 
+# +
+#   scale_color_manual(values = pal, labels = c("Preprocessed", "Not preprocessed"))
 
 ## mean diff:
 betas_df %>%
@@ -458,112 +642,3 @@ betas_df %>%
   theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust=1))
 
 
-#### wavelet analysis ####
-library(wsyn)
-
-## create sin wave
-## a sine wave of amplitude 1 and period 15 that operates for t = 1, . . . , 100 but then disappears
-time1<-1:100
-time2<-101:200
-times<-c(time1,time2)
-ts1p1<-sin(2*pi*time1/15)
-ts1p2<-0*time2
-ts1<-c(ts1p1,ts1p2)
-ts<-ts1
-
-plot(ts(ts))
-
-#Then add a sine wave of amplitude 1 and period 8 that operates for t = 101, . . . , 200 but before that is absent.
-ts2p1<-0*time1
-ts2p2<-sin(2*pi*time2/8)
-ts2<-c(ts2p1,ts2p2)
-ts<-ts+ts2
-
-plot(ts(ts))
-
-##  add normally distributed white noise of mean 0 and standard deviation 0.5.
-ts3<-rnorm(200,mean=0,sd=0.5)
-ts<-ts+ts3
-plot(ts(ts))
-
-ts<-cleandat(ts,times,clev=1)
-wtres<-wt(ts$cdat,times)
-class(wtres)
-names(wtres)
-
-plotmag(wtres)
-## we can see the oscillations at timescale 15 for the first hundred time steps, and the oscilaltions at timescale 8 for the last 100 time steps, as expected
-
-ggdata <- data.frame(times = rep(1:200, n=77), timescale = rep(wtres$timescales, each = 200),
-                     magnitude = as.vector(abs(wtres$values)))
-
-ggplot(data = ggdata, aes(y = timescale, x = times, fill = magnitude)) +
-  geom_tile() + scale_y_log10()
-
-## try on our simulated time series:
-ts <- simARMA0(n = 1000, H = 0.5)
-plot(ts)
-
-ts<-cleandat(ts, times = 1:1000, clev=1)
-wtres<-wt(ts$cdat, 1:1000)
-class(wtres)
-names(wtres)
-
-plotmag(wtres)
-
-## now compare to one with higher autocorrelation 
-ts <- simARMA0(n = 1000, H = 0.99)
-plot(ts)
-
-ts<-cleandat(ts, times = 1:1000, clev=1)
-wtres<-wt(ts$cdat, 1:1000)
-class(wtres)
-names(wtres)
-
-plotmag(wtres)
-
-## :)
-
-## try the Average Wavelet Coefficient method:
-## 1. simulate time series of known beta 
-ts <- simARMA0(n = 10000, H = 0.5)
-ts <- ts(cumsum(ts)) ## beta = 2
-plot(ts)
-
-## 2. compute wavelet transform
-ts <- cleandat(ts, times = 1:10000, clev=1)
-wavelets <- wt(ts$cdat, 1:10000)
-plotmag(wavelets)
-
-## 3. calculate arithmetic mean with respect to the translation coefficient (b)
-df <- abs(wavelets$values) ## get magnitude of wavelet coeffs
-rownames(df) <- wavelets$times
-colnames(df) <- wavelets$timescales
-avg <- colMeans(df, na.rm = T) ## get avergage
-avg <- as.numeric(avg)
-
-## recreate plot myself
-ggdata <- data.frame(times = rep(1:10000, n=158), timescale = rep(wavelets$timescales, each = 10000),
-           magnitude = as.vector(df))
-
-ggplot(data = ggdata, aes(y = timescale, x = times, fill = magnitude)) +
-  geom_tile() + scale_y_log10()
-
-## :) 
-
-## plot average coefficients versus period on a log–log plot
-data <- data.frame(avg_wavelet_coeff = avg, period = wavelets$timescales)
-ggplot(data = data, aes(x = period, y = avg_wavelet_coeff)) + 
-  geom_point() +
-  scale_x_log10() + scale_y_log10()
-
-## 4. calculate beta
-## get slope
-lm <- lm(log(avg_wavelet_coeff) ~ log(period), 
-   data = data)
-
-## slope equal to H + 1/2
-H = as.numeric(lm$coefficients[2]) - 1/2
-beta = 2*H + 1
-beta
-## should be 2!
