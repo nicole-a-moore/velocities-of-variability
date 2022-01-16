@@ -116,6 +116,9 @@ plot(fBn_2.98)
 fGn_0 <- simARMA0(n = 50000, H = 0.5) # beta = 2*(0.5) - 1 = 0 (random noise)
 plot(fGn_0)
 
+fGn_neg <- simARMA0(n = 50000, H = 0.01) # beta = 2*(0.01) - 1 = -0.98 (self dissimilarity)
+plot(fGn_neg)
+
 
 ## Fourier transform
 spectral <- homemade_fft(time_series = fBn_1.02)
@@ -130,9 +133,12 @@ spectral3$beta = 2.98
 spectral4 <- homemade_fft(time_series = fGn_0)
 spectral4$beta = 0
 
-spectral <- rbind(spectral, spectral2, spectral3, spectral4)
+spectral5 <- homemade_fft(time_series = fGn_neg)
+spectral5$beta = -0.98
 
-pal <- pnw_palette(name="Lake", 4,type="discrete")
+spectral <- rbind(spectral, spectral2, spectral3, spectral4, spectral5)
+
+pal <- pnw_palette(name="Lake", 6,type="discrete")
 
 spectral %>%
   mutate(beta = as.factor(beta)) %>%
@@ -152,8 +158,9 @@ m_fBn <- filter(spectral, beta == 2) %>%
 ## observed B are not close to true B
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #### wavelet analysis - playing around ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 library(wsyn)
 
 ## create sin wave
@@ -185,6 +192,9 @@ ts<-cleandat(ts,times,clev=1)
 wtres<-wt(ts$cdat,times)
 class(wtres)
 names(wtres)
+
+## plot power 
+wtres$values <- wtres$values^2
 
 plotmag(wtres)
 ## we can see the oscillations at timescale 15 for the first hundred time steps, and the oscilaltions at timescale 8 for the last 100 time steps, as expected
@@ -219,8 +229,9 @@ plotmag(wtres)
 
 ## :)
 
-
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #### wavelet analysis - getting serious ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 ## try the Average Wavelet Coefficient method:
 ## 1. simulate time series of known beta 
 ts <- simARMA0(n = 3650, H = 0.5)
@@ -269,37 +280,43 @@ beta
 ## should be 2!
 
 ## try Modified Average Wavelet Coefficient Method
-## by calculating the median absolut deviation and the variance
-## and using it to solve for beta
-# Var(a) = a^B
+## by calculating the median absolut deviation 
+## and using it to weight regression points 
 # MAD(W(a,b)) = Med( |W(a,b) - Med(W(a,b))| )
-
 df <- wavelets$values
 med <- median(df, na.rm = T) ## get median of detail coefficients 
 MAD <- abs(df - med)
 MAD <- robustbase::colMedians(MAD, na.rm = T) 
 
-data <- data.frame(MAD = as.vector(MAD), a = wavelets$timescales)
+weight_data <- data.frame(weight = 1/as.vector(MAD), period = wavelets$timescales)
 
-ggplot(data = data, aes(x = a, y = MAD)) + 
+ggplot(data = weight_data, aes(x = period, y = weight)) + 
   geom_point() +
   scale_x_log10() + scale_y_log10()
 
+data <- left_join(data, weight_data)
 
-lm = lm(log(MAD) ~ log(a), data = data)
+## perform weighted regression 
+lm = lm(log(avg_wavelet_coeff) ~ log(period), 
+        weights = data$weight,
+        data = data)
 
 H = as.numeric(lm$coefficients[2]) - 1/2
 beta = 2*H + 1
 beta
 
 ## hmm ... not a better estimator 
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #### simulations - getting serious #####
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-beta <- sample(seq(from = 0.001, to = 2.999, by = 0.001), size = 1000)
-H <- ifelse(beta < 1, (beta + 1)/2,  (beta - 1)/2)
+beta <- sample(seq(from = -0.999, to = 2.999, by = 0.001), size = 1000)
+H <- ifelse(beta < 1, (beta + 1)/2,  
+            ifelse(beta == 0, 0.001, 
+                   (beta - 1)/2))
 betas_df <- c()
-#lengths <- c(5*365, 6*365, 7*365, 8*365, 9*365,10*365)
-lengths <- c(5*365,10*365)
+lengths <- c(5*365, 10*365)
 
 ## for all values of H and beta 
 z = 1
@@ -334,17 +351,17 @@ while (z <= length(H)) {
       #   ggplot(aes(x = freq, y = power)) + geom_line() +
       #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm") +
       #   theme_minimal()
-      
+
       ## calculate beta as slope of PSD across all frequencies:
       regression <- lm(log10(power) ~ log10(freq), data = spec)
       ## save in df
       if (x == 1 & z == 1 & l == 1) {
-        betas_df <- data.frame(obs_beta = as.numeric(regression$coeff[2]), true_beta = beta[z],
+        betas_df <- data.frame(obs_beta = -as.numeric(regression$coeff[2]), true_beta = beta[z],
                                sim = x, ts_length = N,
                                method = 'original')
       }
       else {
-        betas_df <- rbind(betas_df, data.frame(obs_beta = as.numeric(regression$coeff[2]), 
+        betas_df <- rbind(betas_df, data.frame(obs_beta = -as.numeric(regression$coeff[2]), 
                                                true_beta = beta[z],
                                                sim = x, ts_length = N,
                                                method = 'original'))
@@ -378,55 +395,45 @@ while (z <= length(H)) {
         lm(log10(power) ~ log10(freq), data = .)
       
       betas_df <- rbind(betas_df, 
-                        data.frame(obs_beta = as.numeric(regression$coeff[2]), 
+                        data.frame(obs_beta = -as.numeric(regression$coeff[2]), 
                                    true_beta = beta[z],
                                    sim = x, ts_length = N,
                                    method = 'Eke'))
       
       ## 4. calculate spectral exponent using the Average Wavelet Cofficient method
       ## a. compute wavelet transform
-      wave_ts <- cleandat(ts, times = 1:N, clev=1)
-      wavelets <- wt(wave_ts$cdat, 1:N)
-      #plotmag(wavelets)
-      
+      wavelets <- biwavelet::wt(data.frame(time = 1:N, val = ts), do.sig = F)
+
       ## b. calculate arithmetic mean with respect to the translation coefficient (b)
-      df <- abs(wavelets$values) ## get magnitude of wavelet coeffs
-      rownames(df) <- wavelets$times
-      colnames(df) <- wavelets$timescales
-      avg <- colMeans(df, na.rm = T) ## get average
+      df <- sqrt(wavelets$power) ## get magnitude of wavelet coeffs
+      avg <- rowMeans(df, na.rm = T) ## get average
       avg <- as.numeric(avg)
-      data <- data.frame(avg_wavelet_coeff = avg, period = wavelets$timescales)
       
+      data <- data.frame(avg_wavelet_coeff = avg, period = wavelets$period)
       ## plot average coefficients versus period on a log–log plot
-      # ggplot(data = data, aes(x = period, y = avg_wavelet_coeff)) + 
+      # ggplot(data = data, aes(x = period, y = avg_wavelet_coeff)) +
       #   geom_point() +
-      #   scale_x_log10() + scale_y_log10() + 
+      #   scale_x_log10() + scale_y_log10() +
       #   theme_light() +
       #   labs(x = "Period", y = "Average wavelet coefficient")
-      
+
       ## c. calculate beta
       ## get slope
-      lm <- lm(log(avg_wavelet_coeff) ~ log(period), 
+      lm <- lm(log(avg_wavelet_coeff) ~ log(period),
                data = data)
-      
+
       ## slope equal to H + 1/2
       H_calc = as.numeric(lm$coefficients[2]) - 1/2
-      ## if Brownian noise
-      if (beta[z] >= 1) {
-        b = 2*H_calc + 1
-      }
-      else {
-        b = 2*H_calc - 1
-      }
-      
-      betas_df <- rbind(betas_df, 
-                        data.frame(obs_beta = b, 
+      b = 2*H_calc + 1
+
+      betas_df <- rbind(betas_df,
+                        data.frame(obs_beta = b,
                                    true_beta = beta[z],
                                    sim = x, ts_length = N,
                                    method = 'AWC'))
       
       ## move to next simulation
-      print(paste("Simulating time series ",x, "of length ", N, " with true beta number ", z))
+      print(paste("Simulating time series ", x, "of length ", N, " with true beta number ", z))
       x = x+1
     }
     ## move to next time series length
@@ -435,23 +442,19 @@ while (z <= length(H)) {
   ## move to next beta
   z = z + 1
 }
+#write.csv(betas_df, "data-processed/beta-simulations_with_awc.csv", row.names = F)
 
-#write.csv(betas_df, "data-processed/beta-simulations.csv", row.names = F)
-
-betas_df$obs_beta = abs(betas_df$obs_beta)
-
-pal <- pnw_palette(name = "Starfish", n = 2, 'discrete')
+pal <- pnw_palette(name = "Sunset", n = 3, 'discrete')
 
 ## which method gives most accurate estimate of beta across all true beta?
 betas_df %>%
   ggplot(., aes(x = true_beta, y = obs_beta, colour = method)) + 
-  geom_point(size = 0.1) +
+  geom_point(size = 1) +
   geom_abline(intercept = 0, slope = 1) +
   theme_light() + theme(panel.grid = element_blank()) + 
   facet_wrap(~ts_length) +
-  labs(x = "True beta", y = "Estimated beta", colour = "Method:") 
-# +
-#   scale_color_manual(values = pal, labels = c("Preprocessed", "Not preprocessed"))
+  labs(x = "True beta", y = "Estimated beta", colour = "Method:") +
+  scale_color_manual(values = pal, labels = c("Wavelet", "PSD - preprocessed", "PSD - not preprocessed"))
 
 ## mean diff:
 betas_df %>%
@@ -467,11 +470,23 @@ betas_df %>%
   geom_abline(intercept = 0, slope = 0) +
   labs(x = 'True beta', y = "Average difference between true and estimated beta",
        colour = "Method:") +
-  scale_color_manual(values = pal,
-                     labels = c("Preprocessed", "Not preprocessed"))
+  scale_color_manual(values = pal, labels = c("Wavelet", "PSD - preprocessed", "PSD - not preprocessed"))
 
 
+betas_df %>%
+  mutate(diff = (true_beta - obs_beta)) %>%
+  ggplot(., aes(y = diff, x = method, fill = method)) + geom_boxplot() +
+  stat_summary(fun = "mean", geom = "point") +
+  theme_light() + theme(panel.grid = element_blank()) + 
+  facet_wrap(~ts_length) +
+  labs(y = "Abs(difference between true and estimated beta)", x = "")  +
+  scale_fill_manual(values = pal, labels = c("Wavelet", "PSD - preprocessed", "PSD - not preprocessed"))+
+  theme(legend.position = 'none') + 
+  scale_x_discrete(labels = c("Wavelet", "Preprocessed", "Not preprocessed"))
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #### what frequency cut-off should we use? ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 beta <- c(0, 0.5, 1, 1.5, 2, 2.5, 2.98)
 H <- ifelse(beta < 1, (beta + 1)/2,  (beta - 1)/2)
 lengths <- c(5*365, 10*365)
@@ -640,5 +655,140 @@ betas_df %>%
                      labels = c("1/32",  "5/32",  "9/32",
                                 '13/32',"17/32")) + 
   theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust=1))
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#### how does new methodology change previous results? ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+## compare results from one 30deg x 30 deg latitude/longitude chunk
+
+## make colour palette
+pal = pnw_palette("Sunset",5, type = "discrete")
+pal <- c(pal[1], pal[3], pal[4])
+
+## read in old results and new results
+old <- read.csv("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/spec-exp_long-0-60_lat-90-30.csv")
+new <- read.csv("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/spec-exp_long-0-60_lat-90-30_new.csv")
+
+## filter to only 10 year time windows 
+new <- filter(new, time_window_width == "10 years")
+old <- filter(old, time_window_width == "10 years")
+
+## left join
+data <- left_join(new, old) %>%
+  select(lat, lon, s_spec_exp, s_spec_exp_PSD, s_spec_exp_AWC, window_start_year, window_stop_year) %>%
+  gather(key = "Method",  value = "spectral_exponent", c(s_spec_exp, s_spec_exp_PSD, s_spec_exp_AWC)) %>%
+  mutate(spectral_exponent = ifelse(Method %in% c("s_spec_exp", "s_spec_exp_PSD"), 
+                                    -spectral_exponent, 
+                                    spectral_exponent)) %>% ## change sign of spectral exponent for PSD estimates
+  mutate(Method = factor(.$Method, levels = c("s_spec_exp", "s_spec_exp_PSD", "s_spec_exp_AWC"),
+                         ordered = T))
+
+## compare estimates of spectral exponents from different method 
+labs <- c("PSD (unprocessed)", "PSD (processed)",
+               "AWC")
+names(labs) <- c("s_spec_exp", "s_spec_exp_PSD", "s_spec_exp_AWC")
+
+data %>%
+  group_by(lat, lon, Method) %>%
+  mutate(avg_spec_exp = mean(spectral_exponent)) %>%
+  ungroup() %>%
+  select(-spectral_exponent) %>%
+  ggplot(., aes(x = lon, y = lat, fill = avg_spec_exp)) +
+  geom_raster() +
+  coord_fixed() +
+  theme_minimal() +
+  facet_wrap(~Method, labeller = labeller(Method = labs)) + 
+  scale_fill_gradient2(low = "darkblue", high = "darkred", mid = "#e7d8d3",
+                                               midpoint = 0) +
+  labs(fill = "Avg. spectral exponent", y = "Latitude", x = "Longitude") 
+
+data %>%
+  ggplot(., aes(x = Method, y = spectral_exponent, fill = Method)) +
+  geom_boxplot() +
+  theme_light() + 
+  theme(panel.grid = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = pal) +
+  scale_x_discrete(labels = c("PSD (unprocessed)", "PSD (processed)",
+                                       "AWC")) +
+  labs(y = "Spectral exponent")  
+
+## previous method: higher spectral exponent = much steeper slopes
+  
+
+## how does change compare?
+data %>%
+  mutate(lat_lon_method = paste(lat, lon, Method),
+         lat_lon = paste(lat, lon)) %>%
+  filter(lat_lon %in% paste(unique(data$lat), unique(data$lon))[1:10]) %>%
+  ggplot(., aes(x = window_start_year, y = spectral_exponent, 
+                colour = lat, 
+                group = lat_lon_method)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  theme_light() + 
+  theme(panel.grid = element_blank()) +
+  labs(y = "Spectral exponent", x = "Window start year")
+
+data %>%
+  group_by(Method, window_start_year) %>%
+  mutate(global_avg = mean(spectral_exponent)) %>%
+  ggplot(., aes(x = window_start_year, y = global_avg, 
+                colour = Method, group = Method)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  theme_light() + 
+  theme(panel.grid = element_blank()) +
+  scale_colour_manual(values = pal, labels = c("PSD (unprocessed)", "PSD (processed)",
+                              "AWC")) +
+  labs(y = "Average exponent across 30x30 degree area", x = "Window start year")
+
+## calculate slopes
+data %>%
+  group_by(Method, window_start_year) %>%
+  mutate(global_avg = mean(spectral_exponent)) %>%
+  select(global_avg, window_start_year, Method) %>%
+  group_by(Method) %>%
+  unique() %>%
+  do(tidy(lm(global_avg ~ window_start_year, data = .))) %>%
+  filter(term == "window_start_year")
+
+
+
+data <- left_join(new, old) %>%
+  select(lat, lon, s_estimate, s_estimate_PSD, s_estimate_AWC, window_start_year, window_stop_year) %>%
+  gather(key = "Method",  value = "slope_of_spec_exp", c(s_estimate, s_estimate_PSD, s_estimate_AWC)) %>%
+  mutate(slope_of_spec_exp = ifelse(Method %in% c("s_estimate", "s_estimate_PSD"), 
+                                    -slope_of_spec_exp, 
+                                    slope_of_spec_exp)) %>% ## change sign of slope for PSD estimates
+  mutate(Method = factor(.$Method, levels = c("s_estimate", "s_estimate_PSD", "s_estimate_AWC"),
+                         ordered = T)) %>%
+  select(-window_start_year, - window_stop_year) %>%
+  unique()
+
+labs <- c("PSD (unprocessed)", "PSD (processed)",
+          "AWC")
+names(labs) <- c("s_estimate", "s_estimate_PSD", "s_estimate_AWC")
+
+data %>%
+  ggplot(., aes(x = lon, y = lat, fill = slope_of_spec_exp)) +
+  geom_raster() +
+  coord_fixed() +
+  theme_minimal() +
+  facet_wrap(~Method, labeller = labeller(Method = labs)) + 
+  scale_fill_gradient2(low = "darkblue", high = "darkred", mid = "#e7d8d3",
+                       midpoint = 0) +
+  labs(fill = "Slope of spectral exponent", y = "Latitude", x = "Longitude") 
+
+data %>%
+  ggplot(., aes(x = Method, y = slope_of_spec_exp, fill = Method)) +
+  geom_boxplot() +
+  theme_light() + 
+  theme(panel.grid = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = pal) +
+  scale_x_discrete(labels = c("PSD (unprocessed)", "PSD (processed)",
+                              "AWC")) +
+  labs(y = "Slope of spectral exponent")  
 
 
