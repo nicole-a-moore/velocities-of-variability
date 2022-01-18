@@ -68,14 +68,21 @@ spectral_exponent_calculator_PSD <- function(ts_window) {
   #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm")
   
   ## get estimate of spectral exponent over time series window:
-  ## remove high frequencies before fiitting slope
-  model_output <- spectral %>%
+  ## fit slope to low freqeuncies
+  model_output_low <- spectral %>%
     filter(freq < 1/8*max(spectral$freq)) %>%
     lm(., formula = log10(power) ~ log10(freq)) %>%
     tidy(.) %>%
     filter(term == "log10(freq)")
   
-  return(model_output$estimate)
+  ## fit slope to high freqeuncies
+  model_output_high <- spectral %>%
+    filter(freq >= 1/8*max(spectral$freq)) %>%
+    lm(., formula = log10(power) ~ log10(freq)) %>%
+    tidy(.) %>%
+    filter(term == "log10(freq)")
+  
+  return(list(-model_output_low$estimate, -model_output_high$estimate))
 }
 
 ## function to calculate spectral exponent over a time series window uisng average wavelet coefficient method
@@ -200,19 +207,27 @@ sliding_window_spec_exp <- function(path) {
               l_exp_PSD <- spectral_exponent_calculator_PSD(ts_l)
               s_exp_PSD <- spectral_exponent_calculator_PSD(ts_s)
               
+              l_exp_PSD_low <- l_exp_PSD[[1]]
+              l_exp_PSD_high <- l_exp_PSD[[2]]
+              
+              s_exp_PSD_low <- s_exp_PSD[[1]]
+              s_exp_PSD_high <- s_exp_PSD[[2]]
+              
               if (n == 10) {
                 l_exp_AWC <- spectral_exponent_calculator_AWC(ts_l)
                 s_exp_AWC <- spectral_exponent_calculator_AWC(ts_s)
                 
                 ## store:
-                spec_exp_list[[element]] <- c(l_exp_PSD, s_exp_PSD, l_exp_AWC, s_exp_AWC,
+                spec_exp_list[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low, l_exp_AWC, s_exp_AWC, 
+                                              l_exp_PSD_high, s_exp_PSD_high,
                                               year_start, year_stop, 
                                               lat[y + lat_index],
                                               lon[x + lon_index], paste(n, "years"))
               } 
               else {
                 ## store:
-                spec_exp_list[[element]] <- c(l_exp_PSD, s_exp_PSD, NA, NA,
+                spec_exp_list[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low, NA, NA,
+                                              l_exp_PSD_high, s_exp_PSD_high,
                                               year_start, year_stop, 
                                               lat[y + lat_index],
                                               lon[x + lon_index], paste(n, "years"))
@@ -238,27 +253,42 @@ sliding_window_spec_exp <- function(path) {
 
     ## bind rows in list into data frame
     spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
-    colnames(spec_exp_df) <- c("l_spec_exp_PSD", "s_spec_exp_PSD", "l_spec_exp_AWC", "s_spec_exp_AWC",
+    colnames(spec_exp_df) <- c("l_spec_exp_PSD_low", "s_spec_exp_PSD_low", "l_spec_exp_AWC", "s_spec_exp_AWC",
+                               "l_exp_PSD_high", "s_exp_PSD_high",
                                "window_start_year",
                                "window_stop_year", "lat", "lon", "time_window_width")
 
     ## convert numbers to numeric
-    spec_exp_df[,1:8] <- sapply(spec_exp_df[,1:8], as.numeric)
+    spec_exp_df[,1:10] <- sapply(spec_exp_df[,1:10], as.numeric)
 
     ## regress spectral exponent and extract slope representing change in spectral exponent over time for each location and window width
-    l_model_output_PSD <- spec_exp_df %>%
+    l_model_output_PSD_low <- spec_exp_df %>%
       group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = l_spec_exp_PSD ~ window_start_year))) %>%
+      do(tidy(lm(., formula = l_spec_exp_PSD_low ~ window_start_year))) %>%
       filter(term == "window_start_year")
 
-    colnames(l_model_output_PSD)[5:8] <- paste("l", colnames(l_model_output_PSD)[5:8], "PSD", sep = "_")
+    colnames(l_model_output_PSD_low)[5:8] <- paste("l", colnames(l_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
 
-    s_model_output_PSD <- spec_exp_df %>%
+    s_model_output_PSD_low <- spec_exp_df %>%
       group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = s_spec_exp_PSD ~ window_start_year))) %>%
+      do(tidy(lm(., formula = s_spec_exp_PSD_low ~ window_start_year))) %>%
       filter(term == "window_start_year")
 
-    colnames(s_model_output_PSD)[5:8] <- paste("s", colnames(s_model_output_PSD)[5:8], "PSD", sep = "_")
+    colnames(s_model_output_PSD_low)[5:8] <- paste("s", colnames(s_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
+    
+    l_model_output_PSD_high <- spec_exp_df %>%
+      group_by(lat, lon, time_window_width) %>%
+      do(tidy(lm(., formula = l_spec_exp_PSD_high ~ window_start_year))) %>%
+      filter(term == "window_start_year")
+    
+    colnames(l_model_output_PSD_high)[5:8] <- paste("l", colnames(l_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
+    
+    s_model_output_PSD_high <- spec_exp_df %>%
+      group_by(lat, lon, time_window_width) %>%
+      do(tidy(lm(., formula = s_spec_exp_PSD_high ~ window_start_year))) %>%
+      filter(term == "window_start_year")
+    
+    colnames(s_model_output_PSD_high)[5:8] <- paste("s", colnames(s_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
     
     l_model_output_AWC <- spec_exp_df %>%
       group_by(lat, lon) %>%
@@ -278,19 +308,13 @@ sliding_window_spec_exp <- function(path) {
     
 
     ## bind model output columns to spectral exponent data:
-    spec_exp_df <- left_join(spec_exp_df, l_model_output_PSD) %>%
-      left_join(., s_model_output_PSD) %>%
+    spec_exp_df <- left_join(spec_exp_df, l_model_output_PSD_low) %>%
+      left_join(., s_model_output_PSD_low) %>%
       left_join(., l_model_output_AWC) %>%
-      left_join(., s_model_output_AWC)
+      left_join(., s_model_output_AWC) %>%
+      left_join(., l_model_output_PSD_high) %>%
+      left_join(., s_model_output_PSD_high)
 
-    # spec_exp_df %>%
-    #   gather(key = "method", value = "spec_exp", c("l_spec_exp_AWC", "l_spec_exp_PSD",
-    #                                                "s_spec_exp_AWC", "s_spec_exp_PSD")) %>%
-    #   filter(time_window_width == "10 years") %>%
-    #   ggplot(., aes(x = window_start_year, y = abs(spec_exp), colour = method)) + geom_point() +
-    #   geom_smooth(method = "lm")
-
-    
     ## add filename to list:
     if(count == 1) {
       se_filenames <- paste(path, "spec-exp_long-", 
