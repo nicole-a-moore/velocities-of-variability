@@ -87,3 +87,4 @@ module load java/13.0.2
   write.table(new_sh, file = paste("data-processed/wget_scripts/wget_tos/", sh_files[i], sep = ''),
               row.names = FALSE, col.names = FALSE, quote = FALSE)
 }
+

@@ -25,8 +25,6 @@ search_url='https://esgf-node.llnl.gov/esg-search/wget/?distrib=false&dataset_id
 
 #These are the embedded files to be downloaded
 download_files="$(cat <<EOF--dataset.file.url.chksum_type.chksum
-'tos_day_CMCC-CM_historical_r1i1p1_18500101-18591231.nc' 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/CMCC/CMCC-CM/historical/day/ocean/day/r1i1p1/tos/1/tos_day_CMCC-CM_historical_r1i1p1_18500101-18591231.nc' 'SHA256' 'a3bd57f8aacb663b13e2487bdaa59b0a1f5fd925e70e765dc8684d47e7ccf76e'
-'tos_day_CMCC-CM_historical_r1i1p1_18600101-18691231.nc' 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/CMCC/CMCC-CM/historical/day/ocean/day/r1i1p1/tos/1/tos_day_CMCC-CM_historical_r1i1p1_18600101-18691231.nc' 'SHA256' '310cb309f845a84604abd0eba1e0d19441391d8f0b83d53ae063742f3f95d54d'
 'tos_day_CMCC-CM_historical_r1i1p1_18700101-18791231.nc' 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/CMCC/CMCC-CM/historical/day/ocean/day/r1i1p1/tos/1/tos_day_CMCC-CM_historical_r1i1p1_18700101-18791231.nc' 'SHA256' '356c6ffbf0926db583de55804b65f927e70fa58f18d29affefe0dc412599b227'
 'tos_day_CMCC-CM_historical_r1i1p1_18800101-18891231.nc' 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/CMCC/CMCC-CM/historical/day/ocean/day/r1i1p1/tos/1/tos_day_CMCC-CM_historical_r1i1p1_18800101-18891231.nc' 'SHA256' '0699f9217d135a27cad01f45e25196758ca210ad2dc25f327543ac82bb6a5916'
 'tos_day_CMCC-CM_historical_r1i1p1_18900101-18991231.nc' 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/CMCC/CMCC-CM/historical/day/ocean/day/r1i1p1/tos/1/tos_day_CMCC-CM_historical_r1i1p1_18900101-18991231.nc' 'SHA256' 'e63dc53a3fdda26df634fa61d6a6512d6c516856da850c8dbfe748bfd6f58251'

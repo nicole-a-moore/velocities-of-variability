@@ -7,14 +7,6 @@
 
 module load java/13.0.2
   
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/historical/day/ocean/day/r1i1p1/tos/1/tos_day_inmcm4_historical_r1i1p1_18500101-18541231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/historical/day/ocean/day/r1i1p1/tos/1/tos_day_inmcm4_historical_r1i1p1_18550101-18591231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/historical/day/ocean/day/r1i1p1/tos/1/tos_day_inmcm4_historical_r1i1p1_18600101-18641231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/historical/day/ocean/day/r1i1p1/tos/1/tos_day_inmcm4_historical_r1i1p1_18650101-18691231.nc'
-
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/historical/day/ocean/day/r1i1p1/tos/1/tos_day_inmcm4_historical_r1i1p1_18700101-18741231.nc'
 
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/historical/day/ocean/day/r1i1p1/tos/1/tos_day_inmcm4_historical_r1i1p1_18750101-18791231.nc'

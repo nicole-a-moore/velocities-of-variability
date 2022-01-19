@@ -7,10 +7,6 @@
 
 module load java/13.0.2
   
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MOHC/HadGEM2-CC/historical/day/ocean/day/r1i1p1/v20110930/tos/tos_day_HadGEM2-CC_historical_r1i1p1_18591201-18641130.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MOHC/HadGEM2-CC/historical/day/ocean/day/r1i1p1/v20110930/tos/tos_day_HadGEM2-CC_historical_r1i1p1_18641201-18691130.nc'
-
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MOHC/HadGEM2-CC/historical/day/ocean/day/r1i1p1/v20110930/tos/tos_day_HadGEM2-CC_historical_r1i1p1_18691201-18741130.nc'
 
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MOHC/HadGEM2-CC/historical/day/ocean/day/r1i1p1/v20110930/tos/tos_day_HadGEM2-CC_historical_r1i1p1_18741201-18791130.nc'

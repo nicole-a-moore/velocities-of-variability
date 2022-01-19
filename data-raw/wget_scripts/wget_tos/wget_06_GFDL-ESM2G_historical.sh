@@ -25,7 +25,6 @@ search_url='http://esgdata.gfdl.noaa.gov/esg-search/wget/?distrib=false&dataset_
 
 #These are the embedded files to be downloaded
 download_files="$(cat <<EOF--dataset.file.url.chksum_type.chksum
-'tos_day_GFDL-ESM2G_historical_r1i1p1_18610101-18651231.nc' 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-ESM2G/historical/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-ESM2G_historical_r1i1p1_18610101-18651231.nc' 'MD5' '275853bb73b019954d6ee79098f1a81f'
 'tos_day_GFDL-ESM2G_historical_r1i1p1_18660101-18701231.nc' 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-ESM2G/historical/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-ESM2G_historical_r1i1p1_18660101-18701231.nc' 'MD5' '3e3d1ccffb4402be25e663d046498c9c'
 'tos_day_GFDL-ESM2G_historical_r1i1p1_18710101-18751231.nc' 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-ESM2G/historical/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-ESM2G_historical_r1i1p1_18710101-18751231.nc' 'MD5' '8e7aed1a919ccdd91ee07995cea404ea'
 'tos_day_GFDL-ESM2G_historical_r1i1p1_18760101-18801231.nc' 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-ESM2G/historical/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-ESM2G_historical_r1i1p1_18760101-18801231.nc' 'MD5' '6e169b3f93567b4ac09db7b841490718'

@@ -25,7 +25,6 @@ search_url='https://esgf-node.llnl.gov/esg-search/wget/?distrib=false&dataset_id
 
 #These are the embedded files to be downloaded
 download_files="$(cat <<EOF--dataset.file.url.chksum_type.chksum
-'tos_day_MIROC-ESM_historical_r1i1p1_18500101-18691231.nc' 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MIROC/MIROC-ESM/historical/day/ocean/day/r1i1p1/v20111129/tos/tos_day_MIROC-ESM_historical_r1i1p1_18500101-18691231.nc' 'SHA256' 'd11f9a569b46b6e8b33efb0914bb98849e1365e8a5b7a57890b16c804c799af8'
 'tos_day_MIROC-ESM_historical_r1i1p1_18700101-18891231.nc' 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MIROC/MIROC-ESM/historical/day/ocean/day/r1i1p1/v20111129/tos/tos_day_MIROC-ESM_historical_r1i1p1_18700101-18891231.nc' 'SHA256' '0a2f0e1575d369a1e8b4336422df5d0e187534802e1cbaddf42824c1cc4aceee'
 'tos_day_MIROC-ESM_historical_r1i1p1_18900101-19091231.nc' 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MIROC/MIROC-ESM/historical/day/ocean/day/r1i1p1/v20111129/tos/tos_day_MIROC-ESM_historical_r1i1p1_18900101-19091231.nc' 'SHA256' '95202229f319944da2f6323adeb0b9c0041322f6ba9b37650fb1e70f44d8d5cd'
 'tos_day_MIROC-ESM_historical_r1i1p1_19100101-19291231.nc' 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MIROC/MIROC-ESM/historical/day/ocean/day/r1i1p1/v20111129/tos/tos_day_MIROC-ESM_historical_r1i1p1_19100101-19291231.nc' 'SHA256' '06886dd00335dda750dd020056e6f1995daab05bd3b1a4356af7b469a1d470ed'

@@ -7,46 +7,6 @@
 
 module load java/13.0.2
   
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18500101-18501231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18510101-18511231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18520101-18521231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18530101-18531231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18540101-18541231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18550101-18551231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18560101-18561231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18570101-18571231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18580101-18581231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18590101-18591231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18600101-18601231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18610101-18611231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18620101-18621231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18630101-18631231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18640101-18641231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18650101-18651231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18660101-18661231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18670101-18671231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18680101-18681231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18690101-18691231.nc'
-
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18700101-18701231.nc'
 
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/MPI-M/MPI-ESM-MR/historical/day/ocean/day/r1i1p1/tos/1/tos_day_MPI-ESM-MR_historical_r1i1p1_18710101-18711231.nc'

@@ -7,8 +7,6 @@
 
 module load java/13.0.2
   
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MIROC/MIROC5/historical/day/ocean/day/r1i1p1/v20111124/tos/tos_day_MIROC5_historical_r1i1p1_18500101-18591231.nc'
-
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MIROC/MIROC5/historical/day/ocean/day/r1i1p1/v20111124/tos/tos_day_MIROC5_historical_r1i1p1_18600101-18691231.nc'
 
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MIROC/MIROC5/historical/day/ocean/day/r1i1p1/v20111124/tos/tos_day_MIROC5_historical_r1i1p1_18700101-18791231.nc'

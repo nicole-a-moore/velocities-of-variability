@@ -7,8 +7,6 @@
 
 module load java/13.0.2
   
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-ESM2M/historicalGHG/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-ESM2M_historicalGHG_r1i1p1_18610101-18651231.nc'
-
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-ESM2M/historicalGHG/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-ESM2M_historicalGHG_r1i1p1_18660101-18701231.nc'
 
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-ESM2M/historicalGHG/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-ESM2M_historicalGHG_r1i1p1_18710101-18751231.nc'

@@ -7,10 +7,6 @@
 
 module load java/13.0.2
   
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-CM3/historical/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-CM3_historical_r1i1p1_18600101-18641231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-CM3/historical/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-CM3_historical_r1i1p1_18650101-18691231.nc'
-
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-CM3/historical/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-CM3_historical_r1i1p1_18700101-18741231.nc'
 
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/NOAA-GFDL/GFDL-CM3/historical/day/ocean/day/r1i1p1/v20110601/tos/tos_day_GFDL-CM3_historical_r1i1p1_18750101-18791231.nc'

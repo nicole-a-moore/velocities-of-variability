@@ -7,10 +7,6 @@
 
 module load java/13.0.2
   
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MPI-M/MPI-ESM-LR/historical/day/ocean/day/r2i1p1/v20111006/tos/tos_day_MPI-ESM-LR_historical_r2i1p1_18500101-18591231.nc'
-
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MPI-M/MPI-ESM-LR/historical/day/ocean/day/r2i1p1/v20111006/tos/tos_day_MPI-ESM-LR_historical_r2i1p1_18600101-18691231.nc'
-
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MPI-M/MPI-ESM-LR/historical/day/ocean/day/r2i1p1/v20111006/tos/tos_day_MPI-ESM-LR_historical_r2i1p1_18700101-18791231.nc'
 
 wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MPI-M/MPI-ESM-LR/historical/day/ocean/day/r2i1p1/v20111006/tos/tos_day_MPI-ESM-LR_historical_r2i1p1_18800101-18891231.nc'

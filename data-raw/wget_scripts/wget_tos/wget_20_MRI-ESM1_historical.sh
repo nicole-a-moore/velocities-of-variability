@@ -25,7 +25,6 @@ search_url='https://esgf-node.llnl.gov/esg-search/wget/?distrib=false&dataset_id
 
 #These are the embedded files to be downloaded
 download_files="$(cat <<EOF--dataset.file.url.chksum_type.chksum
-'tos_day_MRI-ESM1_historical_r1i1p1_18510101-18601231.nc' 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MRI/MRI-ESM1/historical/day/ocean/day/r1i1p1/v20130307/tos/tos_day_MRI-ESM1_historical_r1i1p1_18510101-18601231.nc' 'SHA256' '95c6dd6e937f215ce220de107f638e8e32bffba0041b0c8500b0ce47e0ca64a0'
 'tos_day_MRI-ESM1_historical_r1i1p1_18610101-18701231.nc' 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MRI/MRI-ESM1/historical/day/ocean/day/r1i1p1/v20130307/tos/tos_day_MRI-ESM1_historical_r1i1p1_18610101-18701231.nc' 'SHA256' '1ab705672fa6e63696d2246f8f6f11f0730b41f4be43abcb8c8504d398b3d065'
 'tos_day_MRI-ESM1_historical_r1i1p1_18710101-18801231.nc' 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MRI/MRI-ESM1/historical/day/ocean/day/r1i1p1/v20130307/tos/tos_day_MRI-ESM1_historical_r1i1p1_18710101-18801231.nc' 'SHA256' 'ba737805663c604ee9edcc6948e7b25e544de5e71ce18b8f5a456dd335826952'
 'tos_day_MRI-ESM1_historical_r1i1p1_18810101-18901231.nc' 'http://esgf-data1.diasjp.net/thredds/fileServer/esg_dataroot/cmip5/output1/MRI/MRI-ESM1/historical/day/ocean/day/r1i1p1/v20130307/tos/tos_day_MRI-ESM1_historical_r1i1p1_18810101-18901231.nc' 'SHA256' '3e82708a5fa26291010d89c09f588eb97e854afd9cdbbab5c60bbde87d97b522'

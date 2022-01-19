@@ -25,7 +25,6 @@ search_url='http://esgf-index1.ceda.ac.uk/esg-search/wget/?distrib=false&dataset
 
 #These are the embedded files to be downloaded
 download_files="$(cat <<EOF--dataset.file.url.chksum_type.chksum
-'tos_day_HadGEM2-ES_historical_r1i1p1_18591201-18691130.nc' 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MOHC/HadGEM2-ES/historical/day/ocean/day/r1i1p1/v20110131/tos/tos_day_HadGEM2-ES_historical_r1i1p1_18591201-18691130.nc' 'SHA256' '1e104bd7be6338b98d41b5fe27a3ed6415d0791ca658061b052a4ba584c513ef'
 'tos_day_HadGEM2-ES_historical_r1i1p1_18691201-18791130.nc' 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MOHC/HadGEM2-ES/historical/day/ocean/day/r1i1p1/v20110131/tos/tos_day_HadGEM2-ES_historical_r1i1p1_18691201-18791130.nc' 'SHA256' 'f36bb4ec3bda7d693b08a13d302fc9d10487c9e81f5fa6280368f660eb685d86'
 'tos_day_HadGEM2-ES_historical_r1i1p1_18791201-18891130.nc' 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MOHC/HadGEM2-ES/historical/day/ocean/day/r1i1p1/v20110131/tos/tos_day_HadGEM2-ES_historical_r1i1p1_18791201-18891130.nc' 'SHA256' '3f2da54e42f084a5b10fdbd7c63538984b4453ca5d3b97445622b96869e3e7e8'
 'tos_day_HadGEM2-ES_historical_r1i1p1_18891201-18991130.nc' 'http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MOHC/HadGEM2-ES/historical/day/ocean/day/r1i1p1/v20110131/tos/tos_day_HadGEM2-ES_historical_r1i1p1_18891201-18991130.nc' 'SHA256' '596ceb3f46c88ab9d7c124e9bd80249242d568ed38c87ed964bc761b439405c4'
