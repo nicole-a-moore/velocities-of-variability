@@ -62,7 +62,7 @@ spectral_exponent_calculator_PSD <- function(ts_window) {
   spectral <- data.frame(freq = freq, power = amp^2)
   
   # ## plot spectrum:
-  # spectral %>% 
+  # spectral %>%
   #   ggplot(aes(x = freq, y = power)) + geom_line() +
   #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm")
   
@@ -123,7 +123,7 @@ sliding_window_spec_exp <- function(path) {
   names = readRDS(filepath)
   
   #remove me for use on cluster 
-  #names = str_replace_all(names, 'CMIP5-GCMs', '/Volumes/ADATA HV620/CMIP5-GCMs')
+  #names = str_replace_all(names, 'data-raw', '/Volumes/SundayLab/CMIP5-GCMs_tos')
   
   l_filenames <- str_replace_all(names, "spatial_temps", 'l-detrended')
   s_filenames <-  str_replace_all(names, "spatial_temps", 's-detrended')
@@ -155,7 +155,7 @@ sliding_window_spec_exp <- function(path) {
         s_local_ts <- s_detrended_tas[y,x,]
         
         if (x == 1 & y == 1 & count == 1)  {
-          filepath = paste(path, "date_new.rds", sep = "")
+          filepath = paste(path, "date_new_tos.rds", sep = "")
           dates = readRDS(filepath)
         }
         
@@ -253,7 +253,7 @@ sliding_window_spec_exp <- function(path) {
     ## bind rows in list into data frame
     spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
     colnames(spec_exp_df) <- c("l_spec_exp_PSD_low", "s_spec_exp_PSD_low", "l_spec_exp_AWC", "s_spec_exp_AWC",
-                               "l_exp_PSD_high", "s_exp_PSD_high",
+                               "l_spec_exp_PSD_high", "s_spec_exp_PSD_high",
                                "window_start_year",
                                "window_stop_year", "lat", "lon", "time_window_width")
     
@@ -361,13 +361,13 @@ sliding_window_spec_exp <- function(path) {
 ## for me, they are here:
 #path = "/Volumes/SundayLab/CMIP5-GCMs_tos/" ## change me
 #path = "data-raw/"
-path = "CMIP5-GCMs/"
+path = "CMIP5-GCMs_tos/"
 
 ## create vector of file folders to put data into:
 gcm_models <- c("01_CMCC-CESM", "02_CMCC-CM", '03_CMCC-CMS', '04_MPI-ESM-LR', '05_MPI-ESM-MR',
                 "06_GFDL-ESM2G", '07_GFDL-CM3', '08_GFDL-ESM2M', '09_HadGEM2-CC', '10_HadGEM2-ES',
-                "11_HadGEM2-AO", '12_IPSL-CM5A-LR', '13_IPSL-CM5B-LR', '14_MIROC5', '15_MIROC5-ESM-CHEM',
-                '16_MIROC5-ESM', "17_inmcm4", '18_CNRM-CM5', "19_MRI-CGCM3", '20_MRI-ESM1',
+                '12_IPSL-CM5A-LR', '13_IPSL-CM5B-LR', '14_MIROC5', '15_MIROC5-ESM-CHEM',
+                '16_MIROC5-ESM', "17_INM-CM4", '18_CNRM-CM5', "19_MRI-CGCM3", '20_MRI-ESM1',
                 '21_IPSL-CM5A-MR')
 
 folders <- paste(path, gcm_models, "/", sep = "")

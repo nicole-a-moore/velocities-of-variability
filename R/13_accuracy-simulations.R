@@ -307,6 +307,59 @@ beta
 
 ## hmm ... not a better estimator 
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#### multitaper spectral estimation - playing around ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+library(multitaper)
+
+## simulate time series of known beta 
+ts <- simARMA0(n = 3650, H = 0.5)
+ts <- ts(cumsum(ts)) ## beta = 2
+plot(ts)
+
+## preprocess
+## a. subtracting mean
+#plot(ts)
+ts <- ts - mean(ts)
+#plot(ts)
+
+## b. windowing
+## multiply by a parabolic window 
+window <- parabolic_window(series = ts)
+ts <- ts*window
+#plot(ts)
+
+## c. bridge detrending (endmatching)
+## ie. subtracting from the data the line connecting the first and last points of the series
+ts <- bridge_detrender(windowed_series = ts)
+#plot(ts)
+
+## normal Fourier transform:
+fft <- homemade_fft(ts) %>%
+  filter(freq <= 1/8*max(freq))
+
+fft %>%
+  ggplot(aes(x = freq, y = power)) + geom_line() +
+  scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm")
+
+## multitaper 
+mtm <- spec.mtm(ts, plot = F)
+
+mtm <- data.frame(freq = mtm$freq, power = mtm$spec) %>%
+  filter(freq <= max(fft$freq) & freq >= min(fft$freq))
+
+mtm %>%
+  ggplot(aes(x = freq, y = power)) + geom_line() +
+  scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm") + 
+  geom_line(data = fft, aes(x = freq, y = power), colour = "blue") +
+  scale_y_log10() + scale_x_log10() + 
+  geom_smooth(data = fft, aes(x = freq, y = power), method = "lm")
+
+lm(log(power) ~ log(freq),
+   data = fft)
+
+lm(log(power) ~ log(freq),
+   data = mtm)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #### simulations - getting serious #####
@@ -419,7 +472,7 @@ while (z <= length(H)) {
 
       ## c. calculate beta
       ## get slope
-      lm <- lm(log(avg_wavelet_coeff) ~ log(period),
+      lm <- lm(log10(avg_wavelet_coeff) ~ log10(period),
                data = data)
 
       ## slope equal to H + 1/2
@@ -431,6 +484,24 @@ while (z <= length(H)) {
                                    true_beta = beta[z],
                                    sim = x, ts_length = N,
                                    method = 'AWC'))
+      
+      ## multitaper method
+      mtm <- spec.mtm(pp_ts, plot = F)
+      
+      mtm <- data.frame(freq = mtm$freq, power = mtm$spec) %>%
+        filter(freq < max(spec$freq) & freq > min(spec$freq))
+      
+      ## get slope
+      lm <- lm(log10(power) ~ log10(freq),
+               data = mtm)
+      b <- as.numeric(-lm$coefficients[2])
+      
+      betas_df <- rbind(betas_df,
+                        data.frame(obs_beta = b,
+                                   true_beta = beta[z],
+                                   sim = x, ts_length = N,
+                                   method = 'multitaper'))
+      
       
       ## move to next simulation
       print(paste("Simulating time series ", x, "of length ", N, " with true beta number ", z))
@@ -444,7 +515,7 @@ while (z <= length(H)) {
 }
 #write.csv(betas_df, "data-processed/beta-simulations_with_awc.csv", row.names = F)
 
-pal <- pnw_palette(name = "Sunset", n = 3, 'discrete')
+pal <- pnw_palette(name = "Sunset", n = 4, 'discrete')
 
 ## which method gives most accurate estimate of beta across all true beta?
 betas_df %>%
@@ -454,7 +525,8 @@ betas_df %>%
   theme_light() + theme(panel.grid = element_blank()) + 
   facet_wrap(~ts_length) +
   labs(x = "True beta", y = "Estimated beta", colour = "Method:") +
-  scale_color_manual(values = pal, labels = c("Wavelet", "PSD - preprocessed", "PSD - not preprocessed"))
+  scale_color_manual(values = pal, labels = c("Wavelet", "PSD - preprocessed", "Multitaper", 
+                                              "PSD - not preprocessed"))
 
 ## mean diff:
 betas_df %>%
@@ -470,7 +542,8 @@ betas_df %>%
   geom_abline(intercept = 0, slope = 0) +
   labs(x = 'True beta', y = "Average difference between true and estimated beta",
        colour = "Method:") +
-  scale_color_manual(values = pal, labels = c("Wavelet", "PSD - preprocessed", "PSD - not preprocessed"))
+  scale_color_manual(values = pal, labels = c("Wavelet", "PSD - preprocessed", "Multitaper", 
+                                              "PSD - not preprocessed"))
 
 
 betas_df %>%
@@ -480,9 +553,10 @@ betas_df %>%
   theme_light() + theme(panel.grid = element_blank()) + 
   facet_wrap(~ts_length) +
   labs(y = "Abs(difference between true and estimated beta)", x = "")  +
-  scale_fill_manual(values = pal, labels = c("Wavelet", "PSD - preprocessed", "PSD - not preprocessed"))+
+  scale_fill_manual(values = pal, labels = c("Wavelet", "PSD - preprocessed", "Multitaper", 
+                                             "PSD - not preprocessed"))+
   theme(legend.position = 'none') + 
-  scale_x_discrete(labels = c("Wavelet", "Preprocessed", "Not preprocessed"))
+  scale_x_discrete(labels = c("Wavelet", "Preprocessed", "Multitaper", "Not preprocessed"))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #### what frequency cut-off should we use? ####
@@ -677,18 +751,21 @@ old <- filter(old, time_window_width == "10 years")
 
 ## left join
 data <- left_join(new, old) %>%
-  select(lat, lon, s_spec_exp, s_spec_exp_PSD, s_spec_exp_AWC, window_start_year, window_stop_year) %>%
-  gather(key = "Method",  value = "spectral_exponent", c(s_spec_exp, s_spec_exp_PSD, s_spec_exp_AWC)) %>%
-  mutate(spectral_exponent = ifelse(Method %in% c("s_spec_exp", "s_spec_exp_PSD"), 
+  select(lat, lon, s_spec_exp,  
+         s_spec_exp_PSD_low, s_spec_exp_AWC,
+         s_spec_exp_PSD_high, 
+         window_start_year, window_stop_year) %>%
+  gather(key = "Method",  value = "spectral_exponent", c(s_spec_exp, s_spec_exp_PSD_low, s_spec_exp_AWC)) %>%
+  mutate(spectral_exponent = ifelse(Method %in% c("s_spec_exp"), 
                                     -spectral_exponent, 
                                     spectral_exponent)) %>% ## change sign of spectral exponent for PSD estimates
-  mutate(Method = factor(.$Method, levels = c("s_spec_exp", "s_spec_exp_PSD", "s_spec_exp_AWC"),
+  mutate(Method = factor(.$Method, levels = c("s_spec_exp", "s_spec_exp_PSD_low", "s_spec_exp_AWC"),
                          ordered = T))
 
 ## compare estimates of spectral exponents from different method 
 labs <- c("PSD (unprocessed)", "PSD (processed)",
                "AWC")
-names(labs) <- c("s_spec_exp", "s_spec_exp_PSD", "s_spec_exp_AWC")
+names(labs) <- c("s_spec_exp", "s_spec_exp_PSD_low", "s_spec_exp_AWC")
 
 data %>%
   group_by(lat, lon, Method) %>%
@@ -757,12 +834,148 @@ data %>%
 
 
 data <- left_join(new, old) %>%
-  select(lat, lon, s_estimate, s_estimate_PSD, s_estimate_AWC, window_start_year, window_stop_year) %>%
-  gather(key = "Method",  value = "slope_of_spec_exp", c(s_estimate, s_estimate_PSD, s_estimate_AWC)) %>%
-  mutate(slope_of_spec_exp = ifelse(Method %in% c("s_estimate", "s_estimate_PSD"), 
+  select(lat, lon, s_estimate, s_estimate_PSD_low, s_estimate_PSD_high, s_estimate_AWC, window_start_year, window_stop_year) %>%
+  gather(key = "Method",  value = "slope_of_spec_exp", c(s_estimate, s_estimate_PSD_low, s_estimate_AWC)) %>%
+  mutate(slope_of_spec_exp = ifelse(Method %in% c("s_estimate"), 
                                     -slope_of_spec_exp, 
                                     slope_of_spec_exp)) %>% ## change sign of slope for PSD estimates
   mutate(Method = factor(.$Method, levels = c("s_estimate", "s_estimate_PSD", "s_estimate_AWC"),
+                         ordered = T)) %>%
+  select(-window_start_year, - window_stop_year) %>%
+  unique()
+
+labs <- c("PSD (unprocessed)", "PSD (processed)",
+          "AWC")
+names(labs) <- c("s_estimate", "s_estimate_PSD_low", "s_estimate_AWC")
+
+data %>%
+  ggplot(., aes(x = lon, y = lat, fill = slope_of_spec_exp)) +
+  geom_raster() +
+  coord_fixed() +
+  theme_minimal() +
+  facet_wrap(~Method, labeller = labeller(Method = labs)) + 
+  scale_fill_gradient2(low = "darkblue", high = "darkred", mid = "#e7d8d3",
+                       midpoint = 0) +
+  labs(fill = "Slope of spectral exponent", y = "Latitude", x = "Longitude") 
+
+data %>%
+  ggplot(., aes(x = Method, y = slope_of_spec_exp, fill = Method)) +
+  geom_boxplot() +
+  theme_light() + 
+  theme(panel.grid = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = pal) +
+  scale_x_discrete(labels = c("PSD (unprocessed)", "PSD (processed)",
+                              "AWC")) +
+  labs(y = "Slope of spectral exponent")  
+
+
+##  now for sea surface temperature:
+
+## make colour palette
+pal = pnw_palette("Sunset",5, type = "discrete")
+pal <- c(pal[1], pal[3], pal[4])
+
+## read in old results and new results
+old <- read.csv("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/spec-exp_long-0-60_lat-90-30.csv")
+new <- read.csv("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/spec-exp_long-0-60_lat-90-30_new.csv")
+
+## filter to only 10 year time windows 
+new <- filter(new, time_window_width == "10 years")
+old <- filter(old, time_window_width == "10 years")
+
+## left join
+data <- left_join(new, old) %>%
+  select(lat, lon, s_spec_exp,  
+         s_spec_exp_PSD_low, s_spec_exp_AWC,
+         s_spec_exp_PSD_high, 
+         window_start_year, window_stop_year) %>%
+  gather(key = "Method",  value = "spectral_exponent", c(s_spec_exp, s_spec_exp_PSD_low, s_spec_exp_AWC)) %>%
+  mutate(spectral_exponent = ifelse(Method %in% c("s_spec_exp"), 
+                                    -spectral_exponent, 
+                                    spectral_exponent)) %>% ## change sign of spectral exponent for PSD estimates
+  mutate(Method = factor(.$Method, levels = c("s_spec_exp", "s_spec_exp_PSD_low", "s_spec_exp_AWC"),
+                         ordered = T))
+
+## compare estimates of spectral exponents from different method 
+labs <- c("PSD (unprocessed)", "PSD (processed)",
+          "AWC")
+names(labs) <- c("s_spec_exp", "s_spec_exp_PSD_low", "s_spec_exp_AWC")
+
+data %>%
+  group_by(lat, lon, Method) %>%
+  mutate(avg_spec_exp = mean(spectral_exponent)) %>%
+  ungroup() %>%
+  select(-spectral_exponent) %>%
+  ggplot(., aes(x = lon, y = lat, fill = avg_spec_exp)) +
+  geom_raster() +
+  coord_fixed() +
+  theme_minimal() +
+  facet_wrap(~Method, labeller = labeller(Method = labs)) + 
+  scale_fill_gradient2(low = "darkblue", high = "darkred", mid = "#e7d8d3",
+                       midpoint = 0) +
+  labs(fill = "Avg. spectral exponent", y = "Latitude", x = "Longitude") 
+
+data %>%
+  ggplot(., aes(x = Method, y = spectral_exponent, fill = Method)) +
+  geom_boxplot() +
+  theme_light() + 
+  theme(panel.grid = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = pal) +
+  scale_x_discrete(labels = c("PSD (unprocessed)", "PSD (processed)",
+                              "AWC")) +
+  labs(y = "Spectral exponent")  
+
+## previous method: higher spectral exponent = much steeper slopes
+data %>%
+  #filter(Method != "s_spec_exp") %>%
+  ggplot(., aes(x = spectral_exponent, fill = Method)) + geom_histogram()
+
+## how does change compare?
+data %>%
+  mutate(lat_lon_method = paste(lat, lon, Method),
+         lat_lon = paste(lat, lon)) %>%
+  filter(lat_lon %in% paste(unique(data$lat), unique(data$lon))[1:10]) %>%
+  ggplot(., aes(x = window_start_year, y = spectral_exponent, 
+                colour = lat, 
+                group = lat_lon_method)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  theme_light() + 
+  theme(panel.grid = element_blank()) +
+  labs(y = "Spectral exponent", x = "Window start year")
+
+data %>%
+  group_by(Method, window_start_year) %>%
+  mutate(global_avg = mean(spectral_exponent)) %>%
+  ggplot(., aes(x = window_start_year, y = global_avg, 
+                colour = Method, group = Method)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  theme_light() + 
+  theme(panel.grid = element_blank()) +
+  scale_colour_manual(values = pal, labels = c("PSD (unprocessed)", "PSD (processed)",
+                                               "AWC")) +
+  labs(y = "Average exponent across 30x30 degree area", x = "Window start year")
+
+## calculate slopes
+data %>%
+  group_by(Method, window_start_year) %>%
+  mutate(global_avg = mean(spectral_exponent)) %>%
+  select(global_avg, window_start_year, Method) %>%
+  group_by(Method) %>%
+  unique() %>%
+  do(tidy(lm(global_avg ~ window_start_year, data = .))) %>%
+  filter(term == "window_start_year")
+
+
+
+data <- left_join(new, old) %>%
+  select(lat, lon, s_estimate, s_estimate_PSD_low, s_estimate_PSD_high, s_estimate_AWC, window_start_year, window_stop_year) %>%
+  gather(key = "Method",  value = "slope_of_spec_exp", c(s_estimate, s_estimate_PSD_low, s_estimate_AWC)) %>%
+  mutate(slope_of_spec_exp = ifelse(Method %in% c("s_estimate"), 
+                                    -slope_of_spec_exp, 
+                                    slope_of_spec_exp)) %>% ## change sign of slope for PSD estimates
+  mutate(Method = factor(.$Method, levels = c("s_estimate", "s_estimate_PSD_low", "s_estimate_AWC"),
                          ordered = T)) %>%
   select(-window_start_year, - window_stop_year) %>%
   unique()
