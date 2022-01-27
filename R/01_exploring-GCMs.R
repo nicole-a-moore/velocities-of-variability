@@ -1266,7 +1266,7 @@ gg4 <- sp %>%
 ##### exploring sea surface temperature files ######
 library(ncdf4)
 library(raster)
-filename <- "/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc"
+filename <- "/Volumes/Nikki 6TB/velocities-of-variability/data-raw/01_CMCC-CESM/tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc"
 nc <- nc_open(filename)
 tos = ncvar_get(nc, "tos")
 lat = ncvar_get(nc, "lat")
@@ -1344,7 +1344,7 @@ while (i < 183) {
 
 library(ncdf4)
 library(raster)
-filename <- "/Users/nikkimoore/data_regridded.nc"
+filename <- "/Volumes/Nikki 6TB/velocities-of-variability/data-raw/01_CMCC-CESM/regridded_tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc"
 nc <- nc_open(filename)
 tos = ncvar_get(nc, "tos")
 lat = ncvar_get(nc, "lat")
@@ -1352,7 +1352,7 @@ lon = ncvar_get(nc, "lon")
 time = ncvar_get(nc, "time")
 nc_close(nc)
 
-r <- stack("/Users/nikkimoore/data_regridded.nc")
+r <- stack("/Volumes/Nikki 6TB/velocities-of-variability/data-raw/01_CMCC-CESM/regridded_tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc")
 plot(r[[1000]])
 r
 
@@ -1360,3 +1360,45 @@ r = raster(nrows = 180, ncols = 360, xmn=-180, xmx=180, ymn=-90, ymx=90,
            crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"))
 
 values(r) <- as.vector(tos)
+
+
+### making a land/ocean mask from the SST grids:
+r1 <- stack("/Volumes/Nikki 6TB/velocities-of-variability/data-raw/01_CMCC-CESM/regridded_tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc")[[1]]
+r3 <- stack("/Users/nikkimoore/Desktop/regridded_tos_day_CMCC-CMS_historical_r1i1p1_18700101-18791231.nc")[[1]]
+
+r4 <- stack("/Users/nikkimoore/Desktop/regridded_tos_day_MPI-ESM-LR_historical_r2i1p1_18700101-18791231.nc")[[1]]
+r5 <- stack("/Users/nikkimoore/Desktop/regridded_tos_day_MPI-ESM-MR_historical_r1i1p1_18700101-18701231.nc")[[1]]
+r6 <- stack("/Users/nikkimoore/Desktop/regridded_tos_day_GFDL-ESM2G_historical_r1i1p1_18660101-18701231.nc")[[1]]
+r7 <- stack("/Users/nikkimoore/Desktop/regridded_tos_day_GFDL-CM3_historical_r1i1p1_18700101-18741231.nc")[[1]]
+
+plot(r1)
+plot(r3)
+plot(r4)
+plot(r5)
+plot(r6)
+plot(r7)
+
+r <- mean(r1,r3,r4,r5,r6,r7, na.rm=T)
+plot(r)
+## these are the places we will definitely have sst estimates for
+
+writeRaster(r, "data-processed/masks/cmip5-ocean.grd", 
+            overwrite = TRUE, format = "raster")
+
+land <- r
+land[is.na(r)] <- 1
+land[r == 1] <- NA
+plot(land)
+
+writeRaster(land, "data-processed/masks/cmip5-land.grd", 
+            overwrite = TRUE, format = "raster")
+
+## create list of ocean grid cell coordinates
+ocean <- data.frame(rasterToPoints(r)[,1:2])
+colnames(ocean) <- c("lon", "lat")
+
+## transform coordinates from -180, 180 to 0, 360 to match temperature data
+ocean$lon <- ifelse(ocean$lon <= 0, ocean$lon + 360, ocean$lon)
+
+write.csv(ocean, "data-processed/masks/cmip5-ocean-coords.csv", row.names = F)
+

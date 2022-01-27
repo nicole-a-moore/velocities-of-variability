@@ -15,8 +15,7 @@ select <- dplyr::select
 ##############################################
 ## function that creates a parabolic window for a given series
 ## uses Eke 2000, Eq. 6: W(j) = 1 - (2j/(N+1) - 1)^2 for j = 1,...,N
-parabolic_window <- function(series) {
-  N = length(series)
+parabolic_window <- function(series, N) {
   j = c(1:N)
   W = c()
   for (i in j) {
@@ -29,9 +28,7 @@ parabolic_window <- function(series) {
 ## function that bridge detrends a windowed series
 ## calculates line connecting the first and last points of the series
 ## then subtracts that line from data 
-bridge_detrender <- function(windowed_series) {
-  N = length(windowed_series) # get length of series
-  
+bridge_detrender <- function(windowed_series, N) {
   ## regress to get equation of line:
   data <- data.frame(x = c(1, N), y = windowed_series[c(1,N)])
   eq = lm(y ~ x, data = data) 
@@ -49,9 +46,7 @@ bridge_detrender <- function(windowed_series) {
 }
 
 ## function to calculate spectral exponent over a time series window uisng periodogram
-spectral_exponent_calculator_PSD <- function(ts_window) {
-  l <- length(ts_window)
-  
+spectral_exponent_calculator_PSD <- function(ts_window, l) {
   # Fourier transform the time series window: 
   dft <- fft(ts_window)/l
   amp <- sqrt(Im(dft[-1])^2 + Re(dft[-1])^2) ## get rid of first term (represents DC component - y axis shift)
@@ -85,9 +80,7 @@ spectral_exponent_calculator_PSD <- function(ts_window) {
 }
 
 ## function to calculate spectral exponent over a time series window uisng average wavelet coefficient method
-spectral_exponent_calculator_AWC <- function(ts_window) {
-  N = length(ts_window)
-  
+spectral_exponent_calculator_AWC <- function(ts_window, N) {
   ## a. compute wavelet transform
   wavelets <- biwavelet::wt(data.frame(time = 1:N, val = ts_window), do.sig = F)
   
@@ -186,35 +179,42 @@ sliding_window_spec_exp <- function(path) {
               ## extract temps within time window
               ts_chunk <- filter(local_ts, year %in% year_start:year_stop)
               
+              ## get length
+              L = nrow(ts_chunk)
+              
               ## preprocess the time series:
               ## a. subtracting mean
-              ts_l <- ts_chunk$l_temp - mean(ts_chunk$l_temp)
               ts_s <- ts_chunk$s_temp - mean(ts_chunk$s_temp)
               
               ## b. windowing - multiply by a parabolic window 
-              window_l <- parabolic_window(series = ts_l)
-              window_s <- parabolic_window(series = ts_s)
-              ts_l <- ts_l*window_l
+              window_s <- parabolic_window(series = ts_s, N = L)
               ts_s <- ts_s*window_s
               
               ## c. bridge detrending (endmatching)
               ## ie. subtracting from the data the line connecting the first and last points of the series
-              ts_l <- bridge_detrender(windowed_series = ts_l)
-              ts_s <- bridge_detrender(windowed_series = ts_s)
+              ts_s <- bridge_detrender(windowed_series = ts_s, N = L)
               
               ## calculate spectral exponent in window using PSD and AWC methods
-              l_exp_PSD <- spectral_exponent_calculator_PSD(ts_l)
-              s_exp_PSD <- spectral_exponent_calculator_PSD(ts_s)
-              
-              l_exp_PSD_low <- l_exp_PSD[[1]]
-              l_exp_PSD_high <- l_exp_PSD[[2]]
+              s_exp_PSD <- spectral_exponent_calculator_PSD(ts_s, l = L)
               
               s_exp_PSD_low <- s_exp_PSD[[1]]
               s_exp_PSD_high <- s_exp_PSD[[2]]
               
               if (n == 10) {
-                l_exp_AWC <- spectral_exponent_calculator_AWC(ts_l)
-                s_exp_AWC <- spectral_exponent_calculator_AWC(ts_s)
+                ## calculate on linearly-detrended time series
+                ts_l <- ts_chunk$l_temp - mean(ts_chunk$l_temp)
+                window_l <- parabolic_window(series = ts_l, N = L)
+                ts_l <- ts_l*window_l
+                ts_l <- bridge_detrender(windowed_series = ts_l, N = L)
+                
+                l_exp_PSD <- spectral_exponent_calculator_PSD(ts_l, l = L)
+                
+                l_exp_PSD_low <- l_exp_PSD[[1]]
+                l_exp_PSD_high <- l_exp_PSD[[2]]
+                
+                ## and perform wavelet analysis
+                l_exp_AWC <- spectral_exponent_calculator_AWC(ts_l, N = L)
+                s_exp_AWC <- spectral_exponent_calculator_AWC(ts_s, N = L)
                 
                 ## store:
                 spec_exp_list[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low, l_exp_AWC, s_exp_AWC, 
@@ -225,8 +225,8 @@ sliding_window_spec_exp <- function(path) {
               } 
               else {
                 ## store:
-                spec_exp_list[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low, NA, NA,
-                                              l_exp_PSD_high, s_exp_PSD_high,
+                spec_exp_list[[element]] <- c(NA, s_exp_PSD_low, NA, NA,
+                                              NA, s_exp_PSD_high,
                                               year_start, year_stop, 
                                               lat[y + lat_index],
                                               lon[x + lon_index], paste(n, "years"))

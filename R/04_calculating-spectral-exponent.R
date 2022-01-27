@@ -16,8 +16,7 @@ select <- dplyr::select
 ##############################################
 ## function that creates a parabolic window for a given series
 ## uses Eke 2000, Eq. 6: W(j) = 1 - (2j/(N+1) - 1)^2 for j = 1,...,N
-parabolic_window <- function(series) {
-  N = length(series)
+parabolic_window <- function(series, N) {
   j = c(1:N)
   W = c()
   for (i in j) {
@@ -30,9 +29,7 @@ parabolic_window <- function(series) {
 ## function that bridge detrends a windowed series
 ## calculates line connecting the first and last points of the series
 ## then subtracts that line from data 
-bridge_detrender <- function(windowed_series) {
-  N = length(windowed_series) # get length of series
-  
+bridge_detrender <- function(windowed_series, N) {
   ## regress to get equation of line:
   data <- data.frame(x = c(1, N), y = windowed_series[c(1,N)])
   eq = lm(y ~ x, data = data) 
@@ -50,9 +47,7 @@ bridge_detrender <- function(windowed_series) {
 }
 
 ## function to calculate spectral exponent over a time series window uisng periodogram
-spectral_exponent_calculator_PSD <- function(ts_window) {
-  l <- length(ts_window)
-  
+spectral_exponent_calculator_PSD <- function(ts_window, l) {
   # Fourier transform the time series window: 
   dft <- fft(ts_window)/l
   amp <- sqrt(Im(dft[-1])^2 + Re(dft[-1])^2) ## get rid of first term (represents DC component - y axis shift)
@@ -86,9 +81,7 @@ spectral_exponent_calculator_PSD <- function(ts_window) {
 }
 
 ## function to calculate spectral exponent over a time series window uisng average wavelet coefficient method
-spectral_exponent_calculator_AWC <- function(ts_window) {
-  N = length(ts_window)
-  
+spectral_exponent_calculator_AWC <- function(ts_window, N) {
   ## a. compute wavelet transform
   wavelets <- biwavelet::wt(data.frame(time = 1:N, val = ts_window), do.sig = F)
   
@@ -129,6 +122,10 @@ sliding_window_spec_exp <- function(path) {
   l_filenames <- str_replace_all(names, "spatial_temps", 'l-detrended')
   s_filenames <-  str_replace_all(names, "spatial_temps", 's-detrended')
   
+  ## read in the ocean coordinates
+  ocean <- read.csv("data-processed/masks/cmip5-ocean-coords.csv")
+  ocean_coords <- paste(ocean$lat, ocean$lon)
+  
   lat <- seq(from = 89.5, to = -89.5, length.out = 180) 
   lon <-seq(from = 0.5, to = 359.5, length.out = 360) 
   
@@ -152,99 +149,113 @@ sliding_window_spec_exp <- function(path) {
     while (x < ncol(l_detrended_tas)+1) {
       y = 1 ## latitude
       while (y < nrow(l_detrended_tas)+1) {
-        l_local_ts <- l_detrended_tas[y,x,] ## get the local detrended time series
-        s_local_ts <- s_detrended_tas[y,x,]
-
-        if (x == 1 & y == 1 & count == 1)  {
-          filepath = paste(path, "date_new.rds", sep = "")
-          dates = readRDS(filepath)
-        }
-
-        ## if no time series, skip to next latitude
-        if (length(which(is.na(l_local_ts))) == 83950) {
-          y = y + 1
+        ## if not in the ocean
+        if (!paste(lat[y + lat_index], lon[x + lon_index]) %in% ocean_coords) {
+          l_local_ts <- l_detrended_tas[y,x,] ## get the local detrended time series
+          s_local_ts <- s_detrended_tas[y,x,]
+          
+          if (x == 1 & y == 1 & count == 1)  {
+            filepath = paste(path, "date_new.rds", sep = "")
+            dates = readRDS(filepath)
+          }
+          
+          ## if no time series, skip to next latitude
+          if (length(which(is.na(l_local_ts))) == 83950) {
+            y = y + 1
+          }
+          else {
+            local_ts <- data.frame(time = 1:length(l_local_ts), ## add integer time (days from 1871.01.01)
+                                   l_temp = l_local_ts,
+                                   s_temp = s_local_ts,
+                                   date = dates) %>% ## add a date column
+              mutate(year = str_split_fixed(.$date, 
+                                            pattern = "\\.", n = 2)[,1]) %>% ## add a year column
+              group_by(year) ## group by year
+            
+            #########################################
+            ##        SENSITIVITY ANALYSIS:        ##
+            #########################################
+            ## calculate spectral exponent using FFT over n year windows
+            ## store spectral exponents and calculate slope
+            n = 5
+            while (n < 11) {
+              year_start <- 1871
+              year_stop <- 1871 + n - 1
+              
+              while (year_start <= (2100 - n)) {
+                ## extract temps within time window
+                ts_chunk <- filter(local_ts, year %in% year_start:year_stop)
+                
+                ## get length
+                L = nrow(ts_chunk)
+                
+                ## preprocess the time series:
+                ## a. subtracting mean
+                ts_s <- ts_chunk$s_temp - mean(ts_chunk$s_temp)
+                
+                ## b. windowing - multiply by a parabolic window 
+                window_s <- parabolic_window(series = ts_s, N = L)
+                ts_s <- ts_s*window_s
+                
+                ## c. bridge detrending (endmatching)
+                ## ie. subtracting from the data the line connecting the first and last points of the series
+                ts_s <- bridge_detrender(windowed_series = ts_s, N = L)
+                
+                ## calculate spectral exponent in window using PSD and AWC methods
+                s_exp_PSD <- spectral_exponent_calculator_PSD(ts_s, l = L)
+                
+                s_exp_PSD_low <- s_exp_PSD[[1]]
+                s_exp_PSD_high <- s_exp_PSD[[2]]
+                
+                if (n == 10) {
+                  ## calculate on linearly-detrended time series
+                  ts_l <- ts_chunk$l_temp - mean(ts_chunk$l_temp)
+                  window_l <- parabolic_window(series = ts_l, N = L)
+                  ts_l <- ts_l*window_l
+                  ts_l <- bridge_detrender(windowed_series = ts_l, N = L)
+                  
+                  l_exp_PSD <- spectral_exponent_calculator_PSD(ts_l, l = L)
+                  
+                  l_exp_PSD_low <- l_exp_PSD[[1]]
+                  l_exp_PSD_high <- l_exp_PSD[[2]]
+                  
+                  ## and perform wavelet analysis
+                  l_exp_AWC <- spectral_exponent_calculator_AWC(ts_l, N = L)
+                  s_exp_AWC <- spectral_exponent_calculator_AWC(ts_s, N = L)
+                  
+                  ## store:
+                  spec_exp_list[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low, l_exp_AWC, s_exp_AWC, 
+                                                l_exp_PSD_high, s_exp_PSD_high,
+                                                year_start, year_stop, 
+                                                lat[y + lat_index],
+                                                lon[x + lon_index], paste(n, "years"))
+                } 
+                else {
+                  ## store:
+                  spec_exp_list[[element]] <- c(NA, s_exp_PSD_low, NA, NA,
+                                                NA, s_exp_PSD_high,
+                                                year_start, year_stop, 
+                                                lat[y + lat_index],
+                                                lon[x + lon_index], paste(n, "years"))
+                }
+                
+                ## move to next window
+                year_start = year_stop + 1
+                year_stop = year_stop + n 
+                
+                element = element + 1
+              }
+              
+              ## move to next window width
+              n = n + 1
+            }
+            print(paste("Calculating spectral exponent for lat = ", lat[y + lat_index],
+                        ", lon = ", lon[x + lon_index], sep = ""))
+            y = y + 1
+          }
         }
         else {
-          local_ts <- data.frame(time = 1:length(l_local_ts), ## add integer time (days from 1871.01.01)
-                                 l_temp = l_local_ts,
-                                 s_temp = s_local_ts,
-                                 date = dates) %>% ## add a date column
-            mutate(year = str_split_fixed(.$date, 
-                                          pattern = "\\.", n = 2)[,1]) %>% ## add a year column
-            group_by(year) ## group by year
-
-          #########################################
-          ##        SENSITIVITY ANALYSIS:        ##
-          #########################################
-          ## calculate spectral exponent using FFT over n year windows
-          ## store spectral exponents and calculate slope
-          n = 5
-          while (n < 11) {
-            year_start <- 1871
-            year_stop <- 1871 + n - 1
-
-            while (year_start <= (2100 - n)) {
-              ## extract temps within time window
-              ts_chunk <- filter(local_ts, year %in% year_start:year_stop)
-
-              ## preprocess the time series:
-              ## a. subtracting mean
-              ts_l <- ts_chunk$l_temp - mean(ts_chunk$l_temp)
-              ts_s <- ts_chunk$s_temp - mean(ts_chunk$s_temp)
-              
-              ## b. windowing - multiply by a parabolic window 
-              window_l <- parabolic_window(series = ts_l)
-              window_s <- parabolic_window(series = ts_s)
-              ts_l <- ts_l*window_l
-              ts_s <- ts_s*window_s
-              
-              ## c. bridge detrending (endmatching)
-              ## ie. subtracting from the data the line connecting the first and last points of the series
-              ts_l <- bridge_detrender(windowed_series = ts_l)
-              ts_s <- bridge_detrender(windowed_series = ts_s)
-              
-              ## calculate spectral exponent in window using PSD and AWC methods
-              l_exp_PSD <- spectral_exponent_calculator_PSD(ts_l)
-              s_exp_PSD <- spectral_exponent_calculator_PSD(ts_s)
-              
-              l_exp_PSD_low <- l_exp_PSD[[1]]
-              l_exp_PSD_high <- l_exp_PSD[[2]]
-              
-              s_exp_PSD_low <- s_exp_PSD[[1]]
-              s_exp_PSD_high <- s_exp_PSD[[2]]
-              
-              if (n == 10) {
-                l_exp_AWC <- spectral_exponent_calculator_AWC(ts_l)
-                s_exp_AWC <- spectral_exponent_calculator_AWC(ts_s)
-                
-                ## store:
-                spec_exp_list[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low, l_exp_AWC, s_exp_AWC, 
-                                              l_exp_PSD_high, s_exp_PSD_high,
-                                              year_start, year_stop, 
-                                              lat[y + lat_index],
-                                              lon[x + lon_index], paste(n, "years"))
-              } 
-              else {
-                ## store:
-                spec_exp_list[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low, NA, NA,
-                                              l_exp_PSD_high, s_exp_PSD_high,
-                                              year_start, year_stop, 
-                                              lat[y + lat_index],
-                                              lon[x + lon_index], paste(n, "years"))
-              }
-
-              ## move to next window
-              year_start = year_stop + 1
-              year_stop = year_stop + n 
-
-              element = element + 1
-            }
-
-            ## move to next window width
-            n = n + 1
-          }
-          print(paste("Calculating spectral exponent for lat = ", lat[y + lat_index],
-                      ", lon = ", lon[x + lon_index], sep = ""))
+          ## if it was an ocean coordinate, move along
           y = y + 1
         }
       }
