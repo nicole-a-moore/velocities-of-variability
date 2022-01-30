@@ -94,8 +94,9 @@ spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels =
 
 tas <- spec_exp %>%
   filter(time_window_width == "10 years") %>%
-  select(lon, lat, l_estimate, s_estimate, l_p.value, s_p.value) %>%
-  unique()
+  select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_p.value_PSD_low, s_p.value_PSD_low) %>%
+  unique() %>%
+  mutate(lon = ifelse(lon >= 180, lon - 358, lon))
 
 ### get tos data
 path = "data-raw/" 
@@ -141,11 +142,12 @@ tos <- spec_exp %>%
   select(lon, lat, l_estimate, s_estimate, l_p.value, s_p.value) %>%
   unique()
 
-
 ## mosaic together tas and tos 
 raster_tas <- rasterFromXYZ(tas)
 raster_tos <- rasterFromXYZ(tos)
-extent(raster_tas) <- c(-179, 179, -89, 89)
+extent(raster_tas) <- c(-179, 179, -89, 84)
+raster_tas <- extend(raster_tas, c(-180, 180, -90, 90))
+raster_tos <- extend(raster_tos, c(-180, 180, -90, 90))
 
 ## crop
 raster_tas <- crop(raster_tas, raster_tos)

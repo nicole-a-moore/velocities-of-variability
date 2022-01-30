@@ -77,7 +77,14 @@ spectral_exponent_calculator_PSD <- function(ts_window, l) {
     tidy(.) %>%
     filter(term == "log10(freq)")
   
-  return(list(-model_output_low$estimate, -model_output_high$estimate))
+  ## fit slope for species with generation times < 1year
+  model_output_annual <- spectral %>%
+    filter(freq >= 1/365) %>%
+    lm(., formula = log10(power) ~ log10(freq)) %>%
+    tidy(.) %>%
+    filter(term == "log10(freq)")
+  
+  return(list(-model_output_low$estimate, -model_output_high$estimate, -model_output_annual$estimate))
 }
 
 ## function to calculate spectral exponent over a time series window uisng average wavelet coefficient method
@@ -206,6 +213,7 @@ sliding_window_spec_exp <- function(path) {
                 
                 s_exp_PSD_low <- s_exp_PSD[[1]]
                 s_exp_PSD_high <- s_exp_PSD[[2]]
+                s_exp_PSD_annual <- s_exp_PSD[[3]]
                 
                 if (n == 10) {
                   ## calculate on linearly-detrended time series
@@ -218,6 +226,7 @@ sliding_window_spec_exp <- function(path) {
                   
                   l_exp_PSD_low <- l_exp_PSD[[1]]
                   l_exp_PSD_high <- l_exp_PSD[[2]]
+                  l_exp_PSD_annual <-  l_exp_PSD[[3]]
                   
                   ## and perform wavelet analysis
                   l_exp_AWC <- spectral_exponent_calculator_AWC(ts_l, N = L)
@@ -225,7 +234,7 @@ sliding_window_spec_exp <- function(path) {
                   
                   ## store:
                   spec_exp_list[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low, l_exp_AWC, s_exp_AWC, 
-                                                l_exp_PSD_high, s_exp_PSD_high,
+                                                l_exp_PSD_high, s_exp_PSD_high, l_exp_PSD_annual, s_exp_PSD_annual, 
                                                 year_start, year_stop, 
                                                 lat[y + lat_index],
                                                 lon[x + lon_index], paste(n, "years"))
@@ -233,7 +242,7 @@ sliding_window_spec_exp <- function(path) {
                 else {
                   ## store:
                   spec_exp_list[[element]] <- c(NA, s_exp_PSD_low, NA, NA,
-                                                NA, s_exp_PSD_high,
+                                                NA, s_exp_PSD_high, NA, s_exp_PSD_annual,
                                                 year_start, year_stop, 
                                                 lat[y + lat_index],
                                                 lon[x + lon_index], paste(n, "years"))
@@ -256,6 +265,14 @@ sliding_window_spec_exp <- function(path) {
         }
         else {
           ## if it was an ocean coordinate, move along
+          if (x == 1 & y == 1 & count == 1)  {
+            filepath = paste(path, "date_new.rds", sep = "")
+            dates = readRDS(filepath)
+          }
+          
+          print(paste("Skipping ocean (lat = ", lat[y + lat_index],
+                      ", lon = ", lon[x + lon_index], ")", sep = ""))
+          
           y = y + 1
         }
       }
@@ -265,15 +282,16 @@ sliding_window_spec_exp <- function(path) {
     ## bind rows in list into data frame
     spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
     colnames(spec_exp_df) <- c("l_spec_exp_PSD_low", "s_spec_exp_PSD_low", "l_spec_exp_AWC", "s_spec_exp_AWC",
-                               "l_exp_PSD_high", "s_exp_PSD_high",
+                               "l_spec_exp_PSD_high", "s_spec_exp_PSD_high", "l_spec_exp_PSD_annual", "s_spec_exp_PSD_annual",
                                "window_start_year",
                                "window_stop_year", "lat", "lon", "time_window_width")
 
     ## convert numbers to numeric
-    spec_exp_df[,1:10] <- sapply(spec_exp_df[,1:10], as.numeric)
+    spec_exp_df[,1:12] <- sapply(spec_exp_df[,1:12], as.numeric)
 
     ## regress spectral exponent and extract slope representing change in spectral exponent over time for each location and window width
     l_model_output_PSD_low <- spec_exp_df %>%
+      filter(time_window_width == "10 years") %>%
       group_by(lat, lon, time_window_width) %>%
       do(tidy(lm(., formula = l_spec_exp_PSD_low ~ window_start_year))) %>%
       filter(term == "window_start_year")
@@ -288,6 +306,7 @@ sliding_window_spec_exp <- function(path) {
     colnames(s_model_output_PSD_low)[5:8] <- paste("s", colnames(s_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
     
     l_model_output_PSD_high <- spec_exp_df %>%
+      filter(time_window_width == "10 years") %>%
       group_by(lat, lon, time_window_width) %>%
       do(tidy(lm(., formula = l_spec_exp_PSD_high ~ window_start_year))) %>%
       filter(term == "window_start_year")
@@ -301,11 +320,27 @@ sliding_window_spec_exp <- function(path) {
     
     colnames(s_model_output_PSD_high)[5:8] <- paste("s", colnames(s_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
     
+    l_model_output_PSD_annual <- spec_exp_df %>%
+      filter(time_window_width == "10 years") %>%
+      group_by(lat, lon, time_window_width) %>%
+      do(tidy(lm(., formula = l_spec_exp_PSD_annual ~ window_start_year))) %>%
+      filter(term == "window_start_year")
+    
+    colnames(l_model_output_PSD_annual)[5:8] <- paste("l", colnames(l_model_output_PSD_annual)[5:8], "PSD_annual", sep = "_")
+    
+    s_model_output_PSD_annual <- spec_exp_df %>%
+      group_by(lat, lon, time_window_width) %>%
+      do(tidy(lm(., formula = s_spec_exp_PSD_annual ~ window_start_year))) %>%
+      filter(term == "window_start_year")
+    
+    colnames(s_model_output_PSD_annual)[5:8] <- paste("s", colnames(s_model_output_PSD_annual)[5:8], "PSD_annual", sep = "_")
+    
     l_model_output_AWC <- spec_exp_df %>%
+      filter(time_window_width == "10 years") %>%
       group_by(lat, lon) %>%
       do(tidy(lm(., formula = l_spec_exp_AWC ~ window_start_year))) %>%
       filter(term == "window_start_year")
-    
+  
     colnames(l_model_output_AWC)[4:7] <- paste("l", colnames(l_model_output_AWC)[4:7], "AWC", sep = "_")
     l_model_output_AWC$time_window_width = "10 years"
     
@@ -324,7 +359,9 @@ sliding_window_spec_exp <- function(path) {
       left_join(., l_model_output_AWC) %>%
       left_join(., s_model_output_AWC) %>%
       left_join(., l_model_output_PSD_high) %>%
-      left_join(., s_model_output_PSD_high)
+      left_join(., s_model_output_PSD_high) %>%
+      left_join(., l_model_output_PSD_annual) %>%
+      left_join(., s_model_output_PSD_annual)
 
     ## add filename to list:
     if(count == 1) {
