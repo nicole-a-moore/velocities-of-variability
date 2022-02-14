@@ -91,7 +91,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
           local_ts$temp[which(local_ts$temp > 333.15)] <- NA
           
           ## interpolate if temps are missing
-          if(length(is.na(local_ts$temp)) != 0 & length(is.na(local_ts$temp)) 
+          if(length(which(is.na(local_ts$temp))) != 0 & length(which(is.na(local_ts$temp))) 
              != length(local_ts$temp)) {
             local_ts$temp <- na_kalman(local_ts$temp, smooth = TRUE, model = "StructTS")
             temps_df[y,x,] <- local_ts$temp ## save changed time series if it needed changing
