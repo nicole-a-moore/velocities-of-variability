@@ -109,11 +109,18 @@ spectral_exponent_calculator_AWC <- function(ts_window, N) {
 ## returns a list containing: 
 ##      - matrix of change in spectral exponents using each window width
 ##      - data frame of spectral exponents within each sliding window across all locations and for all window widths 
-sliding_window_spec_exp <- function(path) {
+sliding_window_spec_exp <- function(path, type) {
   
-  ## read in spatial chunk file names:
-  filepath = paste(path, "sp_files_tos.rds", sep = "")
-  names = readRDS(filepath)
+  if (type == "GCM") {
+    ## read in spatial chunk file names:
+    filepath = paste(path, "sp_files_tos.rds", sep = "")
+    names = readRDS(filepath)
+  }
+  else if (type == "ERA40") {
+    filepath = "data-processed/ERA-40/era-40_sst_sp_files.rds"
+    names = readRDS(filepath)
+    path = "data-processed/ERA-40/sst_"
+  }
   
   #remove me for use on cluster 
   #names = str_replace_all(names, 'data-raw', '/Volumes/SundayLab/CMIP5-GCMs_tos')
@@ -148,12 +155,19 @@ sliding_window_spec_exp <- function(path) {
         s_local_ts <- s_detrended_tas[y,x,]
         
         if (x == 1 & y == 1 & count == 1)  {
-          filepath = paste(path, "date_new_tos.rds", sep = "")
-          dates = readRDS(filepath)
+          if (type == "GCM") {
+            filepath = paste(path, "date_new_tos.rds", sep = "")
+            dates = readRDS(filepath)
+          }
+          else if (type == "ERA40") {
+            dates <- paste(rep(seq(1957, 2002), each = 365), ".", rep(seq(1:365), 45), sep = "")
+            dates <- dates[244:(45*365+243)]
+          }
+          
         }
         
         ## if no time series, skip to next latitude
-        if (length(which(is.na(l_local_ts))) == 83950) {
+        if (length(which(is.na(l_local_ts))) == length(l_local_ts)) {
           y = y + 1
         }
         else {
@@ -172,10 +186,18 @@ sliding_window_spec_exp <- function(path) {
           ## store spectral exponents and calculate slope
           n = 5
           while (n < 11) {
-            year_start <- 1871
-            year_stop <- 1871 + n - 1
+            if (type == "GCM") {
+              year_start <- 1871
+              year_stop <- 1871 + n - 1
+              max = 2100
+            }
+            else if (type == "ERA40") {
+              year_start <- 1958
+              year_stop <- 1958 + n - 1
+              max = 2001
+            }
             
-            while (year_start <= (2100 - n)) {
+            while (year_start <= (max - n)) {
               ## extract temps within time window
               ts_chunk <- filter(local_ts, year %in% year_start:year_stop)
               
@@ -262,6 +284,7 @@ sliding_window_spec_exp <- function(path) {
     
     ## regress spectral exponent and extract slope representing change in spectral exponent over time for each location and window width
     l_model_output_PSD_low <- spec_exp_df %>%
+      filter(time_window_width == "10 years") %>%
       group_by(lat, lon, time_window_width) %>%
       do(tidy(lm(., formula = l_spec_exp_PSD_low ~ window_start_year))) %>%
       filter(term == "window_start_year")
@@ -276,6 +299,7 @@ sliding_window_spec_exp <- function(path) {
     colnames(s_model_output_PSD_low)[5:8] <- paste("s", colnames(s_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
     
     l_model_output_PSD_high <- spec_exp_df %>%
+      filter(time_window_width == "10 years") %>%
       group_by(lat, lon, time_window_width) %>%
       do(tidy(lm(., formula = l_spec_exp_PSD_high ~ window_start_year))) %>%
       filter(term == "window_start_year")
@@ -290,6 +314,7 @@ sliding_window_spec_exp <- function(path) {
     colnames(s_model_output_PSD_high)[5:8] <- paste("s", colnames(s_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
     
     l_model_output_AWC <- spec_exp_df %>%
+      filter(time_window_width == "10 years") %>%
       group_by(lat, lon) %>%
       do(tidy(lm(., formula = l_spec_exp_AWC ~ window_start_year))) %>%
       filter(term == "window_start_year")
@@ -319,7 +344,7 @@ sliding_window_spec_exp <- function(path) {
       se_filenames <- paste(path, "spec-exp_long-", 
                             lon_index,"-", lon_index + 60, "_lat-",
                             90-lat_index,"-", 90-lat_index-60,
-                            "_new.csv", sep = "")
+                            ".csv", sep = "")
     }
     else {
       se_filenames <- append(se_filenames,

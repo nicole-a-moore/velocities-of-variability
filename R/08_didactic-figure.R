@@ -641,3 +641,99 @@ two_ex_plot <- two_examples %>%
 
 ggsave(two_ex_plot, path = "figures/didactic", filename = "high-vs-low.png", device = "png",
        width = 2.5, height = 2.5)
+
+## make plot with only one
+one_ex_plot <- one %>%
+  ggplot(aes(x = freq, y = power)) + 
+  geom_line() +  
+  scale_y_log10(breaks = c(0.0000001, 0.00001, 0.001, 0.1),
+                labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
+  scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
+                labels = c("0.001", "0.01", "0.1", "1")) +
+  geom_vline(xintercept = 1/3650, linetype = "dotted") +
+  geom_vline(xintercept = 1/365, linetype = "dotted") +
+  geom_vline(xintercept = 1/31, linetype = "dotted") +
+  geom_line(stat="smooth", method = "lm", formula = y ~ x,
+            size = 1, colour = "black") + 
+  theme_light() +
+  labs(x = "Frequency", y = "Power") + 
+  guides(colour = "none") + 
+  theme(panel.grid = element_blank(), 
+        panel.border = element_blank(),
+        panel.background = element_rect(fill = "transparent"),
+        rect = element_rect(fill = "transparent"),
+        axis.line.y.left = element_line(size=0.5),
+        axis.line.x.bottom = element_line(size=0.5),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6))
+
+ggsave(one_ex_plot, path = "figures/didactic", filename = "red-noise.png", device = "png",
+       width = 4.5, height = 3.5)
+
+one_ex_plot <- one %>%
+  ggplot(aes(x = freq, y = power)) + 
+  geom_line(colour = "transparent") +  
+  scale_y_log10(breaks = c(0.0000001, 0.00001, 0.001, 0.1),
+                labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
+  scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
+                labels = c("0.001", "0.01", "0.1", "1")) +
+  geom_vline(xintercept = 1/3650, linetype = "dotted") +
+  geom_vline(xintercept = 1/365, linetype = "dotted") +
+  geom_vline(xintercept = 1/31, linetype = "dotted") +
+  geom_line(stat="smooth", method = "lm", formula = y ~ x,
+            size = 1, colour = "black") + 
+  theme_light() +
+  labs(x = "Frequency", y = "Power") + 
+  guides(colour = "none") + 
+  theme(panel.grid = element_blank(), 
+        panel.border = element_blank(),
+        panel.background = element_rect(fill = "transparent"),
+        rect = element_rect(fill = "transparent"),
+        axis.line.y.left = element_line(size=0.5),
+        axis.line.x.bottom = element_line(size=0.5),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6))
+
+
+ggsave(one_ex_plot, path = "figures/didactic", filename = "red-noise_slope.png", device = "png",
+       width = 4.5, height = 3.5)
+
+lm(data = one, power ~ freq)
+
+guides = one %>%
+  ggplot(aes(x = freq, y = power)) + 
+  geom_line(colour = "darkgrey") +  
+  scale_y_log10(breaks = c(0.0000001, 0.00001, 0.001, 0.1),
+                labels = c("0.0000001", "0.00001", "0.001", "0.1")) + 
+  scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1),
+                labels = c("0.001", "0.01", "0.1", "1")) +
+  geom_vline(xintercept = 1/3650, linetype = "dotted") +
+  geom_vline(xintercept = 1/365, linetype = "dotted") +
+  geom_vline(xintercept = 1/31, linetype = "dotted") +
+  geom_line(stat="smooth", method = "lm", formula = y ~ x,
+            size = 1, colour = "black") + 
+  theme_light() +
+  labs(x = "Frequency", y = "Power") + 
+  guides(colour = "none") + 
+  theme(panel.grid = element_blank(), 
+        panel.border = element_blank(),
+        rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent"),
+        axis.line.y.left = element_line(size=0.5),
+        axis.line.x.bottom = element_line(size=0.5),
+        axis.title.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6)) + 
+  geom_abline(intercept = 0.9, slope = 0) + 
+  geom_abline(intercept = log(0.07), slope = -1) + 
+  geom_abline(intercept = log(0.002), slope = -2) + 
+  geom_abline(intercept = log(0.000055), slope = -3) 
+
+ggsave(guides, path = "figures/didactic", filename = "guides.png", device = "png",
+       width = 4.5, height = 3.5)
+  
