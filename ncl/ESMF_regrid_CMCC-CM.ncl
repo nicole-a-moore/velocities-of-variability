@@ -33,11 +33,11 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
 begin
 ;--- make a list of all filenames:
 
-	filepath  = "/Users/nikkimoore/Documents/velocities-of-variability/data-processed/wget_sst/"
-	filenames = (/"tos_day_CMCC-CM_historical_r1i1p1_18500101-18591231.nc"/)
-	
+	filepath  =  "/Users/nikkimoore/Documents/velocities-of-variability/data-raw/02_CMCC-CM/"
+	filenames = (/"tos_day_CMCC-CM_historical_r1i1p1_18700101-18791231.nc","tos_day_CMCC-CM_historical_r1i1p1_18800101-18891231.nc","tos_day_CMCC-CM_historical_r1i1p1_18900101-18991231.nc","tos_day_CMCC-CM_historical_r1i1p1_19000101-19091231.nc","tos_day_CMCC-CM_historical_r1i1p1_19100101-19191231.nc","tos_day_CMCC-CM_historical_r1i1p1_19200101-19291231.nc","tos_day_CMCC-CM_historical_r1i1p1_19300101-19391231.nc","tos_day_CMCC-CM_historical_r1i1p1_19400101-19491231.nc","tos_day_CMCC-CM_historical_r1i1p1_19500101-19591231.nc","tos_day_CMCC-CM_historical_r1i1p1_19600101-19691231.nc","tos_day_CMCC-CM_historical_r1i1p1_19700101-19791231.nc","tos_day_CMCC-CM_historical_r1i1p1_19800101-19891231.nc","tos_day_CMCC-CM_historical_r1i1p1_19900101-19991231.nc","tos_day_CMCC-CM_historical_r1i1p1_20000101-20051231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20060101-20101231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20110101-20201231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20210101-20301231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20310101-20401231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20410101-20501231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20510101-20601231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20610101-20701231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20710101-20801231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20810101-20901231.nc","tos_day_CMCC-CM_rcp85_r1i1p1_20910101-21001231.nc"/)
+
 ;--- for each file in filenames, regrid:
-	do n=0,0   ;dimsizes(filenames)-1
+	do n=0,dimsizes(filenames)-1
 	
 	;---Interpolation methods
     methods      = ("bilinear")

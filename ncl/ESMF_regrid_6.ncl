@@ -33,11 +33,12 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
 begin
 ;--- make a list of all filenames:
 
-	filepath  = "/Users/nikkimoore/Documents/velocities-of-variability/data-raw/09_HadGEM2-CC/"
-	filenames = ((/"tos_day_HadGEM2-ES_historical_r1i1p1_18691201-18791130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_18791201-18891130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_18891201-18991130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_18991201-19091130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19091201-19191130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19191201-19291130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19291201-19391130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19391201-19491130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19491201-19591130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19591201-19691130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19691201-19791130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19791201-19891130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19891201-19991130.nc","tos_day_HadGEM2-ES_historical_r1i1p1_19991201-20051130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20051201-20101130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20101201-20151130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20151201-20201130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20201201-20251130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20251201-20301130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20301201-20351130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20351201-20401130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20401201-20451130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20451201-20501130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20501201-20551130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20551201-20601130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20601201-20651130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20651201-20701130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20701201-20751130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20751201-20851130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20851201-20991130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_20991201-21091130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21091201-21191130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21191201-21291130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21291201-21391130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21391201-21491130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21491201-21591130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21591201-21691130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21691201-21791130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21791201-21891130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21891201-21991130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_21991201-22091130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22091201-22191130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22191201-22291130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22291201-22391130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22391201-22491130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22491201-22591130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22591201-22691130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22691201-22791130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22791201-22891130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22891201-22991130.nc","tos_day_HadGEM2-ES_rcp85_r1i1p1_22991201-22991230.nc"/))
+	filepath  = "/Users/nikkimoore/Documents/velocities-of-variability/data-raw/01_CMCC-CESM/"
+	filenames = ((/"tos_day_CMCC-CESM_historical_r1i1p1_18680101-18731231.nc","tos_day_CMCC-CESM_historical_r1i1p1_18740101-18791231.nc","tos_day_CMCC-CESM_historical_r1i1p1_18800101-18851231.nc","tos_day_CMCC-CESM_historical_r1i1p1_18860101-18911231.nc","tos_day_CMCC-CESM_historical_r1i1p1_18920101-18971231.nc","tos_day_CMCC-CESM_historical_r1i1p1_18980101-19031231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19040101-19091231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19100101-19151231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19160101-19211231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19220101-19271231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19280101-19331231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19340101-19391231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19400101-19451231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19460101-19511231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19520101-19571231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19580101-19631231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19640101-19691231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19700101-19751231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19820101-19871231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19880101-19931231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19940101-19991231.nc","tos_day_CMCC-CESM_historical_r1i1p1_20000101-20051231.nc","tos_day_CMCC-CESM_historical_r1i1p1_19760101-19811231.nc"/))  
+	printVarSummary(filenames)
 
 ;--- for each file in filenames, regrid:
-	do n=0,dimsizes(filenames)-1
+	do n=0,0   ;dimsizes(filenames)-1
 	
 	;---Interpolation methods
     methods      = ("bilinear")
@@ -57,8 +58,8 @@ begin
     Opt@DstFileName      = filepath + "World1deg_SCRIP.nc"   ; destination file name
     Opt@ForceOverwrite   = True
 
-    Opt@SrcGridCornerLat = sfile->lat_bnds    ; corners are necessary
-    Opt@SrcGridCornerLon = sfile->lon_bnds    ; for "conserve" method
+    Opt@SrcGridCornerLat = sfile->lat_vertices    ; corners are necessary
+    Opt@SrcGridCornerLon = sfile->lon_vertices    ; for "conserve" method
     Opt@SrcMask2D        = where(.not.ismissing(tos(0,:,:)),1,0)
     
     Opt@DstGridType      = "1x1"              ; Destination grid

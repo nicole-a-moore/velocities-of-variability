@@ -57,8 +57,8 @@ begin
     Opt@DstFileName      = filepath + "World1deg_SCRIP.nc"   ; destination file name
     Opt@ForceOverwrite   = True
 
-    Opt@SrcGridCornerLat = sfile->lat_vertices    ; corners are necessary
-    Opt@SrcGridCornerLon = sfile->lon_vertices    ; for "conserve" method
+    Opt@SrcGridCornerLat = sfile->lat_bnds    ; corners are necessary
+    Opt@SrcGridCornerLon = sfile->lon_bnds    ; for "conserve" method
     Opt@SrcMask2D        = where(.not.ismissing(tos(0,:,:)),1,0)
     
     Opt@DstGridType      = "1x1"              ; Destination grid
