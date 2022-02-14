@@ -33,9 +33,9 @@ registerDoParallel(numCores)  # use multicore, set to the number of our cores
 ## 500 simulations, run for a maximum duration of 200 000 generations
 
 #### model parameters:
-K0 = 100  #carrying capacity
-Tmax = 200000 #length of time to run model
-N0 = 100 #starting conditions
+K0 = 30  #carrying capacity
+Tmax = 83950 #length of time to run model
+N0 = 30 #starting conditions
 
 one_over_f <- function(beta){
   ## create 1/fB noise as described in Cuddington and Yodzis
@@ -76,7 +76,7 @@ one_over_f <- function(beta){
 
 colours = seq(0, 3.2, by = 0.1)
 all_results <- list()
-l = seq(0, 1, by = 0.1)
+l = seq(0.1, 1, by = 0.1)
 
 
 icp = 1
@@ -128,10 +128,10 @@ while (icp <= length(l)) {
   icp = icp + 1
 }
 
-saveRDS(all_results, "data-processed/ricker_parallel_all-results.rds")
+saveRDS(all_results, "data-processed/ricker_parallel_all-results_sandbox.rds")
 
 
-all_results <- readRDS("data-processed/ricker_parallel_all-results.rds")
+all_results <- readRDS("data-processed/ricker_parallel_all-results_sandbox.rds")
 
 all <- as.data.frame(do.call("rbind", all_results))
 
@@ -219,6 +219,11 @@ vis.gam(smooth_interact,
 
 
 
-
+sims %>%
+  filter(l == "0.1") %>%
+  ggplot(aes(x = s_spec_exp_PSD_low, y = log(t), colour = s_estimate_PSD_low, group = l)) +
+  geom_point() +
+  geom_smooth() +
+  geom_point(data = as.data.frame(all), aes(x = colour, y = log(t)), inherit.aes = F)
 
 
