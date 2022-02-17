@@ -22,22 +22,42 @@ pal_lat_and_realm <-  c(pal[5], pal[4], pal[1], pal[2])
 #####       spectral exponent      #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## extract 10 year time window 
-s_stack_tas <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list.rds")[[6]] 
-extent(s_stack_tas) <- c(-179, 179, -89, 89)
-s_stack_tos <- readRDS("data-raw/01_CMCC-CESM/s_stack_list_tos.rds")[[6]] 
+s_stack_tas_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_PSD_low.rds")[[6]] 
+s_stack_tas_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_AWC.rds")[[6]] 
+s_stack_tas_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_PSD_high.rds")[[6]] 
+extent(s_stack_tas_PSD_low) <- extent(s_stack_tas_AWC) <- extent(s_stack_tas_PSD_high) <- c(-179, 179, -89, 89)
 
-s_stack_tas <- crop(s_stack_tas, s_stack_tos)
-s_stack_tos <- crop(s_stack_tos, s_stack_tas)
+s_stack_tos_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_low.rds")[[6]] 
+s_stack_tos_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_AWC.rds")[[6]] 
+s_stack_tos_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_high.rds")[[6]] 
+
+## crop to same extent
+list_tas <- c(s_stack_tas_PSD_low, s_stack_tas_AWC, s_stack_tas_PSD_high)
+list_tas <- sapply(list_tas, FUN = crop, l_stack_tos)
+list_tas <- sapply(list_tas, FUN = stack)
+
+list_tos <- c(s_stack_tos_PSD_low, s_stack_tos_AWC, s_stack_tos_PSD_high)
+list_tos <- sapply(list_tos, FUN = crop, list_tas[[1]])
+list_tos <- sapply(list_tos, FUN = stack)
+
+land <- readRDS("data-processed/01_tos-tas-land-mask.rds") 
+list_tas <- sapply(list_tas, FUN = mask, land)
+list_tas <- sapply(list_tas, FUN = stack)
+s_stack_tas <- mask(s_stack_tas_PSD_low, land)
 
 ## mosaic rasters together 
-s_stack_tas <- mask(s_stack_tas, land)
-plot(s_stack_tas[[1]])
+s_stack_tas_PSD_low <- list_tas[[1]]
+s_stack_tas_AWC <- list_tas[[2]]
+s_stack_tas_PSD_high <- list_tas[[3]]
 
-isna <- is.na(s_stack_tos[[1]])
-s_stack_tos[isna == 1] <- s_stack_tas[isna == 1]
+isna <- is.na(s_stack_tos_PSD_low[[1]])
+s_stack_tos_PSD_low[isna == 1] <- s_stack_tas_PSD_low[isna == 1]
+s_stack_tos_AWC[isna == 1] <- s_stack_tas_AWC[isna == 1]
+s_stack_tos_PSD_high[isna == 1] <- s_stack_tas_PSD_high[isna == 1]
 
-mosaic_specexp <- s_stack_tos
-plot(mosaic_specexp[[1]])
+mosaic_specexp_low <- s_stack_tos_PSD_low
+mosaic_specexp_AWC <- s_stack_tos_AWC
+mosaic_specexp_high <- s_stack_tos_PSD_high
 
 ## keep track of land and ocean by making a mask:
 land_mask <- s_stack_tas
@@ -46,9 +66,12 @@ land_mask[land_mask == mosaic_specexp] <- 1
 land_mask <- land_mask[[1]]
 
 ## save:
-saveRDS(mosaic_specexp, "data-processed/01_tos-tas-mosaic_spectral-exponent.rds")
-saveRDS(land_mask, "data-processed/01_tos-tas-land-mask.rds")
+#saveRDS(mosaic_specexp, "data-processed/01_tos-tas-mosaic_spectral-exponent.rds")
+#saveRDS(land_mask, "data-processed/01_tos-tas-land-mask.rds")
 
+saveRDS(mosaic_specexp_low, "data-processed/01_tos-tas-mosaic_spectral-exponent_low.rds")
+saveRDS(mosaic_specexp_high, "data-processed/01_tos-tas-mosaic_spectral-exponent_high.rds")
+saveRDS(mosaic_specexp_AWC, "data-processed/01_tos-tas-mosaic_spectral-exponent_AWC.rds")
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 #####        spectral change       #####
@@ -94,12 +117,12 @@ spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels =
 
 tas <- spec_exp %>%
   filter(time_window_width == "10 years") %>%
-  select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_p.value_PSD_low, s_p.value_PSD_low) %>%
+  select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high) %>%
   unique() %>%
   mutate(lon = ifelse(lon >= 180, lon - 358, lon))
 
 ### get tos data
-path = "data-raw/" 
+path = "/Volumes/SundayLab/CMIP5-GCMs_tos/" 
 
 ## create vector of file folders to put data into:
 gcm_models <- c("01_CMCC-CESM", "02_CMCC-CM", '03_CMCC-CMS', '04_MPI-ESM-LR', '05_MPI-ESM-MR',
@@ -139,7 +162,7 @@ spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels =
 
 tos <- spec_exp %>%
   filter(time_window_width == "10 years") %>%
-  select(lon, lat, l_estimate, s_estimate, l_p.value, s_p.value) %>%
+  select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high) %>%
   unique()
 
 ## mosaic together tas and tos 
@@ -160,35 +183,57 @@ mosaic_specchange <- raster_tos
 plot(mosaic_specchange$s_estimate)
 
 ## save:
-saveRDS(mosaic_specchange, "data-processed/01_tos-tas-mosaic_spectral-change.rds")
+saveRDS(mosaic_specchange, "data-processed/01_tos-tas-mosaic_spectral-change_multifrac.rds")
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ##### 1a. Analyze spectral exponent on land vs. ocean #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## use mosaic_specexp
-mosaic_specexp <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent.rds")
+mosaic_specexp_low <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent_low.rds")
+mosaic_specexp_high <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent_high.rds")
 
 ## split data into land and ocean
-land <- mask(mosaic_specexp, land_mask)
-plot(land[[1]])
-ocean <- mask(mosaic_specexp, land_mask, inverse = T)
-plot(ocean[[1]])
+land_low <- mask(mosaic_specexp_low, land_mask)
+plot(land_low[[1]])
+ocean_low <- mask(mosaic_specexp_low, land_mask, inverse = T)
+plot(ocean_low[[1]])
+
+land_high <- mask(mosaic_specexp_high, land_mask)
+plot(land_high[[1]])
+ocean_high <- mask(mosaic_specexp_high, land_mask, inverse = T)
+plot(ocean_high[[1]])
 
 ## summary stats and figures:
 ## mean
-mean(values(land), na.rm = T)
-mean(values(ocean), na.rm = T)
+mean(values(land_low), na.rm = T)
+mean(values(ocean_low), na.rm = T)
+mean(values(land_high), na.rm = T)
+mean(values(ocean_high), na.rm = T)
 
 ## standard deviation
-sd(values(land), na.rm = T)
-sd(values(ocean), na.rm = T)
+sd(values(land_low), na.rm = T)
+sd(values(ocean_low), na.rm = T)
+sd(values(land_high), na.rm = T)
+sd(values(ocean_high), na.rm = T)
 
 ## histogram:
-mean_land <- calc(land, mean)
-mean_ocean <- calc(ocean, mean)
-df <- data.frame(land = c(values(mean_land)), ocean = c(values(mean_ocean)))
-df <- gather(df, key = "realm", value = "mean_spec_exp", land, ocean)
-df <- filter(df, !is.na(mean_spec_exp))
+low_or_high = append(append(rep("low", length(values(mean_land_low))), 
+                     rep("high", length(values(mean_land_high)))),
+                     append(rep("low", length(values(mean_ocean_low))), 
+                    rep("high", length(values(mean_ocean_high)))))
+realm =  append(rep("Land", length(values(mean_land_low)) + length(values(mean_land_high))), 
+                rep("Ocean", length(values(mean_ocean_low)) + length(values(mean_ocean_high))))
+
+mean_land_low <- calc(land_low, mean)
+mean_ocean_low <- calc(ocean_low, mean)
+mean_land_high <- calc(land_high, mean)
+mean_ocean_high <- calc(ocean_high, mean)
+df <- data.frame(mean_spec_exp = append(append(values(mean_land_low), values(mean_land_high)),
+                                        append(values(mean_ocean_low), values(mean_ocean_high))),
+                 low_or_high = low_or_high,
+                 realm = realm)
+df <- filter(df, !is.na(mean_spec_exp)) %>%
+  mutate(group = paste(realm, low_or_high, sep = ""))
 
 hist <- df %>%
   ggplot(., aes(x = mean_spec_exp, fill = realm)) + 
@@ -203,7 +248,8 @@ hist <- df %>%
         panel.border = element_blank(),
         panel.grid = element_blank(), 
         axis.title.x = element_text(size = 10),
-        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm")) 
+        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm")) +
+  facet_wrap(~low_or_high)
 
 map_legend <- data.frame(rasterToPoints(legend_rast)) %>%
   mutate(window_1 = as.factor(window_1)) %>%
@@ -224,21 +270,24 @@ box <- df %>%
   guides(fill = "none") +
   scale_x_discrete(labels = c("Land", "Ocean")) +
   stat_summary(fun = mean, geom = "point", shape = 5, size = 3) +
-  theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"))
+  theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm")) +
+  facet_wrap(~low_or_high)
 
 ## arrange plots side by side:
 lay <- rbind(c(1,1,1,1,2,2))
 besties <- grid.arrange(box, hist, layout_matrix = lay)
 
-ggsave(besties, path = "figures/analysis-workflow", filename = "o-vs-l_mean-local-spec-exp.png", 
+ggsave(besties, path = "figures/analysis-workflow", filename = "o-vs-l_mean-local-spec-exp_mf.png", 
        device = "png", width = 8, height = 4)
 
 
+## NOT ADAPTED FOR MF ANALYSIS YET
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ##### 1b. Analyze spectral exponent across tropical vs. temperate latitudes #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## use mosaic_specexp
-mosaic_specexp <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent.rds")
+mosaic_specexp_low <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent_low.rds")
+mosaic_specexp_high <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent_high.rds")
 
 ## split data into tropics and temperate latitudes
 tropical <- data.frame(rasterToPoints(mosaic_specexp)) %>%
@@ -301,7 +350,7 @@ df %>%
   guides(fill = "none") +
   scale_x_discrete(labels = c("Temperate", "Tropical"))
 
-
+## NOT ADAPTED FOR MF ANALYSIS YET
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 #####           1c. Tropical vs. temperate latitudes x land vs. ocean                 #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
@@ -436,30 +485,48 @@ ggsave(besties, path = "figures/analysis-workflow", filename = "o-vs-l-across-la
 ##### 2a. Analyze change in spectral exponent on land vs. ocean #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## use mosaic_specchange
-mosaic_specchange <- readRDS("data-processed/01_tos-tas-mosaic_spectral-change.rds")
+mosaic_specchange <- readRDS("data-processed/01_tos-tas-mosaic_spectral-change_multifrac.rds")
 
 ## split data into land and ocean
-land <- mask(mosaic_specchange, land_mask)
-plot(land[[1]])
-ocean <- mask(mosaic_specchange, land_mask, inverse = T)
-plot(ocean[[1]])
+land_low <- mask(mosaic_specchange$s_estimate_PSD_low, land_mask)
+plot(land_low[[1]])
+land_high <- mask(mosaic_specchange$s_estimate_PSD_high, land_mask)
+plot(land_high[[1]])
+ocean_low <- mask(mosaic_specchange$s_estimate_PSD_low, land_mask, inverse = T)
+plot(ocean_low[[1]])
+ocean_high <- mask(mosaic_specchange$s_estimate_PSD_high, land_mask, inverse = T)
+plot(ocean_high[[1]])
 
 ## summary stats and figures:
 ## mean
-mean(values(land[[2]]), na.rm = T)
-mean(values(ocean[[2]]), na.rm = T)
+mean(values(land_low), na.rm = T)
+mean(values(ocean_low), na.rm = T)
+mean(values(land_high), na.rm = T)
+mean(values(ocean_high), na.rm = T)
 
 ## standard deviation
-sd(values(land[[2]]), na.rm = T)
-sd(values(ocean[[2]]), na.rm = T)
+sd(values(land_low), na.rm = T)
+sd(values(ocean_low), na.rm = T)
+sd(values(land_high), na.rm = T)
+sd(values(ocean_high), na.rm = T)
 
 ## histogram:
-df <- data.frame(Land = c(values(land[[2]])), Ocean = c(values(ocean[[2]])))
-df <- gather(df, key = "realm", value = "slope_spec_exp", Land, Ocean)
-df <- filter(df, !is.na(slope_spec_exp))
+low_or_high = append(append(rep("low", length(values(mean_land_low))), 
+                            rep("high", length(values(mean_land_high)))),
+                     append(rep("low", length(values(mean_ocean_low))), 
+                            rep("high", length(values(mean_ocean_high)))))
+realm =  append(rep("Land", length(values(land_low)) + length(values(land_high))), 
+                rep("Ocean", length(values(ocean_low)) + length(values(ocean_high))))
+
+df <- data.frame(slope_spec_exp = append(append(values(land_low), values(land_high)),
+                                        append(values(ocean_low), values(ocena_high))),
+                 low_or_high = low_or_high,
+                 realm = realm)
+df <- filter(df, !is.na(slope_spec_exp)) %>%
+  mutate(group = paste(realm, low_or_high, sep = ""))
 
 df %>%
-  ggplot(., aes(x = slope_spec_exp, group = realm, fill = ..x..)) + 
+  ggplot(., aes(x = slope_spec_exp, group = group, fill = ..x..)) + 
   geom_histogram(position = position_dodge()) +
   theme_light() +
   labs(x = "Slope of spectral exponent",
@@ -467,26 +534,42 @@ df %>%
        fill = "Slope of\nspectral exponent") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
-  facet_wrap(~realm)
+  facet_wrap(~group)
 
 ## map it!
-land_df <- data.frame(rasterToPoints(land))
-land_df$realm = "Land"
-ocean_df <- data.frame(rasterToPoints(ocean))
-ocean_df$realm = "Ocean"
-map_df <- rbind(ocean_df, land_df)
+land_df_low <- data.frame(rasterToPoints(land_low))
+land_df_low$realm = "Land"
+land_df_low$low_or_high = "low"
+land_df_high <- data.frame(rasterToPoints(land_high))
+land_df_high$realm = "Land"
+land_df_high$low_or_high = "low"
+ocean_df_low <- data.frame(rasterToPoints(ocean_low))
+ocean_df_low$realm = "Ocean"
+ocean_df_low$low_or_high = "low"
+ocean_df_high <- data.frame(rasterToPoints(ocean_high))
+ocean_df_high$realm = "Ocean"
+ocean_df_high$low_or_high = "low"
+
+## rename columns 
+colnames(land_df_low)[3] = colnames(land_df_high)[3] = colnames(ocean_df_low)[3] = 
+  colnames(ocean_df_high)[3] = "slope_spec_exp"
+
+map_df <- rbind(ocean_df_low, land_df_low) %>%
+  rbind(., ocean_df_high) %>%
+  rbind(., land_df_high) %>%
+  mutate(group = paste(realm, low_or_high, sep = ""))
 
 map_df %>%
-  ggplot(., aes(x = x, y = y, fill = s_estimate)) + 
+  ggplot(., aes(x = x, y = y, fill = slope_spec_exp)) + 
   geom_raster() +
   coord_fixed() +
   theme_void() +
   labs(fill = "Slope of\nspectral\nexponent") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
-  facet_wrap(~realm) +
+  facet_wrap(~group) +
   theme(legend.title = element_text(size = 8),
-        legend.text = element_text(size = 6))
+        legend.text = element_text(size = 6)) 
 
 hist <- df %>%
   ggplot(., aes(x = slope_spec_exp, fill = realm)) + 
@@ -501,7 +584,8 @@ hist <- df %>%
         panel.border = element_blank(),
         panel.grid = element_blank(), 
         axis.title.x = element_text(size = 10),
-        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm")) 
+        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm")) +
+  facet_wrap(~group)
 
 ## boxplot:
 box <- df %>%
@@ -513,55 +597,83 @@ box <- df %>%
   guides(fill = "none") +
   scale_x_discrete(labels = c("Land", "Ocean")) +
   stat_summary(fun = mean, geom = "point", shape = 5, size = 3) +
-  theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"))
+  theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm")) +
+  facet_wrap(~group)
 
 ## arrange plots side by side:
 lay <- rbind(c(1,1,1,1,2,2))
 besties <- grid.arrange(box, hist, layout_matrix = lay)
 
-ggsave(besties, path = "figures/analysis-workflow", filename = "o-vs-l_spec-change.png", 
+ggsave(besties, path = "figures/analysis-workflow", filename = "o-vs-l_spec-change_mf.png", 
        device = "png", width = 8, height = 4)
 
 
 ## how different is the global average spectral change across the ocean vs. land?
 ## use mosaic_specexp
-mosaic_specexp <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent.rds")
+mosaic_specexp_low <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent_low.rds")
+mosaic_specexp_high <- readRDS("data-processed/01_tos-tas-mosaic_spectral-exponent_high.rds")
 
 ## split data into land and ocean
-land <- mask(mosaic_specexp, land_mask)
-plot(land[[1]])
-ocean <- mask(mosaic_specexp, land_mask, inverse = T)
-plot(ocean[[1]])
+land_low <- mask(mosaic_specexp_low, land_mask)
+plot(land_low[[1]])
+ocean_low <- mask(mosaic_specexp_low, land_mask, inverse = T)
+plot(ocean_low[[1]])
+
+land_high <- mask(mosaic_specexp_high, land_mask)
+plot(land_high[[1]])
+ocean_high <- mask(mosaic_specexp_high, land_mask, inverse = T)
+plot(ocean_high[[1]])
 
 ## convert raster layer to data frame
-df_land <- data.frame(rasterToPoints(land))
-df_land <- gather(df_land, key = "window_number", value = "spec_exp", c(3:ncol(df_land)))
+df_land_low <- data.frame(rasterToPoints(land_low))
+df_land_low <- gather(df_land_low, key = "window_number", value = "spec_exp", c(3:ncol(df_land_low)))
 
-land_average <- df_land %>%
+df_land_high <- data.frame(rasterToPoints(land_high))
+df_land_high <- gather(df_land_high, key = "window_number", value = "spec_exp", c(3:ncol(df_land_high)))
+
+land_average_low <- df_land_low %>%
   group_by(window_number) %>% ## group data by window start year
   mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
   select(window_number, mean_spec_exp) %>%
   unique() %>%
   rename("Land" = mean_spec_exp) 
-land_average$year = seq(1871, 2081, by = 10)
+land_average_low$year = seq(1871, 2081, by = 10)
 
-df_ocean <- data.frame(rasterToPoints(ocean))
-df_ocean <- gather(df_ocean, key = "window_number", value = "spec_exp", c(3:ncol(df_ocean)))
+land_average_high <- df_land_high %>%
+  group_by(window_number) %>% ## group data by window start year
+  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+  select(window_number, mean_spec_exp) %>%
+  unique() %>%
+  rename("Land" = mean_spec_exp) 
+land_average_high$year = seq(1871, 2081, by = 10)
 
-ocean_average <- df_ocean %>%
+df_ocean_low <- data.frame(rasterToPoints(ocean_low))
+df_ocean_low <- gather(df_ocean_low, key = "window_number", value = "spec_exp", c(3:ncol(df_ocean_low)))
+df_ocean_high <- data.frame(rasterToPoints(ocean_high))
+df_ocean_high <- gather(df_ocean_high, key = "window_number", value = "spec_exp", c(3:ncol(df_ocean_high)))
+
+ocean_average_low <- df_ocean_low %>%
   group_by(window_number) %>% ## group data by window start year
   mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
   select(window_number, mean_spec_exp) %>%
   unique() %>%
   rename("Ocean" = mean_spec_exp)
-ocean_average$year = seq(1871, 2081, by = 10)
+ocean_average_low$year = seq(1871, 2081, by = 10)
 
-average <- left_join(land_average, ocean_average)
-average <- gather(average, key = 'realm', value = 'mean_spec_exp', "Land", 
+ocean_average_high <- df_ocean_high %>%
+  group_by(window_number) %>% ## group data by window start year
+  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+  select(window_number, mean_spec_exp) %>%
+  unique() %>%
+  rename("Ocean" = mean_spec_exp)
+ocean_average_high$year = seq(1871, 2081, by = 10)
+
+average_low <- left_join(land_average_low, ocean_average_low)
+average_low <- gather(average_low, key = 'realm', value = 'mean_spec_exp', "Land", 
                   "Ocean") %>%
   filter(!is.na(mean_spec_exp))
 
-average %>%
+average_low %>%
   ggplot(., aes(x = year, y = mean_spec_exp, fill = realm, colour = realm)) + geom_point() +
   theme_light() +
   labs(x = "Time window start year", y = "Mean spectral exponent") + 
@@ -570,18 +682,42 @@ average %>%
   scale_fill_manual(values = pal_realm) +
   guides(fill = "none", colour = "none")
 
-average %>%
+average_low %>%
   filter(realm == "Ocean") %>% 
   lm(mean_spec_exp ~ year,
      data = .)
 
-average %>%
+average_low %>%
+  filter(realm == "Land") %>% 
+  lm(mean_spec_exp ~ year,
+     data = .)
+
+average_high <- left_join(land_average_high, ocean_average_high)
+average_high <- gather(average_high, key = 'realm', value = 'mean_spec_exp', "Land", 
+                      "Ocean") %>%
+  filter(!is.na(mean_spec_exp))
+
+average_high %>%
+  ggplot(., aes(x = year, y = mean_spec_exp, fill = realm, colour = realm)) + geom_point() +
+  theme_light() +
+  labs(x = "Time window start year", y = "Mean spectral exponent") + 
+  geom_smooth(method = "lm")  +
+  scale_colour_manual(values = pal_realm) +
+  scale_fill_manual(values = pal_realm) +
+  guides(fill = "none", colour = "none")
+
+average_high %>%
+  filter(realm == "Ocean") %>% 
+  lm(mean_spec_exp ~ year,
+     data = .)
+
+average_high %>%
   filter(realm == "Land") %>% 
   lm(mean_spec_exp ~ year,
      data = .)
 
 
-
+## NOT ADAPTED FOR MF ANALYSIS YET
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ##### 2b. Analyze change in spectral exponent across tropical vs. temperate latitudes #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
@@ -654,6 +790,7 @@ df %>%
   scale_fill_manual(values = pal_lat) +
   guides(fill = "none")
 
+## NOT ADAPTED FOR MF ANALYSIS YET
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 #####           2c. Tropical vs. temperate latitudes x land vs. ocean                 #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##

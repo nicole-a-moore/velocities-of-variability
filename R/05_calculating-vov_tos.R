@@ -10,7 +10,7 @@ if (!"remotes" %in% rownames(installed.packages())) {
 library(VoCC)
 library(tidyverse)
 library(raster)
-
+select <- dplyr::select
 
 ########################################################################
 #####    1.  transform spectral exponent data into a rasterStack  ######
@@ -19,6 +19,7 @@ library(raster)
 create_rasterStack <- function(path) {
   
   se_filenames <- readRDS(paste(path, "se_filenames_tos.rds",  sep = ""))
+  #se_filenames <- str_replace_all(se_filenames, "data-raw/", "/Volumes/SundayLab/CMIP5-GCMs_tos/")
   
   ## combine all spectral exponent csvs into one big dataframe
   file = 1
@@ -117,9 +118,9 @@ create_rasterStack <- function(path) {
 #################################################
 ## set 'path' to where you have the GCM files stored on your computer
 ## for me, they are here:
-#path = "/Volumes/SundayLab/CMIP5-GCMs/" ## change me
+#path = "/Volumes/SundayLab/CMIP5-GCMs_tos/" ## change me
 #path = "data-raw/"
-path = "CMIP5-GCMs/"
+path = "CMIP5-GCMs_tos/"
 
 ## create vector of file folders to put data into:
 gcm_models <- c("01_CMCC-CESM", "02_CMCC-CM", '03_CMCC-CMS', '04_MPI-ESM-LR', '05_MPI-ESM-MR',

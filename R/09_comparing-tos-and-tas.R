@@ -81,45 +81,64 @@ pts %>%
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
 terr <- raster("data-processed/raster_terr_mask.nc") 
 ## extract 10 year time window 
-l_stack_tas <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/l_stack_list.rds")[[6]] 
-s_stack_tas <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list.rds")[[6]] 
-extent(l_stack_tas) <- c(-179, 179, -89, 89)
-extent(s_stack_tas) <- c(-179, 179, -89, 89)
+l_stack_tas_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/l_stack_list_PSD_low.rds")[[6]] 
+s_stack_tas_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_PSD_low.rds")[[6]] 
+l_stack_tas_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/l_stack_list_AWC.rds")[[6]] 
+s_stack_tas_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_AWC.rds")[[6]] 
+l_stack_tas_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/l_stack_list_PSD_high.rds")[[6]] 
+s_stack_tas_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_PSD_high.rds")[[6]] 
+extent(l_stack_tas_PSD_low) <- extent(s_stack_tas_PSD_low) <- extent(l_stack_tas_PSD_high) <- 
+  extent(s_stack_tas_PSD_high) <- extent(s_stack_tas_AWC) <- extent(l_stack_tas_AWC) <- 
+  c(-179, 179, -89, 89)
 
-l_stack_tos <- readRDS("data-raw/01_CMCC-CESM/l_stack_list_tos.rds")[[6]] 
-s_stack_tos <- readRDS("data-raw/01_CMCC-CESM/s_stack_list_tos.rds")[[6]] 
+l_stack_tos_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/l_stack_list_PSD_low.rds")[[6]] 
+s_stack_tos_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_low.rds")[[6]] 
+l_stack_tos_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/l_stack_list_AWC.rds")[[6]] 
+s_stack_tos_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_AWC.rds")[[6]] 
+l_stack_tos_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/l_stack_list_PSD_high.rds")[[6]] 
+s_stack_tos_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_high.rds")[[6]] 
 
-l_stack_tas <- crop(l_stack_tas, l_stack_tos)
-s_stack_tas <- crop(s_stack_tas, s_stack_tos)
-l_stack_tos <- crop(l_stack_tos, l_stack_tas)
-s_stack_tos <- crop(s_stack_tos, s_stack_tas)
+## crop to same extent
+list_tas <- c(l_stack_tas_PSD_low, s_stack_tas_PSD_low, l_stack_tas_AWC, s_stack_tas_AWC, l_stack_tas_PSD_high,
+          s_stack_tas_PSD_high)
 
-terr <- crop(terr, l_stack_tas[[1]])
+list_tas <- sapply(list_tas, FUN = crop, l_stack_tos)
+list_tas <- sapply(list_tas, FUN = stack)
+
+list_tos <- c(l_stack_tos_PSD_low, s_stack_tos_PSD_low, l_stack_tos_AWC, s_stack_tos_AWC, l_stack_tos_PSD_high,
+              s_stack_tos_PSD_high)
+
+list_tos <- sapply(list_tos, FUN = crop, l_stack_tas_PSD_low)
+list_tos <- sapply(list_tos, FUN = stack)
+
+terr <- crop(terr, l_stack_tos[[1]])
 
 ## mask to only include ocean, only areas in tos
-l_stack_tas <- mask(l_stack_tas, terr, inverse = T)
-s_stack_tas <- mask(s_stack_tas, terr, inverse = T)
-plot(l_stack_tas[[1]])
-plot(s_stack_tas[[1]])
-l_stack_tas <- mask(l_stack_tas, l_stack_tos)
-s_stack_tas <- mask(s_stack_tas, s_stack_tos)
-plot(l_stack_tas[[1]])
-plot(s_stack_tas[[1]])
+list_tas <- sapply(list_tas, FUN = mask, terr, inverse = T)
+# temp <- list_tas[[1]]
+# plot(temp[[1]])
+list_tas <- sapply(list_tas, FUN = mask, list_tos[[1]])
+# temp <- list_tas[[1]]
+# plot(temp[[1]])
 
 ## take a looksie:
-plot(l_stack_tas[[1]]) ## higher spectral exponent (shallower, less autocorrelated, white noise)
-plot(l_stack_tos[[1]]) ## lower spectral exponent (steeper, more autocorrelated, red noise)
+l_stack_tas_PSD_low <- list_tas[[1]]
+s_stack_tas_PSD_low <- list_tas[[2]]
+plot(l_stack_tas_PSD_low[[1]]) ## higher spectral exponent (shallower, less autocorrelated, white noise)
+l_stack_tos_PSD_low <- list_tos[[1]]
+s_stack_tos_PSD_low <- list_tos[[2]]
+plot(l_stack_tos_PSD_low[[1]]) ## lower spectral exponent (steeper, more autocorrelated, red noise)
 
 ## calculate mean spectral exponent for tos and tas
-mean_spec_tas_l <- calc(l_stack_tas, mean)
-mean_spec_tas_s <- calc(s_stack_tas, mean)
+mean_spec_tas_PSD_low_l <- calc(l_stack_tas_PSD_low, mean)
+mean_spec_tas_PSD_low_s <- calc(s_stack_tas_PSD_low, mean)
 
-mean_spec_tos_l <- calc(l_stack_tos, mean)
-mean_spec_tos_s <- calc(s_stack_tos, mean)
+mean_spec_tos_PSD_low_l <- calc(l_stack_tos_PSD_low, mean)
+mean_spec_tos_PSD_low_s <- calc(s_stack_tos_PSD_low, mean)
 
 ## plot mean spectral exponent for tos and tas
-pts_tas <- data.frame(rasterToPoints(mean_spec_tas_s))
-pts_tos <- data.frame(rasterToPoints(mean_spec_tos_s))
+pts_tas <- data.frame(rasterToPoints(mean_spec_tas_PSD_low_s))
+pts_tos <- data.frame(rasterToPoints(mean_spec_tos_PSD_low_s))
 colnames(pts_tas)[3] <- "Air surface temperature"
 colnames(pts_tos)[3] <- "Sea surface temperature"
 pts <- left_join(pts_tas, pts_tos)
@@ -183,7 +202,7 @@ spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels =
 
 tas <- spec_exp %>%
   filter(time_window_width == "10 years") %>%
-  select(lon, lat, l_estimate, s_estimate, l_p.value, s_p.value) %>%
+  select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high) %>%
   unique()
 
 ## crop data to ocean only
@@ -199,8 +218,8 @@ plot(raster_tas[[1]])
 tas <- data.frame(rasterToPoints(raster_tas))
 colnames(tas)[1:2] <- c("lon", "lat")
 
-l <- tas %>%
-  ggplot(., aes(x = lon, y = lat, fill = l_estimate)) + geom_raster() +
+l_low <- tas %>%
+  ggplot(., aes(x = lon, y = lat, fill = l_estimate_PSD_low)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
@@ -210,10 +229,8 @@ l <- tas %>%
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
                aes(x=long, y=lat, group = group)) 
 
-## remove non-significant slopes
-l_sig <- tas %>%
-  mutate(l_estimate = ifelse(l_p.value < 0.05, l_estimate, NA)) %>%
-  ggplot(., aes(x = lon, y = lat, fill = l_estimate)) + geom_raster() +
+s_low <- tas %>%
+  ggplot(., aes(x = lon, y = lat, fill = s_estimate_PSD_low)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
@@ -223,8 +240,19 @@ l_sig <- tas %>%
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
                aes(x=long, y=lat, group = group)) 
 
-s <- tas %>%
-  ggplot(., aes(x = lon, y = lat, fill = s_estimate)) + geom_raster() +
+l_high <- tas %>%
+  ggplot(., aes(x = lon, y = lat, fill = l_estimate_PSD_high)) + geom_raster() +
+  coord_fixed() + 
+  theme_minimal() + 
+  theme(panel.grid = element_blank()) +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
+  scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
+                       midpoint = 0) +
+  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
+               aes(x=long, y=lat, group = group)) 
+
+s_high <- tas %>%
+  ggplot(., aes(x = lon, y = lat, fill = s_estimate_PSD_high)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
@@ -234,9 +262,11 @@ s <- tas %>%
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
                aes(x=long, y=lat, group = group)) 
 
-s_sig <- tas %>%
-  mutate(s_estimate = ifelse(l_p.value < 0.05, s_estimate, NA)) %>%
-  ggplot(., aes(x = lon, y = lat, fill = s_estimate)) + geom_raster() +
+## faceted version:
+tas %>%
+  gather(key = "dataset", value = "spectral_slope", 
+         c(l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high)) %>%
+  ggplot(., aes(x = lon, y = lat, fill = spectral_slope)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
@@ -244,10 +274,11 @@ s_sig <- tas %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
+               aes(x=long, y=lat, group = group)) +
+  facet_wrap(~dataset)
 
 ##### Organize tos data  #####
-path = "data-raw/" 
+path = "/Volumes/SundayLab/CMIP5-GCMs_tos/" 
 
 ## create vector of file folders to put data into:
 gcm_models <- c("01_CMCC-CESM", "02_CMCC-CM", '03_CMCC-CMS', '04_MPI-ESM-LR', '05_MPI-ESM-MR',
@@ -287,62 +318,73 @@ spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels =
 
 tos <- spec_exp %>%
   filter(time_window_width == "10 years") %>%
-  select(lon, lat, l_estimate, s_estimate, l_p.value, s_p.value) %>%
+  select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high) %>%
   unique()
 
-l <- tos %>%
-  ggplot(., aes(x = lon, y = lat, fill = l_estimate)) + geom_raster() +
+l_low <- tos %>%
+  ggplot(., aes(x = lon, y = lat, fill = l_estimate_PSD_low)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tos)") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
                aes(x=long, y=lat, group = group)) 
 
-## remove non-significant slopes
-l_sig <- tos %>%
-  mutate(l_estimate = ifelse(l_p.value < 0.05, l_estimate, NA)) %>%
-  ggplot(., aes(x = lon, y = lat, fill = l_estimate)) + geom_raster() +
+s_low <- tos %>%
+  ggplot(., aes(x = lon, y = lat, fill = s_estimate_PSD_low)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tos)") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
                aes(x=long, y=lat, group = group)) 
 
-s <- tos %>%
-  ggplot(., aes(x = lon, y = lat, fill = s_estimate)) + geom_raster() +
+l_high <- tos %>%
+  ggplot(., aes(x = lon, y = lat, fill = l_estimate_PSD_high)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tos)") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
+  scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
+                       midpoint = 0) +
+  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
+               aes(x=long, y=lat, group = group)) 
+
+s_high <- tos %>%
+  ggplot(., aes(x = lon, y = lat, fill = s_estimate_PSD_high)) + geom_raster() +
+  coord_fixed() + 
+  theme_minimal() + 
+  theme(panel.grid = element_blank()) +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
                aes(x=long, y=lat, group = group)) 
 
-s_sig <- tos %>%
-  mutate(s_estimate = ifelse(l_p.value < 0.05, s_estimate, NA)) %>%
-  ggplot(., aes(x = lon, y = lat, fill = s_estimate)) + geom_raster() +
+## faceted version:
+tos %>%
+  gather(key = "dataset", value = "spectral_slope", 
+         c(l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high)) %>%
+  ggplot(., aes(x = lon, y = lat, fill = spectral_slope)) + geom_raster() +
   coord_fixed() + 
   theme_minimal() + 
   theme(panel.grid = element_blank()) +
-  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tos)") +
+  labs(x = "Longitude", y = "Latitude", fill = "Slope of\nspectral exponent (tas)") +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
-
+               aes(x=long, y=lat, group = group)) +
+  facet_wrap(~dataset)
 
 
 ##### Compare magnitude and direction of spectral change #####
-all_tas <- tas[,c(1,2,4)]
+all_tas <- tas[,c(1,2,4)] ## low s exponent
 colnames(all_tas)[3] <- "Air surface temperature"
-all_tos <- tos[,c(1,2,4)]
+all_tos <- tos[,c(1,2,4)] ## low s exponent
 colnames(all_tos)[3] <- "Sea surface temperature"
 
 all <- left_join(all_tas, all_tos)
@@ -360,31 +402,6 @@ all %>%
   theme(panel.grid = element_blank()) +
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") 
-
-tas_sig <- mutate(tas, s_estimate = ifelse(s_p.value < 0.05, s_estimate, NA))
-tos_sig <- mutate(tos, s_estimate = ifelse(s_p.value < 0.05, s_estimate, NA))
-sig_tas <- tas_sig[,c(1,2,4)]
-colnames(sig_tas)[3] <- "Air surface temperature"
-sig_tos <- tos_sig[,c(1,2,4)]
-colnames(sig_tos)[3] <- "Sea surface temperature"
-
-sig <- left_join(sig_tas, sig_tos)
-
-sig <- gather(sig, key = 'temp_type', value = 'sig_spec_exp_slope', "Air surface temperature", 
-              "Sea surface temperature")
-
-sig %>%
-  ggplot(., aes(x = lon, y = lat, fill = sig_spec_exp_slope)) + geom_raster() +
-  coord_fixed() +
-  facet_wrap(~temp_type) +
-  theme_minimal() +
-  labs(x = "", y = "", fill = "Slope of spectral\nexponent") +
-  theme(panel.grid = element_blank()) +
-  scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
-                       midpoint = 0, na.value = "white")  +
-  geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group))
-
 
 ## where does direction agree between air and sea surface temperature?
 combined_tos <- tos %>%

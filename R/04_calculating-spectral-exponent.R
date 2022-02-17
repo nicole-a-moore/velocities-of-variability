@@ -70,7 +70,7 @@ spectral_exponent_calculator_PSD <- function(ts_window, l) {
     tidy(.) %>%
     filter(term == "log10(freq)")
   
-  ## fit slope to high freqeuncies
+  ## fit slope to high frequencies
   model_output_high <- spectral %>%
     filter(freq >= 1/8*max(spectral$freq)) %>%
     lm(., formula = log10(power) ~ log10(freq)) %>%

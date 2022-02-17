@@ -126,8 +126,8 @@ spec %>%
 
 
 ## choose alpha = 1.8 and C1 = 0.1 since apparently typical for geophysical processes
-mfs <- foreach (1:500, .combine=cbind)  %dopar% {
-  sim <- eps1D(lambda = 83950, al = 1.8, C1 = 0.01, switch = 0)
+mfs <- foreach (1:1000, .combine=cbind)  %dopar% {
+  sim <- eps1D(lambda = 83950, al = 1.8, C1 = 0.0055, switch = 0)
   
   sim = sim[41976:(83950+41975)]
   sim <- sim[1:3650] #sim[41976:(83950+41975)]
@@ -187,7 +187,7 @@ a <- n*1/(f^(0.5/2)) ### amplitudes = random normally distributed numbers * 1/f^
 complex <- a*cos(phases) + a*sin(phases) ## complex coefficients
 
 dft <- fft(complex, inverse = T) ## inverse fast fourier transform the coefficients to get the temporal noise series
-noise = as.numeric(dft[1:41975]) ## crop the noise series to first 200,000 points
+noise = as.numeric(dft[1:3650]) ## crop the noise series
 plot(ts(noise))
 
 ## plot spectra
@@ -197,8 +197,6 @@ spectral_mono %>%
   ggplot(aes(x = freq, y = power)) + geom_line() +
   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm") +
   theme_minimal()
-
-true_colour <- lm(data = spectral, log(power) ~ log(freq))
 
 #### add them
 ## remove mean and change variance to 4140:
@@ -218,8 +216,7 @@ spectral_comb$type = "mono + multi"
 spectral_mono$type = "mono"
 spectral_multi$type = "multi"
 
-spectral <- rbind(spectral_multi, spectral_mono) 
-#%>%rbind(., spectral_multi)
+spectral <- rbind(spectral_multi, spectral_mono) %>%rbind(., spectral_comb)
 
 spectral %>%
   ggplot(aes(x = freq, y = power, group = type, colour = type)) + geom_line() +
@@ -249,11 +246,11 @@ high <- spectral_multi %>%
 
 ## read in linearlly detrended temp data 
 l_open = nc_open("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/l-detrended_lon-0-60_lat--30--90.nc")
-l_detrended_tas = ncvar_get(l_open, "var1_1")
+#l_detrended_tas = ncvar_get(l_open, "var1_1")
 nc_close(l_open)
 
 ## look at a spectrum:
-ts <- l_detrended_tas[1,30,] ##1,30
+ts <- l_detrended_tas[1,31,] 
 plot(ts(ts))
 spec <- fft_calc(ts[1:3650])
 
@@ -280,7 +277,8 @@ spec_exp <- read.csv("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/spec-exp_long-0
 hist(spec_exp$s_spec_exp_PSD_low)
 hist(-exps$lows)
 
-hist(spec_exp$s_spec_exp_PSD_high)
+high_sub <- filter(spec_exp, s_spec_exp_PSD_low > 0.2 & s_spec_exp_PSD_low < 0.9) 
+hist(high_sub$s_spec_exp_PSD_high)
 hist(-exps$high)
 
 ## next step:
