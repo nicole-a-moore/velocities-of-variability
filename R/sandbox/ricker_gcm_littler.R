@@ -18,48 +18,9 @@ registerDoParallel(numCores)  # use multicore, set to the number of our cores
 #################################################
 ###                 time window                ## 
 #################################################
-## write equation for temperature dependence of little r: 
-d_j = 0.03 # juvenile mortality at reference temperature 
-d_a = 0.05 # adult mortality rate at reference temperature 
-Ad_j = 7500 # Arrhenius constant for juvenile mortality  
-Ad_a = 10000 # Arrhenius constant for adult mortality  
-
-Aa = -8000 # Arrhenius constant for development
-alpha = 60
-b_tr = 50 # average per capita fecundity at reference temperature 
-
-Topt = 298 # optimal temperature
-s = 4.8
-Tr = 294 # reference temperature 
-
-equation <- function(temp) {
-  TD = ((1/Tr) - (1/temp))
-  term1 = d_a*exp(Ad_a*TD)
-  term2 = (1/(alpha*exp(Aa*TD))) * (pracma::lambertWp(b_tr*alpha*exp(Aa*TD - (temp-Topt)^2/(2*s^2) + alpha*exp(Aa*TD)*(d_a*exp(Ad_a*TD) - d_j*exp(Ad_j*TD)))))
-  rT = -term1 + term2
-
-  return(c(term1, term2, rT))
-}
-
-## recreate examples from figure 1
-range <- seq(from = -5, to = 42, by = 0.1)
-temps <- c(273.15 + range)
-high_s <- sapply(FUN = equation, temps)
-high_s = data.frame(term1 = high_s[1,], term2 = high_s[2,], rT = high_s[3,], temps = temps - 273.15)
-
-## get rid of pts beyond tmin and tmax
-high_s = high_s[-(1:first(which(high_s$rT > 0))),]
-high_s = high_s[-(last(which(high_s$rT > 0)):nrow(high_s)),]
-ggplot(high_s, aes(x = temps, y = term2)) + geom_smooth()
-
-s = 2.5
-low_s <- sapply(FUN = equation, temps)
-plot(test[3,])
-  
 ## thinking:
 ## want to vary growth rate from 0-2 (range of r producing stable dynamics in the Ricker model)
 ## want environmental temperatures to remain within Tmin and Tmax (so that r =/= 0)
-
 
 ## set model parameters
 K0 = 100

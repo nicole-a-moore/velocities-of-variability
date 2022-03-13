@@ -127,16 +127,16 @@ spec %>%
 
 ## choose alpha = 1.8 and C1 = 0.1 since apparently typical for geophysical processes
 mfs <- foreach (1:1000, .combine=cbind)  %dopar% {
-  sim <- eps1D(lambda = 83950, al = 1.8, C1 = 0.0055, switch = 0)
+  sim <- eps1D(lambda = 83950, al = 1.8, C1 = 0.01, switch = 0)
   
   sim = sim[41976:(83950+41975)]
   sim <- sim[1:3650] #sim[41976:(83950+41975)]
   spec <- fft_calc(sim)
   
-  # spec %>%
-  #   ggplot(aes(x = freq, y = power)) + geom_line() +
-  #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm") +
-  #   theme_minimal()
+  spec %>%
+    ggplot(aes(x = freq, y = power)) + geom_line() +
+    scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm") +
+    theme_minimal()
   
   low <- spec %>%
     filter(freq < 1/16) %>%
@@ -267,7 +267,7 @@ spectral %>%
   filter(type %in% c("real", "multi")) %>%
   ggplot(aes(x = freq, y = power, group = type, colour = type)) + geom_line() +
   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm") +
-  theme_minimal()
+  theme_minimal() + facet_wrap(~type)
 
 
 ## what range of slopes are there in real temp data?

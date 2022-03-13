@@ -14,6 +14,31 @@ select <- dplyr::select
 #####              FUNCTIONS:           ######
 ##############################################
 ## function to calculate spectral exponent over a time series window
+bridge_detrender <- function(windowed_series, N) {
+  ## regress to get equation of line:
+  data <- data.frame(x = c(1, N), y = windowed_series[c(1,N)])
+  eq = lm(y ~ x, data = data) 
+  coeffs = eq$coeff
+  #plot(windowed_series)
+  #abline(a = windowed_series[1], b = coeffs[2])
+  
+  ## subtract the line from the data
+  df <- data.frame(x = 1:N)
+  predictions <- predict(eq, df)
+  windowed_series = windowed_series - predictions
+  #plot(windowed_series) 
+  
+  return(windowed_series)
+}
+parabolic_window <- function(series, N) {
+  j = c(1:N)
+  W = c()
+  for (i in j) {
+    W[i] = 1 - ((2*j[i])/(N+1) - 1)^2
+  }
+  #plot(W)
+  return(W)
+}
 spectral_exponent_calculator_full_fit <- function(ts_window) {
   
   l <- length(ts_window)
@@ -34,9 +59,27 @@ spectral_exponent_calculator_full_fit <- function(ts_window) {
   
   ## get estimate of spectral exponent over time series window:
   model_output <- lm(spectral, formula = log10(power) ~ log10(freq)) %>%
-    tidy(.) 
+    tidy(.) %>%
+    mutate(type = "reg")
   
-  return(list(model_output, spectral))
+  ## fit slope to low freqeuncies
+  model_output_low <- spectral %>%
+    filter(freq < 1/8*max(spectral$freq)) %>%
+    lm(., formula = log10(power) ~ log10(freq)) %>%
+    tidy(.) %>%
+    mutate(type = "low")
+  
+  ## fit slope to high frequencies
+  model_output_high <- spectral %>%
+    filter(freq >= 1/8*max(spectral$freq)) %>%
+    lm(., formula = log10(power) ~ log10(freq)) %>%
+    tidy(.) %>%
+    mutate(type = "high")
+  
+  out <- rbind(model_output, model_output_high) %>%
+    rbind(., model_output_low)
+  
+  return(list(out, spectral))
 }
 
 ## read in a spatial chunk:
@@ -98,10 +141,29 @@ while (n < 11) {
     ## extract temps within time window
     ts_chunk <- filter(local_ts, year %in% year_start:year_stop)
     
-    ## calculate spectral exponent in window
-    l_exp_list <- spectral_exponent_calculator_full_fit(ts_chunk$l_temp)
-    s_exp_list <- spectral_exponent_calculator_full_fit(ts_chunk$s_temp)
+    ## get length
+    L = nrow(ts_chunk)
     
+    ## preprocess the time series:
+    ## a. subtracting mean
+    ts_s <- ts_chunk$s_temp - mean(ts_chunk$s_temp)
+    ts_l <- ts_chunk$l_temp - mean(ts_chunk$l_temp)
+    
+    ## b. windowing - multiply by a parabolic window 
+    window_s <- parabolic_window(series = ts_s, N = L)
+    ts_s <- ts_s*window_s
+    window_l <- parabolic_window(series = ts_l, N = L)
+    ts_l <- ts_l*window_l
+    
+    ## c. bridge detrending (endmatching)
+    ## ie. subtracting from the data the line connecting the first and last points of the series
+    ts_s <- bridge_detrender(windowed_series = ts_s, N = L)
+    ts_l <- bridge_detrender(windowed_series = ts_l, N = L)
+    
+    ## calculate spectral exponent in window 
+    s_exp_list <- spectral_exponent_calculator_full_fit(ts_s)
+    l_exp_list <- spectral_exponent_calculator_full_fit(ts_l)
+   
     ## store:
     if (year_start == 1871) {
       spectral_exponent_l <- l_exp_list[[1]] %>%
@@ -172,16 +234,21 @@ spec <- ten[[3]]
 
 ## save data to plot in didactic figure:
 saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat-48.5_lon-154.5.rds")
-saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat-60.5_lon-32.5.rds")
+saveRDS(spec_exp_list, "data-processed/local-spectral-change_lat-60.5_lon-32.5_mf.rds")
 
 ## bring in the animation!!!
 library(gganimate)
 devtools::install_github("thomasp85/transformr")
 
+high_freq <- filter(spec, freq > 1/16)
+low_freq <- filter(spec, freq < 1/16)
+
 gg = spec %>%
   ggplot(aes(x = freq, y = power)) + geom_line() +
   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm", colour = "red") +
-  theme_light()
+  theme_light() +
+  geom_smooth(data = high_freq, method = "lm", colour = "blue") +
+  geom_smooth(data = low_freq, method = "lm", colour = "green")
 
 gganim <- gg + transition_states(window_start_year) + labs(title = "Start year: {closest_state}") 
 
@@ -192,14 +259,17 @@ anim_save(animation = animate(gganim, fps = 25, height = 800, width = 800,
 ## animate the spectral exponent over time alongside 
 exp <- ten[[1]] %>%
   filter(term == "log10(freq)")
-
+ 
 gg_dots = exp %>%
-  ggplot(aes(x = window_start_year, y = estimate)) + 
-  geom_pointrange(aes(ymin = estimate-std.error, ymax = estimate+std.error), colour = "red") +
+  ggplot(aes(x = window_start_year, y = estimate, group = type, colour = type)) + 
+  geom_pointrange(aes(ymin = estimate-std.error, ymax = estimate+std.error)) +
   theme_light() +
   geom_smooth(data = data.frame(x = exp$window_start_year, 
-                                y = exp$estimate), 
-              aes(x = x, y = y), method = "lm", colour = "red", alpha = 0.3)
+                                y = exp$estimate,
+                                type = exp$type), 
+              aes(x = x, y = y, group = type, colour = type), method = "lm", alpha = 0.3) +
+  scale_color_manual(values = c("blue", "green", "red")) +
+  theme(legend.position = "none")
 
 gganim_dots <- gg_dots + transition_states(window_start_year) + labs(title = "Start year: {closest_state}") +
   shadow_mark(past = T, future=F, alpha=0.3)

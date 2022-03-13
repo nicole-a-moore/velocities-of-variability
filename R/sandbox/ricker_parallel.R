@@ -196,6 +196,103 @@ all %>%
 
 
 
+## plot soem series
+colours = seq(0, 3.2, by = 0.1)
+all_results <- list()
+l = seq(0, 1, by = 0.1)
+
+K0 = 100
+N0 = 100
+Tmax = 83950
+
+icp = 1
+while (icp <= length(l)) {
+  
+  col = 1
+  all_col <- list()
+  while (col <=  length(colours)) {
+    print(paste("On colour ", col, " and icp ", icp, sep = ""))
+    
+    all <- foreach (1:10, .combine=rbind)  %dopar% {
+      N = N0 ## set starting population size to 100
+      
+      ## generate coloured noise: 
+      output <- one_over_f(beta = colours[col])
+      noise = output[[1]]
+      
+      K <- K0 + round(noise, digits = 0) ## generate new carrying capacity
+      K[which(K <= 0)] <- 5 ## make sure none are negative
+      
+      Nts <- c()
+      i=1
+      while(i <= Tmax) {
+        Nt = N*exp(1.5*(1 - (N/K[i])^l[icp]))
+        Nt = sample(rpois(as.numeric(Nt), n = 1000), size = 1)
+        
+        ## stop if the pop goes extinct:
+        if (is.na(Nt) | Nt == 0 | i == Tmax) {
+          Nts <- append(Nts, Nt)
+          extinction_time = i
+          i = Tmax+1
+        }
+        ## otherwise continue
+        else {
+          Nts <- append(Nts, Nt)
+          N = Nt   
+          i = i + 1
+        }
+      }
+      data.frame(N = Nts, K = K[1:extinction_time], l = l[icp], t = extinction_time, colour = colours[col],
+        time = 1:extinction_time,
+        true_colour = output[[2]])
+    }
+    
+    all_col[[col]] <- all
+    results <- c()
+    col = col + 1
+  }
+  
+  ## bind results from icp together
+  all_results[[icp]] <- do.call("rbind", all_col) 
+  
+  icp = icp + 1
+}
+
+all <- all %>%
+  mutate(unique_run = paste(true_colour, t)) 
+
+unique_ten <- unique(all$unique_run)[1:10]
+ten <- filter(all, unique_run %in% unique_ten)
+
+ten %>%
+  ggplot(., aes(x = time, y = K)) + geom_line(colour = "red", alpha = 0.5) +
+  geom_line(data = ten, aes(x = time, y = N), inherit.aes = F) +
+  facet_wrap(~unique_run)
+
+
+
+series %>%
+  ggplot(., aes(x = time, y = N)) + geom_line() +
+  geom_line(data = series, aes(x = time, y = K), colour = "red", alpha = 0.5, inherit.aes = F) +
+  theme_light()
+
+## estimate noise colour from a linear regression of pwoer spectrum:
+l <- nrow(series)
+dft <- fft(series$N)/l
+amp <- sqrt(Im(dft[-1])^2 + Re(dft[-1])^2) ## get rid of first term (represents DC component - y axis shift)
+amp <- amp[1:(l/2)]	## remove second half of amplitudes (negative half)
+freq <- 1:(l/2)/l ## sampling frequency = period(1 day, 2 days, 3 days.... L/2 days) / length of time series 
+
+## create periodogram data by squaring amplitude of FFT output
+spectral <- data.frame(freq = freq, power = amp^2)
+
+spectral %>%
+  ggplot(aes(x = freq, y = power)) + geom_line() +
+  scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm") +
+  theme_minimal()
+
+## low ICP (undercompensatory) = red 
+
 
 
 #### gams

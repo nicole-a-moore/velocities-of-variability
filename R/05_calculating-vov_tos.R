@@ -16,9 +16,16 @@ select <- dplyr::select
 #####    1.  transform spectral exponent data into a rasterStack  ######
 ########################################################################
 ## function to convert output from script 04 into 6 rasterStacks (one for each sliding window width, from 5-10 years) that can be used with the gVoCC functions 
-create_rasterStack <- function(path) {
-  
-  se_filenames <- readRDS(paste(path, "se_filenames_tos.rds",  sep = ""))
+create_rasterStack <- function(path, type) {
+ 
+  ## read in spatial chunk file names:
+  if (type == "GCM") {
+    se_filenames <- readRDS(paste(path, "se_filenames_tos.rds",  sep = ""))
+  }
+  else if (type == "ERA40") {
+    se_filenames <- readRDS("data-processed/ERA-40/era-40_sst_sp_files.rds")
+  }
+
   #se_filenames <- str_replace_all(se_filenames, "data-raw/", "/Volumes/SundayLab/CMIP5-GCMs_tos/")
   
   ## combine all spectral exponent csvs into one big dataframe
@@ -56,43 +63,76 @@ create_rasterStack <- function(path) {
     step = length(step_split) ## loop backwards since rasterStacks add layers to beginning
     while (step >= 1) {
       
-      l_sp_df <- step_split[[step]] %>%
-        select(lon, lat, l_spec_exp)
+      ## pull out each different slope estimate
+      l_sp_df_PSD_low <- step_split[[step]] %>%
+        select(lon, lat, l_spec_exp_PSD_low)
       
-      s_sp_df <- step_split[[step]] %>%
-        select(lon, lat, s_spec_exp) 
+      s_sp_df_PSD_low <- step_split[[step]] %>%
+        select(lon, lat, s_spec_exp_PSD_low) 
+      
+      l_sp_df_AWC <- step_split[[step]] %>%
+        select(lon, lat, l_spec_exp_AWC)
+      
+      s_sp_df_AWC <- step_split[[step]] %>%
+        select(lon, lat, s_spec_exp_AWC) 
+      
+      l_sp_df_PSD_high <- step_split[[step]] %>%
+        select(lon, lat, l_spec_exp_PSD_high)
+      
+      s_sp_df_PSD_high <- step_split[[step]] %>%
+        select(lon, lat, s_spec_exp_PSD_high) 
       
       ## create raster layer:
-      l_layer <- rasterFromXYZ(l_sp_df)
-      s_layer <- rasterFromXYZ(s_sp_df)
-      #plot(l_layer)
-      #plot(s_layer)
+      l_layer_PSD_low <- rasterFromXYZ(l_sp_df_PSD_low)
+      s_layer_PSD_low <- rasterFromXYZ(s_sp_df_PSD_low)
+      l_layer_AWC <- rasterFromXYZ(l_sp_df_AWC)
+      s_layer_AWC <- rasterFromXYZ(s_sp_df_AWC)
+      l_layer_PSD_high <- rasterFromXYZ(l_sp_df_PSD_high)
+      s_layer_PSD_high <- rasterFromXYZ(s_sp_df_PSD_high)
+      #plot(l_layer_PSD_high)
       
       ## add to temporary rasterstack:
       if (step == length(step_split)) {
-        l_temp_stack <- l_layer
-        s_temp_stack <- s_layer
+        l_temp_stack_PSD_low <- l_layer_PSD_low
+        s_temp_stack_PSD_low <- s_layer_PSD_low
+        l_temp_stack_AWC <- l_layer_AWC
+        s_temp_stack_AWC <- s_layer_AWC
+        l_temp_stack_PSD_high <- l_layer_PSD_high
+        s_temp_stack_PSD_high <- s_layer_PSD_high
       }
       else {
-        l_temp_stack <- addLayer(l_layer, l_temp_stack)
-        s_temp_stack <- addLayer(s_layer, s_temp_stack)
+        l_temp_stack_PSD_low <- addLayer(l_layer_PSD_low, l_temp_stack_PSD_low)
+        s_temp_stack_PSD_low <- addLayer(s_layer_PSD_low, s_temp_stack_PSD_low)
+        l_temp_stack_AWC <- addLayer(l_layer_AWC, l_temp_stack_AWC)
+        s_temp_stack_AWC <- addLayer(s_layer_AWC, s_temp_stack_AWC)
+        l_temp_stack_PSD_high <- addLayer(l_layer_PSD_high, l_temp_stack_PSD_high)
+        s_temp_stack_PSD_high <- addLayer(s_layer_PSD_high, s_temp_stack_PSD_high)
       }
       
       ## move to nested for loop
       step = step - 1
     }
     
-    names(l_temp_stack) <- paste("window", 1:nlayers(l_temp_stack), sep = "_")
-    names(s_temp_stack) <- paste("window", 1:nlayers(s_temp_stack), sep = "_")
+    names(l_temp_stack_PSD_low) <- names(l_temp_stack_PSD_high) <- names(s_temp_stack_PSD_low) <- 
+      names(s_temp_stack_PSD_high) <- names(l_temp_stack_AWC) <- names(s_temp_stack_AWC) <- 
+      paste("window", 1:nlayers(l_temp_stack_PSD_low), sep = "_")
     
     ## save temporary raster stack: 
     if (i == 1) {
-      l_stack_list <- list(l_temp_stack)
-      s_stack_list <- list(s_temp_stack)
+      l_stack_list_PSD_low <- list(l_temp_stack_PSD_low)
+      s_stack_list_PSD_low <- list(s_temp_stack_PSD_low)
+      l_stack_list_AWC <- list(l_temp_stack_AWC)
+      s_stack_list_AWC <- list(s_temp_stack_AWC)
+      l_stack_list_PSD_high <- list(l_temp_stack_PSD_high)
+      s_stack_list_PSD_high <- list(s_temp_stack_PSD_high)
     }
     else {
-      l_stack_list <- append(l_stack_list, l_temp_stack)
-      s_stack_list <- append(s_stack_list, s_temp_stack)
+      l_stack_list_PSD_low <- append(l_stack_list_PSD_low, l_temp_stack_PSD_low)
+      s_stack_list_PSD_low <- append(s_stack_list_PSD_low, s_temp_stack_PSD_low)
+      l_stack_list_AWC <- append(l_stack_list_AWC, l_temp_stack_AWC)
+      s_stack_list_AWC <- append(s_stack_list_AWC, s_temp_stack_AWC)
+      l_stack_list_PSD_high <- append(l_stack_list_PSD_high, l_temp_stack_PSD_high)
+      s_stack_list_PSD_high <- append(s_stack_list_PSD_high, s_temp_stack_PSD_high)
     }
     
     ## move to next time window width
@@ -100,16 +140,23 @@ create_rasterStack <- function(path) {
   }
   
   ## name the list items 
-  names(l_stack_list) <- names(ww_split)
-  names(s_stack_list) <- names(ww_split)
+  names(l_stack_list_PSD_low) <- names(l_stack_list_PSD_high) <- names(s_stack_list_PSD_low) <-
+    names(s_stack_list_PSD_high) <- names(l_stack_list_AWC) <- names(s_stack_list_PSD_high) <-
+    names(ww_split)
   
   ## save the rasterstack 
-  saveRDS(l_stack_list, paste(path, "l_stack_list_tos.rds", sep = ""))
-  saveRDS(s_stack_list, paste(path, "s_stack_list_tos.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_low, paste(path, type, "_l_stack_list_PSD_low_tos.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_low, paste(path, type, "_s_stack_list_PSD_low_tos.rds", sep = ""))
+  saveRDS(l_stack_list_AWC, paste(path, type, "_l_stack_list_AWC_tos.rds", sep = ""))
+  saveRDS(s_stack_list_AWC, paste(path, type, "_s_stack_list_AWC_tos.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_high, paste(path, type, "_l_stack_list_PSD_high_tos.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_high, paste(path, type, "s_stack_list_PSD_high_tos.rds", sep = ""))
   
-  stacks <- list(l_stack_list, s_stack_list)
+  stacks <- list(l_stack_list_PSD_low, s_stack_list_PSD_low, 
+                 l_stack_list_AWC, s_stack_list_AWC,
+                 l_stack_list_PSD_high, s_stack_list_PSD_high)
   
-  ## return the two lists of rasterStacks
+  ## return the 6 lists of rasterStacks
   return(stacks)
 }
 

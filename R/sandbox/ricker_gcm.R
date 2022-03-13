@@ -195,6 +195,180 @@ results %>%
 tas_results <- results
 
 
+## choose some to look at more closely
+one_over_f <- function(beta){
+  ## create 1/fB noise as described in Cuddington and Yodzis
+  n = rnorm(524288, mean = 0, sd = 1) ## random numbers with 0 mean and unit variance 
+  phases <- runif(524288, 0, 2*pi) ## random phases
+  f = 1:524288 ## f
+  
+  a <- n*1/(f^(beta/2)) ### amplitudes = random normally distributed numbers * 1/f^beta/2
+  
+  complex <- a*cos(phases) + a*sin(phases) ## complex coefficients
+  
+  dft <- fft(complex, inverse = T) ## inverse fast fourier transform the coefficients to get the temporal noise series
+  noise = as.numeric(dft[1:83950]) ## crop the noise series to first 200,000 points
+  
+  ## remove mean and change variance to 4140:
+  noise <- noise*1/sqrt(var(noise))*sqrt(4140)
+  noise <- noise - mean(noise)
+  
+  ## estimate noise colour from a linear regression of pwoer spectrum:
+  l <- length(noise)
+  dft <- fft(noise)/l
+  amp <- sqrt(Im(dft[-1])^2 + Re(dft[-1])^2) ## get rid of first term (represents DC component - y axis shift)
+  amp <- amp[1:(l/2)]	## remove second half of amplitudes (negative half)
+  freq <- 1:(l/2)/l ## sampling frequency = period(1 day, 2 days, 3 days.... L/2 days) / length of time series 
+  
+  ## create periodogram data by squaring amplitude of FFT output
+  spectral <- data.frame(freq = freq, power = amp^2)
+  
+  # spectral %>%
+  #   ggplot(aes(x = freq, y = power)) + geom_line() +
+  #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm") +
+  #   theme_minimal()
+  
+  true_colour <- lm(data = spectral, log(power) ~ log(freq))
+  
+  return(list(noise, as.numeric(true_colour$coefficients[2])))
+}
+## simulate for compensatory dynamics = 0.1, save a bunch of time series to look at
+N0 = K0 = 100
+all_results <- list()
+spec_exp_list <- list()
+element <- 1
+count <- 1
+x = 1 ## longitude
+while (x < ncol(s_detrended_tas)+1) {
+  y = 1 ## latitude
+  while (y < nrow(s_detrended_tas)+1) {
+    ## if not in the ocean
+    if (!paste(lat[y + lat_index], lon[x + lon_index]) %in% ocean_coords) {
+      local_ts <- s_detrended_tas[y,x,] - 273.15 ## get the local time series
+      local_ts <- local_ts - mean(local_ts) ## centre around 0
+      var_local_ts <- local_ts*1/sqrt(var(local_ts))*sqrt(4140)## add variance 
+      
+      ## if no time series, skip to next latitude
+      if (length(which(is.na(local_ts))) == 83950) {
+        y = y + 1
+      }
+      else {
+        ## run population model:
+        print(paste("Running population model for lat = ", lat[y + lat_index],
+                    ", lon = ", lon[x + lon_index], sep = ""))
+        
+        ## to see effects of demographic stochasticity, run each 10x
+        all <- foreach(1:5, .combine=rbind) %dopar% {
+            N = N0 ## set starting population size to 100
+            N_var = N0
+            K <- rep(K0, length(local_ts)) #K0 + round(local_ts, digits = 0) ## generate new carrying capacity
+            output <- one_over_f(beta = 1.25)
+            noise = output[[1]]
+            
+            K_var <- K0 + round(noise, digits = 0) ## generate new carrying capacity
+             # K_var <- K0 + round(var_local_ts, digits = 0) ## generate new carrying capacity
+            K[which(K <= 0)] <- 5 ## make sure none are negative
+            K_var[which(K_var <= 0)] <- 5 ## make sure none are negative
+            
+            i=1
+            Nts <- c()
+            Nts_var <- c()
+            while(i <= length(local_ts)) {
+              Nt = N*exp(1.5*(1 - (N/K[i])^0.1))
+              Nt = sample(rpois(as.numeric(Nt), n = 1000), size = 1)
+              
+              Nt_var = N_var*exp(1.5*(1 - (N_var/K_var[i])^0.1))
+              Nt_var = sample(rpois(as.numeric(Nt_var), n = 1000), size = 1)
+              
+              # ## stop if the pop goes extinct:
+              # if (is.na(Nt) | Nt == 0 | i == length(local_ts)) {
+              #   Nts <- append(Nts, Nt)
+              #   Nts_var <- append(Nts_var, Nt_var)
+              #   extinction_time = i
+              #   i = length(local_ts)+1
+              # }
+              if (i == length(local_ts)) {
+                Nts <- append(Nts, Nt)
+                Nts_var <- append(Nts_var, Nt_var)
+                N = Nt   
+                N_var = Nt_var 
+                i = length(local_ts)+1
+              }
+              ## otherwise, save Nt and continue
+              else {
+                Nts <- append(Nts, Nt)
+                Nts_var <- append(Nts_var, Nt_var)
+                N = Nt   
+                N_var = Nt_var   
+                i = i + 1
+              }
+            }
+            df <- data.frame(N = Nts, K = K, N_var = Nts_var, K_var = K_var, l = 0.1, t = max(Nts_var), 
+                       time = 1:83950,
+                       type = "local_ts",
+              lat = lat[y + lat_index], lon = lon[x + lon_index])
+            filter(df, N != 0 | N_var != 0)
+          }
+          all_results[[count]] <- all
+          count = count + 1
+        
+        y = y + 1
+      }
+    }
+    else {
+      ## if it was an ocean coordinate, move along
+      print(paste("Skipping ocean (lat = ", lat[y + lat_index],
+                  ", lon = ", lon[x + lon_index], ")", sep = ""))
+      
+      y = y + 1
+    }
+  }
+  x = x + 1
+}
+
+##saveRDS(all_results, "data-processed/ricker_gcm_s_local_ts_popdynams.rds")
+
+## plot some time series!!
+#all_results = readRDS("data-processed/ricker_gcm_s_local_ts_popdynams.rds")
+all_results <- do.call("rbind", all_results)
+
+all_results <- all_results %>%
+  mutate(unique_run = paste(lat, lon, t)) 
+
+unique_ten <- unique(all_results$unique_run)[41:51]
+ten_real <- filter(all_results, unique_run %in% unique_ten)
+
+ten_real %>%
+  ggplot(., aes(x = time, y = K)) + geom_line(colour = "red", alpha = 0.5) +
+  geom_line(data = ten_real, aes(x = time, y = N), inherit.aes = F) +
+  facet_wrap(~unique_run)
+
+
+all_results <- all_results %>%
+  group_by(lat, lon) %>%
+  mutate(unique_run = paste(lat, lon, t)) 
+
+unique_ten <- unique(all_results$unique_run)[1:9]
+ten_real <- filter(all_results, unique_run %in% unique_ten)
+
+ten_real %>%
+  ggplot(., aes(x = time, y = N)) + geom_line() +
+  geom_line(data = ten_real, aes(x = time, y = K), colour = "red", alpha = 0.5, inherit.aes = F) +
+  facet_wrap(~unique_run) 
+
+ten_real <- filter(ten_real, N_var != 0)
+
+ten_real %>%
+  ggplot(., aes(x = time, y = K_var)) + geom_line(colour = "red", alpha = 0.5) +
+  geom_line(data = ten_real, aes(x = time, y = N_var), inherit.aes = F) +
+  facet_wrap(~unique_run)
+
+ten_real %>%
+  ggplot(., aes(x = time, y = N_var)) + geom_line() +
+  geom_line(data = ten_real, aes(x = time, y = K_var), colour = "red", alpha = 0.5, inherit.aes = F) +
+  facet_wrap(~unique_run)
+
+
 ## next: 
 ## add an sst chunk
 

@@ -34,6 +34,10 @@ create_rasterStack <- function(path) {
     file = file + 1
   }
   
+  ## change lon so it matches sea surface temperature 
+  spec_exp <- spec_exp %>%
+    mutate(lon = ifelse(lon >= 180, lon - 180, lon + 178))
+  
   r <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, 
               crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"),
               res = 1)
@@ -146,7 +150,7 @@ create_rasterStack <- function(path) {
   saveRDS(s_stack_list_PSD_high, paste(path, "s_stack_list_PSD_high.rds", sep = ""))
   
   stacks <- list(l_stack_list_PSD_low, s_stack_list_PSD_low, 
-                 l_stack_list__AWC, s_stack_list_AWC,
+                 l_stack_list_AWC, s_stack_list_AWC,
                  l_stack_list_PSD_high, s_stack_list_PSD_high)
   
   ## return the 6 lists of rasterStacks

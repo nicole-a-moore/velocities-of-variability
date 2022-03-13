@@ -87,22 +87,19 @@ l_stack_tas_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/l_stack_l
 s_stack_tas_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_AWC.rds")[[6]] 
 l_stack_tas_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/l_stack_list_PSD_high.rds")[[6]] 
 s_stack_tas_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_PSD_high.rds")[[6]] 
-extent(l_stack_tas_PSD_low) <- extent(s_stack_tas_PSD_low) <- extent(l_stack_tas_PSD_high) <- 
-  extent(s_stack_tas_PSD_high) <- extent(s_stack_tas_AWC) <- extent(l_stack_tas_AWC) <- 
-  c(-179, 179, -89, 89)
 
-l_stack_tos_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/l_stack_list_PSD_low.rds")[[6]] 
-s_stack_tos_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_low.rds")[[6]] 
-l_stack_tos_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/l_stack_list_AWC.rds")[[6]] 
-s_stack_tos_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_AWC.rds")[[6]] 
-l_stack_tos_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/l_stack_list_PSD_high.rds")[[6]] 
-s_stack_tos_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_high.rds")[[6]] 
+l_stack_tos_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/l_stack_list_PSD_low_tos.rds")[[6]] 
+s_stack_tos_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_low_tos.rds")[[6]] 
+l_stack_tos_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/l_stack_list_AWC_tos.rds")[[6]] 
+s_stack_tos_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_AWC_tos.rds")[[6]] 
+l_stack_tos_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/l_stack_list_PSD_high_tos.rds")[[6]] 
+s_stack_tos_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_high_tos.rds")[[6]] 
 
 ## crop to same extent
 list_tas <- c(l_stack_tas_PSD_low, s_stack_tas_PSD_low, l_stack_tas_AWC, s_stack_tas_AWC, l_stack_tas_PSD_high,
           s_stack_tas_PSD_high)
 
-list_tas <- sapply(list_tas, FUN = crop, l_stack_tos)
+list_tas <- sapply(list_tas, FUN = crop, l_stack_tos_PSD_low)
 list_tas <- sapply(list_tas, FUN = stack)
 
 list_tos <- c(l_stack_tos_PSD_low, s_stack_tos_PSD_low, l_stack_tos_AWC, s_stack_tos_AWC, l_stack_tos_PSD_high,
@@ -111,7 +108,8 @@ list_tos <- c(l_stack_tos_PSD_low, s_stack_tos_PSD_low, l_stack_tos_AWC, s_stack
 list_tos <- sapply(list_tos, FUN = crop, l_stack_tas_PSD_low)
 list_tos <- sapply(list_tos, FUN = stack)
 
-terr <- crop(terr, l_stack_tos[[1]])
+extent(terr) <- c(0, 360, -90, 90)
+terr <- crop(terr, list_tos[[1]])
 
 ## mask to only include ocean, only areas in tos
 list_tas <- sapply(list_tas, FUN = mask, terr, inverse = T)
@@ -124,10 +122,10 @@ list_tas <- sapply(list_tas, FUN = mask, list_tos[[1]])
 ## take a looksie:
 l_stack_tas_PSD_low <- list_tas[[1]]
 s_stack_tas_PSD_low <- list_tas[[2]]
-plot(l_stack_tas_PSD_low[[1]]) ## higher spectral exponent (shallower, less autocorrelated, white noise)
+plot(l_stack_tas_PSD_low[[1]]) ## lower spectral exponent (shallower, less autocorrelated, white noise)
 l_stack_tos_PSD_low <- list_tos[[1]]
 s_stack_tos_PSD_low <- list_tos[[2]]
-plot(l_stack_tos_PSD_low[[1]]) ## lower spectral exponent (steeper, more autocorrelated, red noise)
+plot(l_stack_tos_PSD_low[[1]]) ## higher spectral exponent (steeper, more autocorrelated, red noise)
 
 ## calculate mean spectral exponent for tos and tas
 mean_spec_tas_PSD_low_l <- calc(l_stack_tas_PSD_low, mean)
@@ -154,8 +152,8 @@ pts %>%
   theme_minimal() +
   labs(x = "", y = "", fill = "Mean spectral exponent\n of seasonally detrended\ndaily temperature\n(1871-2100)") +
   theme(panel.grid = element_blank())
-## spec exp of tas > spec exp of tos
-## smaller spectral exponent = more autocorrelated
+## spec exp of tos > spec exp of tas
+## larger spectral exponent = more autocorrelated
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
 #####  Compare change in spectral exponent of air and sea surface temperate  #####
@@ -201,6 +199,7 @@ spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels =
                                          "9 years", "10 years"))
 
 tas <- spec_exp %>%
+  mutate(lon = ifelse(lon >= 180, lon - 180, lon + 178)) %>%
   filter(time_window_width == "10 years") %>%
   select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high) %>%
   unique()
@@ -209,7 +208,7 @@ tas <- spec_exp %>%
 terr <- raster("data-processed/raster_terr_mask.nc") 
 tas <- select(tas, lon, lat, everything())
 raster_tas <- rasterFromXYZ(tas)
-extent(raster_tas) <- c(-179, 179, -89, 89)
+extent(terr) <- c(0, 360, -90, 90)
 terr <- crop(terr, raster_tas)
 raster_tas <- mask(raster_tas, terr, inverse = T)
 plot(raster_tas[[1]])
@@ -227,7 +226,7 @@ l_low <- tas %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
+               aes(x=long+180, y=lat, group = group)) 
 
 s_low <- tas %>%
   ggplot(., aes(x = lon, y = lat, fill = s_estimate_PSD_low)) + geom_raster() +
@@ -238,7 +237,7 @@ s_low <- tas %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
+               aes(x=long+180, y=lat, group = group)) 
 
 l_high <- tas %>%
   ggplot(., aes(x = lon, y = lat, fill = l_estimate_PSD_high)) + geom_raster() +
@@ -249,7 +248,7 @@ l_high <- tas %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
+               aes(x=long+180, y=lat, group = group)) 
 
 s_high <- tas %>%
   ggplot(., aes(x = lon, y = lat, fill = s_estimate_PSD_high)) + geom_raster() +
@@ -260,7 +259,7 @@ s_high <- tas %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
+               aes(x=long+180, y=lat, group = group)) 
 
 ## faceted version:
 tas %>%
@@ -274,7 +273,7 @@ tas %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) +
+               aes(x=long+180, y=lat, group = group)) +
   facet_wrap(~dataset)
 
 ##### Organize tos data  #####
@@ -330,7 +329,7 @@ l_low <- tos %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
+               aes(x=long+180, y=lat, group = group)) 
 
 s_low <- tos %>%
   ggplot(., aes(x = lon, y = lat, fill = s_estimate_PSD_low)) + geom_raster() +
@@ -341,7 +340,7 @@ s_low <- tos %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
+               aes(x=long+180, y=lat, group = group)) 
 
 l_high <- tos %>%
   ggplot(., aes(x = lon, y = lat, fill = l_estimate_PSD_high)) + geom_raster() +
@@ -352,7 +351,7 @@ l_high <- tos %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
+               aes(x=long+180, y=lat, group = group)) 
 
 s_high <- tos %>%
   ggplot(., aes(x = lon, y = lat, fill = s_estimate_PSD_high)) + geom_raster() +
@@ -363,7 +362,7 @@ s_high <- tos %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) 
+               aes(x=long+180, y=lat, group = group)) 
 
 ## faceted version:
 tos %>%
@@ -377,7 +376,7 @@ tos %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0, na.value = "white") +
   geom_polygon(data = countries, col="black", size = 0.1, fill = "transparent", alpha = 0.5,
-               aes(x=long, y=lat, group = group)) +
+               aes(x=long+180, y=lat, group = group)) +
   facet_wrap(~dataset)
 
 
@@ -405,10 +404,10 @@ all %>%
 
 ## where does direction agree between air and sea surface temperature?
 combined_tos <- tos %>%
-  rename("s_estimate_tos" = s_estimate) %>%
+  rename("s_estimate_tos" = s_estimate_PSD_low) %>%
   select(lon, lat, s_estimate_tos) 
 combined_tas <- tas %>%
-  rename("s_estimate_tas" = s_estimate) %>%
+  rename("s_estimate_tas" = s_estimate_PSD_low) %>%
   select(lon, lat, s_estimate_tas) 
 
 combined <- left_join(combined_tas, combined_tos)
@@ -427,7 +426,7 @@ combined %>%
 
 ## how different is the global average spectral change across the ocean when you use air vs. sea temp?
 ## convert raster layer to data frame
-df_tas <- data.frame(rasterToPoints(s_stack_tas))
+df_tas <- data.frame(rasterToPoints(s_stack_tas_PSD_low))
 df_tas <- gather(df_tas, key = "window_number", value = "spec_exp", c(3:ncol(df_tas)))
 
 tas_average <- df_tas %>%
@@ -438,7 +437,7 @@ tas_average <- df_tas %>%
   rename("Air surface temperature" = mean_spec_exp) 
 tas_average$year = seq(1871, 2081, by = 10)
 
-df_tos <- data.frame(rasterToPoints(s_stack_tos))
+df_tos <- data.frame(rasterToPoints(s_stack_tos_PSD_low))
 df_tos <- gather(df_tos, key = "window_number", value = "spec_exp", c(3:ncol(df_tos)))
 
 tos_average <- df_tos %>%

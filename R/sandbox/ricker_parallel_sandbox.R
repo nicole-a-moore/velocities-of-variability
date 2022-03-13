@@ -33,9 +33,9 @@ registerDoParallel(numCores)  # use multicore, set to the number of our cores
 ## 500 simulations, run for a maximum duration of 200 000 generations
 
 #### model parameters:
-K0 = 30  #carrying capacity
+K0 = 100  #carrying capacity
 Tmax = 83950 #length of time to run model
-N0 = 30 #starting conditions
+N0 = 100 #starting conditions
 
 one_over_f <- function(beta){
   ## create 1/fB noise as described in Cuddington and Yodzis
