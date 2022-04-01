@@ -1,4 +1,4 @@
-### analyzing berkeley earth historical observations of air temperature 
+### analyzing noaa oisst reanalysis of sea surface temperature 
 library(tidyverse)
 library(ncdf4)
 library(easyNCDF)
@@ -20,41 +20,38 @@ registerDoParallel(numCores)  # use multicore, set to the number of our cores
 ###            resample observations           ## 
 #################################################
 r <- raster(ymx = 90, ymn = -90, xmn = 0, xmx = 360, res = 1) 
-names_tas <- c()
+names_sst <- c()
 i=1
 while (i < length(filenames)+1) {
   # open file, get time variable
   file = paste(path, filenames[i], sep = "")
   nc <- nc_open(file)
-  year <- ncvar_get(nc, "year")
-  month <- ncvar_get(nc, "month")
-  day <- ncvar_get(nc, "day")
+  time <- ncvar_get(nc, "time") ## days since 1800-01-01
   nc_close(nc)
 
-  time <- paste(year, month, day, sep = "/")
-  ## rasterize tas:
-  tas <- stack(file, varname="temperature")
-  clim <- stack(file, varname="climatology")
+  ## calculate date in year, month, day format
+  time = as.Date(time, origin=as.Date("1800-01-01"))
+  time = str_replace_all(time, "\\-", "/")
 
-  extent(tas) <- c(0, 360, -90, 90)
-  extent(clim) <- c(0, 360, -90, 90)
+  ## rasterize sst:
+  sst <- stack(file, varname="sst")
+  extent(sst) <- c(0, 360, -90, 90)
 
   if (any(str_detect(time, "2/29"))) {
     ly_days <- which(str_detect(time, "2/29"))
     ly_days <- ly_days[!ly_days %in% which(str_detect(time, "12/29"))]
-    tas <- tas[[-ly_days]]
-    time <- time[-ly_days]
+    if(length(ly_days) !=0) {
+      sst <- sst[[-ly_days]]
+      time <- time[-ly_days]
+    }
   }
-  
-  ## add climatology to anomaly
-  tas <- tas + clim
 
   #####      STANDARDIZE TO 1X1 DEGREE GRID   #####
   ## raster object of desired resolution/extent
-  rtas <- resample(tas, r, method = 'bilinear',
-                     filename = paste("data-processed/BerkeleyEarth/resampled_tas_",
+  rsst <- resample(sst, r, method = 'bilinear',
+                     filename = paste("data-processed/NOAA-OISST/resampled_sst_",
                                       filenames[i], sep = ""), overwrite = T)
-  names_tas <- append(names_tas, paste("data-processed/BerkeleyEarth/resampled_tas_", filenames[i], 
+  names_sst <- append(names_sst, paste("data-processed/NOAA-OISST/resampled_sst_", filenames[i], 
                                        sep = ""))
   
   
@@ -62,19 +59,20 @@ while (i < length(filenames)+1) {
   i = i+1
 }
 
-saveRDS(names_tas,
-        "data-processed/BerkeleyEarth/tas_filenames.rds")
+saveRDS(names_sst,
+        "data-processed/NOAA-OISST/sst_filenames.rds")
 
 
 ## get paths and filenames 
-files_tas <- readRDS("data-processed/BerkeleyEarth/tas_filenames.rds")
+files_sst <- readRDS("data-processed/NOAA-OISST/sst_filenames.rds")
 
 ## make date vector
-## first date: 1880/1/1
-## last date: 2021/12/31
-dates <- paste(rep(seq(1880, 2021), each = 365), ".", rep(seq(1:365), 140), sep = "")
+## first date: 1981/09/01
+## last date: 2022/3/13
+dates <- paste(rep(seq(1981, 2022), each = 365), ".", rep(seq(1:365), 41), sep = "")
+dates <- dates[244:(41*365+72)]
 
-reorganize_GCM(filenames = files_tas)
+reorganize_GCM(filenames = files_sst)
 
 ## detrend and make spatial chunks 
 reorganize_GCM <- function(filenames) {
@@ -164,27 +162,21 @@ reorganize_GCM <- function(filenames) {
           detrended <- left_join(na_indecies, not_na, by = c("num", "is_na"))
           s_detrended = detrended$s_temps
           l_detrended = detrended$l_temps
-          og_temps = local_ts$temp
           
           #####  INTERPOLATING MISSING TEMPS   #####
           ## interpolate if temps are missing
           if(length(which(is.na(s_detrended))) != 0 & length(which(is.na(s_detrended)))!= length(s_detrended)) {
             l_detrended <- imputeTS::na_kalman(l_detrended, smooth = TRUE, model = "StructTS")
             s_detrended <- imputeTS::na_kalman(s_detrended, smooth = TRUE, model = "StructTS")
-            og_temps <- imputeTS::na_kalman(og_temps, smooth = TRUE, model = "StructTS")
             
             ## if first values are missing, get rid of poorly interpolated temps
             if(first(which(is.na(detrended$s_temps))) == 1) {
               l_detrended[first(which(is.na(detrended$s_temps))):first(which(!is.na(detrended$s_temps)))-1] = NA
               s_detrended[first(which(is.na(detrended$s_temps))):first(which(!is.na(detrended$s_temps)))-1] = NA
-              og_temps[first(which(is.na(local_ts$temp))):first(which(!is.na(local_ts$temp)))-1] = NA
-              
             }
 
-            ## save time series 
-            temps_df[y,x,] <- og_temps
             l_detrended_temps[y,x,] <- l_detrended
-            s_detrended_temps[y,x,] <- s_detrended 
+            s_detrended_temps[y,x,] <- s_detrended ## save time series 
           }
           
           print(paste("Done detrending and interpolating x ", x,  " y ", y, " of chunk #", count,sep = ""))
@@ -195,13 +187,13 @@ reorganize_GCM <- function(filenames) {
     }
     
     ## save:
-    sp_files[count] <- paste("data-processed/BerkeleyEarth/be_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
+    sp_files[count] <- paste("data-processed/NOAA-OISST/noaa_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
                              "_lat-", lat_bound1, "-", lat_bound2, ".nc", sep = "")
-    ArrayToNc(temps_df, file_path = paste("data-processed/BerkeleyEarth/be_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
-                                          "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
-    ArrayToNc(l_detrended_temps, file_path = paste("data-processed/BerkeleyEarth/be_l-detrended_lon-", lon_bound1,"-", lon_bound2,
+    # ArrayToNc(temps_df, file_path = paste(path, "spatial_temps_lon-", lon_bound1,"-", lon_bound2,
+    #                                       "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
+    ArrayToNc(l_detrended_temps, file_path = paste("data-processed/NOAA-OISST/noaa_l-detrended_lon-", lon_bound1,"-", lon_bound2,
                                                    "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
-    ArrayToNc(s_detrended_temps, file_path = paste("data-processed/BerkeleyEarth/be_s-detrended_lon-", lon_bound1,"-", lon_bound2,
+    ArrayToNc(s_detrended_temps, file_path = paste("data-processed/NOAA-OISST/noaa_s-detrended_lon-", lon_bound1,"-", lon_bound2,
                                                    "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
     
     ## advance lat and lon indecies to move to next spatial chunk
@@ -217,7 +209,7 @@ reorganize_GCM <- function(filenames) {
     count = count + 1
   }
   
-  saveRDS(sp_files, paste("data-processed/BerkeleyEarth/be_sp_files.rds", sep = ""))
+  saveRDS(sp_files, paste("data-processed/NOAA-OISST/noaa_sp_files.rds", sep = ""))
   ## returns list of spatial chunk filenames 
   return(sp_files)
 }
@@ -275,7 +267,7 @@ while (count <= 18) {
   temp <- raster(missing_vals[,,1])
   extent(temp) = extent(lon_bound1, lon_bound2, lat_bound2, lat_bound1)
   
-  saveRDS(temp, paste("data-processed/BerkeleyEarth/temp_", count, ".rds", sep = ""))
+  saveRDS(temp, paste("data-processed/NOAA-OISST/temp_", count, ".rds", sep = ""))
   
   list_of_chunks[[count]] = temp
  
@@ -299,10 +291,10 @@ while (i < length(list_of_chunks)) {
   i = i+1
 }
 plot(mosaic)
-saveRDS(mosaic, "data-processed/BerkeleyEarth/missing-data-count.rds")
+saveRDS(mosaic, "data-processed/NOAA-OISST/missing-data-count.rds")
 
-## calculate spectral exponent after getting rid of sea in tas
-sp_files_tas <- readRDS("data-processed/BerkeleyEarth/be_sp_files.rds")
+## calculate spectral exponent after getting rid of sea in sst
+sp_files_sst <- readRDS("data-processed/NOAA-OISST/noaa_sp_files.rds")
 
 ##############################################
 #####              FUNCTIONS:           ######
@@ -414,10 +406,6 @@ sliding_window_spec_exp <- function(names) {
   l_filenames <- str_replace_all(names, "spatial_temps", 'l-detrended')
   s_filenames <-  str_replace_all(names, "spatial_temps", 's-detrended')
   
-  ## read in the ocean coordinates
-  ocean <- read.csv("data-processed/masks/cmip5-ocean-coords.csv")
-  ocean_coords <- paste(ocean$lat, ocean$lon)
-  
   lat <- seq(from = 89.5, to = -89.5, length.out = 180) 
   lon <-seq(from = 0.5, to = 359.5, length.out = 360) 
   
@@ -428,25 +416,25 @@ sliding_window_spec_exp <- function(names) {
     
     ## retrieve spatial chunk from nc file
     l_open = nc_open(l_filenames[count])
-    l_detrended_tas = ncvar_get(l_open, "var1_1")
+    l_detrended_sst = ncvar_get(l_open, "var1_1")
     nc_close(l_open)
     
     s_open = nc_open(s_filenames[count])
-    s_detrended_tas = ncvar_get(s_open, "var1_1")
+    s_detrended_sst = ncvar_get(s_open, "var1_1")
     nc_close(s_open)
     
     spec_exp_list <- list()
     x = 1 ## longitude
-    while (x < ncol(l_detrended_tas)+1) {
+    while (x < ncol(l_detrended_sst)+1) {
       y = 1 ## latitude
       
       ## parallelize:
-      spec_exp_list[[x]] <-  foreach(y=1:nrow(l_detrended_tas), combine=rbind)  %dopar% {
-        l_local_ts <- l_detrended_tas[y,x,] ## get the local detrended time series
-        s_local_ts <- s_detrended_tas[y,x,]
+      spec_exp_list[[x]] <-  foreach(y=1:nrow(l_detrended_sst), combine=rbind)  %dopar% {
+        l_local_ts <- l_detrended_sst[y,x,] ## get the local detrended time series
+        s_local_ts <- s_detrended_sst[y,x,]
         
         ## if no time series, skip to next latitude
-        if (length(which(is.na(l_local_ts))) == 51830) {
+        if (length(which(is.na(l_local_ts))) == 14794) {
           rep(NA, 13)
         }
         else {
@@ -467,10 +455,10 @@ sliding_window_spec_exp <- function(names) {
           n = 5
           element <- 1
           while (n < 11) {
-            year_start <- 1880
-            year_stop <- 1880 + n - 1
+            year_start <- 1981
+            year_stop <- 1981 + n - 1
             
-            while (year_start <= (2020 - n)) {
+            while (year_start <= (2022 - n)) {
               ## extract temps within time window
               ts_chunk <- filter(local_ts, year %in% year_start:year_stop)
               
@@ -641,14 +629,14 @@ sliding_window_spec_exp <- function(names) {
     
     ## add filename to list:
     if(count == 1) {
-      se_filenames <- paste("data-processed/BerkeleyEarth/be_spec-exp_long-", 
+      se_filenames <- paste("data-processed/NOAA-OISST/noaa_spec-exp_long-", 
                             lon_index,"-", lon_index + 60, "_lat-",
                             90-lat_index,"-", 90-lat_index-60,
                             ".csv", sep = "")
     }
     else {
       se_filenames <- append(se_filenames,
-                             paste("data-processed/BerkeleyEarth/be_spec-exp_long-", 
+                             paste("data-processed/NOAA-OISST/noaa_spec-exp_long-", 
                                    lon_index,"-", lon_index + 60,"_lat-",
                                    90-lat_index,"-", 90-lat_index-60,  
                                    ".csv", sep = ""))
@@ -673,12 +661,12 @@ sliding_window_spec_exp <- function(names) {
     count = count + 1
   }
   
-  saveRDS(se_filenames, paste("data-processed/BerkeleyEarth/be_se_filenames.rds", sep = ""))
+  saveRDS(se_filenames, paste("data-processed/NOAA-OISST/noaa_se_filenames.rds", sep = ""))
   
   return(se_filenames)
 }
 
-se_filenames_tas <- readRDS("data-processed/BerkeleyEarth/be_se_filenames.rds")
+se_filenames_sst <- readRDS("data-processed/NOAA-OISST/noaa_se_filenames.rds")
 
 ####################################################################
 #####    transform spectral exponent data into a rasterStack  ######
@@ -709,7 +697,7 @@ create_rasterStack <- function(se_filenames) {
                                            "9 years", "10 years"))
   
   ## get rid of ones with large chunks of ts missing
-  mosaic <- readRDS("data-processed/BerkeleyEarth/missing-data-count.rds")
+  mosaic <- readRDS("data-processed/NOAA-OISST/missing-data-count.rds")
   ## make a mask to get rid of ones with more than 10000 missing values
   gt_10000 <- mosaic
   gt_10000[mosaic >= 10000] <- 1
@@ -849,14 +837,14 @@ create_rasterStack <- function(se_filenames) {
     names(ww_split)
   
   ## save the rasterstack 
-  saveRDS(l_stack_list_PSD_low, paste("data-processed/BerkeleyEarth/be_l_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_low, paste("data-processed/BerkeleyEarth/be_s_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(l_stack_list_AWC, paste("data-processed/BerkeleyEarth/be_l_stack_list_AWC.rds", sep = ""))
-  saveRDS(s_stack_list_AWC, paste("data-processed/BerkeleyEarth/be_s_stack_list_AWC.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_high, paste("data-processed/BerkeleyEarth/be_l_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_high, paste("data-processed/BerkeleyEarth/be_s_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_all, paste("data-processed/BerkeleyEarth/be_l_stack_list_PSD_all.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_all, paste("data-processed/BerkeleyEarth/be_s_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_low, paste("data-processed/NOAA-OISST/noaa_l_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_low, paste("data-processed/NOAA-OISST/noaa_s_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(l_stack_list_AWC, paste("data-processed/NOAA-OISST/noaa_l_stack_list_AWC.rds", sep = ""))
+  saveRDS(s_stack_list_AWC, paste("data-processed/NOAA-OISST/noaa_s_stack_list_AWC.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_high, paste("data-processed/NOAA-OISST/noaa_l_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_high, paste("data-processed/NOAA-OISST/noaa_s_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_all, paste("data-processed/NOAA-OISST/noaa_l_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_all, paste("data-processed/NOAA-OISST/noaa_s_stack_list_PSD_all.rds", sep = ""))
 
   stacks <- list(l_stack_list_PSD_low, s_stack_list_PSD_low, 
                  l_stack_list_AWC, s_stack_list_AWC,
@@ -920,102 +908,93 @@ spec_exp %>%
   labs(x = "Time window start year", y = "Spectral exponent") +
   geom_smooth(method = "lm", se = F) + facet_wrap(~lat_lon)
 
-## lat -83.5, lon 161.5
-## count = 5,  x = 42, y = 54
-## example of ts with first half missing
+write.csv(spec_exp, "data-processed/NOAA-OISST/spec_exp_qc.csv", row.names = F)
 
-## look at missingness
-mosaic <- readRDS("data-processed/BerkeleyEarth/missing-data-count.rds")
-plot(mosaic)
-hist(values(mosaic))
-lots <- mosaic
-lots[mosaic == 51830] <- NA
-lots[mosaic < 10000 & mosaic != 51830] <- 0
-lots[mosaic >= 10000 & mosaic != 51830] <- 1
-plot(lots)
+spec_exp$dataset <- "NOAA-OISST"
 
-little <- mosaic
-little[mosaic > 10000] <- 51830
-little[little == 51830] <- NA
+spec_exp_berk <- read.csv("data-processed/BerkeleyEarth/spec_exp_qc.csv")
+spec_exp_berk$dataset = "Berkley Earth"
+spec_exp = select(spec_exp, -lat_lon)
 
-plot(little)
+spec= rbind(spec_exp_berk, spec_exp)
 
-## make a mask to get rid of ones with more than 10000 missing values
-gt_10000 <- mosaic
-gt_10000[mosaic >= 10000] <- 1
-gt_10000[mosaic < 10000] <- NA
-plot(gt_10000)
-
-## get lats and lons 
-gt_10000 <- data.frame(rasterToPoints(gt_10000))
-
-## filter spec exp to exclude cells in gt_10000
-spec_exp <- mutate(spec_exp, lat_lon = paste(lat, lon))
-gt_10000 <- mutate(gt_10000, lat_lon = paste(y, x))
-
-sub_spec_exp <- filter(spec_exp, !lat_lon %in% gt_10000$lat_lon)
-
-sub_spec_exp %>%
+spec %>%
   filter(time_window_width == "10 years") %>%
   gather(key = "exp_type", value = "spec_exp", c(s_spec_exp_PSD_high, s_spec_exp_PSD_all, s_spec_exp_PSD_low,
                                                  s_spec_exp_AWC)) %>%
   filter(!is.na(spec_exp)) %>%
-  group_by(window_start_year, exp_type) %>% ## group data by window start year
+  group_by(window_start_year, exp_type, dataset) %>% ## group data by window start year
   mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
-  select(window_start_year, mean_spec_exp) %>%
+  select(window_start_year, mean_spec_exp, dataset) %>%
   unique() %>%
-  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = exp_type)) + geom_point() +
+  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = exp_type, shape = dataset)) + geom_point() +
   theme_light() +
-  labs(x = "Time window start year", y = "Mean spectral exponent") + 
-  geom_smooth(method = "lm")  
+  labs(x = "Time window start year", y = "Mean spectral exponent", shape = "", colour = "") + 
+  geom_smooth(method = "lm")  + 
+  scale_colour_discrete(labels = c("AWC method", "All frequencies", 
+                                   "High frequencies", "Low frequencies")) 
 
-sub_spec_exp %>%
-  filter(time_window_width == "10 years") %>%
-  gather(key = "exp_type", value = "spec_exp", c(l_spec_exp_PSD_high, l_spec_exp_PSD_all, l_spec_exp_PSD_low,
-                                                 l_spec_exp_AWC)) %>%
-  filter(!is.na(spec_exp)) %>%
-  group_by(window_start_year, exp_type) %>% ## group data by window start year
-  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window
-  select(window_start_year, mean_spec_exp) %>%
-  unique() %>%
-  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = exp_type)) + geom_point() +
-  theme_light() +
-  labs(x = "Time window start year", y = "Mean spectral exponent") +
-  geom_smooth(method = "lm")
-
-sub_spec_exp %>%
-  filter(time_window_width == "10 years") %>%
+spec %>%
   gather(key = "exp_type", value = "spec_exp", c(s_spec_exp_PSD_high, s_spec_exp_PSD_all, s_spec_exp_PSD_low,
                                                  s_spec_exp_AWC)) %>%
   filter(!is.na(spec_exp)) %>%
-  mutate(lat_lon = paste(lat, lon)) %>%
-  filter(lat_lon %in% unique(.$lat_lon)[c(1,40,2000,900,10000)]) %>%
-  ggplot(., aes(x = window_start_year, y = spec_exp, colour = exp_type)) + geom_point() +
+  group_by(window_start_year, exp_type, time_window_width, dataset) %>% ## group data by window start year
+  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+  select(window_start_year, mean_spec_exp, dataset, time_window_width) %>%
+  unique() %>%
+  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = exp_type, shape = dataset)) + geom_point() +
   theme_light() +
-  labs(x = "Time window start year", y = "Spectral exponent") +
-  geom_smooth(method = "lm", se = F) + facet_wrap(~lat_lon)
-
-write.csv(sub_spec_exp, "data-processed/BerkeleyEarth/spec_exp_qc.csv", row.names = F)
+  labs(x = "Time window start year", y = "Mean spectral exponent", shape = "", colour = "") + 
+  geom_smooth(method = "lm") + facet_wrap(~time_window_width) +
+  scale_colour_discrete(labels = c("AWC method", "All frequencies", 
+                                   "High frequencies", "Low frequencies")) 
 
 
 
 #################################################
 ###                 filenames                  ## 
 #################################################
-path = "data-raw/BerkeleyEarth/"
+path = "data-raw/NOAA-OISST/"
 
-filenames <- c("Complete_TAVG_Daily_LatLong1_1880.nc",
-               "Complete_TAVG_Daily_LatLong1_1890.nc",
-               "Complete_TAVG_Daily_LatLong1_1900.nc",
-               "Complete_TAVG_Daily_LatLong1_1910.nc",
-               "Complete_TAVG_Daily_LatLong1_1920.nc",
-               "Complete_TAVG_Daily_LatLong1_1930.nc",
-               "Complete_TAVG_Daily_LatLong1_1940.nc",
-               "Complete_TAVG_Daily_LatLong1_1950.nc",
-               "Complete_TAVG_Daily_LatLong1_1960.nc",
-               "Complete_TAVG_Daily_LatLong1_1970.nc",
-               "Complete_TAVG_Daily_LatLong1_1980.nc",
-               "Complete_TAVG_Daily_LatLong1_1990.nc",
-               "Complete_TAVG_Daily_LatLong1_2000.nc",
-               "Complete_TAVG_Daily_LatLong1_2010.nc",
-               "Complete_TAVG_Daily_LatLong1_2020.nc")
+filenames <- c("sst.day.mean.1981.nc",
+               "sst.day.mean.1982.nc",
+               "sst.day.mean.1983.nc",
+               "sst.day.mean.1984.nc",
+               "sst.day.mean.1985.nc",
+               "sst.day.mean.1986.nc",
+               "sst.day.mean.1987.nc",
+               "sst.day.mean.1988.nc",
+               "sst.day.mean.1989.nc",
+               "sst.day.mean.1990.nc",
+               "sst.day.mean.1991.nc",
+               "sst.day.mean.1992.nc",
+               "sst.day.mean.1993.nc",
+               "sst.day.mean.1994.nc",
+               "sst.day.mean.1995.nc",
+               "sst.day.mean.1996.nc",
+               "sst.day.mean.1997.nc",
+               "sst.day.mean.1998.nc",
+               "sst.day.mean.1999.nc",
+               "sst.day.mean.2000.nc",
+               "sst.day.mean.2001.nc",
+               "sst.day.mean.2002.nc",
+               "sst.day.mean.2003.nc",
+               "sst.day.mean.2004.nc",
+               "sst.day.mean.2005.nc",
+               "sst.day.mean.2006.nc",
+               "sst.day.mean.2007.nc",
+               "sst.day.mean.2008.nc",
+               "sst.day.mean.2009.nc",
+               "sst.day.mean.2010.nc",
+               "sst.day.mean.2011.nc",
+               "sst.day.mean.2012.nc",
+               "sst.day.mean.2013.nc",
+               "sst.day.mean.2014.nc",
+               "sst.day.mean.2015.nc",
+               "sst.day.mean.2016.nc",
+               "sst.day.mean.2017.nc",
+               "sst.day.mean.2018.nc",
+               "sst.day.mean.2019.nc",
+               "sst.day.mean.2020.nc",
+               "sst.day.mean.2021.nc",
+               "sst.day.mean.2022.nc")

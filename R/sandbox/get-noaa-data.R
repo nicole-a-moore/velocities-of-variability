@@ -13,7 +13,7 @@ time_series <- griddap(info,
                        latitude = c(40.125, 40.125), ## choose the maximum and minimum lat and lon you want data for
                        longitude = c(-160.125, -160.125))
 
-## note: xdon't expect this function to finish running quickly if you are asking it for a large chunk of data -- it's normal for it to take a while
+## note: don't expect this function to finish running quickly if you are asking it for a large chunk of data -- it's normal for it to take a while
 temps <- data.frame(temps = time_series$data$sst, time  = 1:length(time_series$data$sst))
 ggplot(temps, aes(x = time, y = temps)) + geom_line() + theme_bw()
 
