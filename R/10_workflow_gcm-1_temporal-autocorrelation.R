@@ -203,47 +203,51 @@ land_mask <-readRDS("data-processed/01_tos-tas-land-mask.rds")
 legend_rast <- land
 legend_rast[is.na(land)] <- 2
 
+land <- extend(land, c(0, 358, -78, 89))
+land <- crop(land, c(0, 358, -78, 89))
+
+
 ## split data into land and ocean
 land_low <- mask(mosaic_specexp_low, land)
 plot(land_low[[1]])
-ocean_low <- mask(mosaic_specexp_low, land, inverse = T)
+ocean_low <- mask(mosaic_specexp_low, land, inverse = TRUE)
 plot(ocean_low[[1]])
 
 land_high <- mask(mosaic_specexp_high, land)
 plot(land_high[[1]])
-ocean_high <- mask(mosaic_specexp_high, land, inverse = T)
+ocean_high <- mask(mosaic_specexp_high, land, inverse = TRUE)
 plot(ocean_high[[1]])
 
 land_both <- mask(mosaic_specexp, land_mask)
 plot(land_both[[1]])
-ocean_both <- mask(mosaic_specexp, land_mask, inverse = T)
+ocean_both <- mask(mosaic_specexp, land_mask, inverse = TRUE)
 plot(ocean_both[[1]])
 
 ## baseline:
-max(values(land_low[[1]]), na.rm=T)
-min(values(land_low[[1]]),  na.rm=T)
-mean(values(land_low[[1]]), na.rm=T)
-max(values(ocean_low[[1]]), na.rm=T)
-min(values(ocean_low[[1]]),  na.rm=T)
-mean(values(ocean_low[[1]]), na.rm=T)
+max(values(land_low[[1]]), na.rm=TRUE)
+min(values(land_low[[1]]),  na.rm=TRUE)
+mean(values(land_low[[1]]), na.rm=TRUE)
+max(values(ocean_low[[1]]), na.rm=TRUE)
+min(values(ocean_low[[1]]),  na.rm=TRUE)
+mean(values(ocean_low[[1]]), na.rm=TRUE)
 
 
 ## summary stats and figures:
 ## mean
-mean(values(land_low), na.rm = T)
-mean(values(ocean_low), na.rm = T)
-mean(values(land_high), na.rm = T)
-mean(values(ocean_high), na.rm = T)
-mean(values(land_both), na.rm = T)
-mean(values(ocean_both), na.rm = T)
+mean(values(land_low), na.rm=TRUE)
+mean(values(ocean_low), na.rm=TRUE)
+mean(values(land_high), na.rm=TRUE)
+mean(values(ocean_high), na.rm=TRUE)
+mean(values(land_both), na.rm=TRUE)
+mean(values(ocean_both), na.rm=TRUE)
 
 ## standard deviation
-sd(values(land_low), na.rm = T)
-sd(values(ocean_low), na.rm = T)
-sd(values(land_high), na.rm = T)
-sd(values(ocean_high), na.rm = T)
-sd(values(land_both), na.rm = T)
-sd(values(ocean_both), na.rm = T)
+sd(values(land_low), na.rm=TRUE)
+sd(values(ocean_low), na.rm=TRUE)
+sd(values(land_high), na.rm=TRUE)
+sd(values(ocean_high), na.rm=TRUE)
+sd(values(land_both), na.rm=TRUE)
+sd(values(ocean_both), na.rm=TRUE)
 
 ## histogram:
 mean_land_low <- calc(land_low, mean)
@@ -376,12 +380,12 @@ temperate <- data.frame(rasterToPoints(mosaic_specexp)) %>%
 
 ## summary stats and figures:
 ## mean
-mean(values(tropical), na.rm = T)
-mean(values(temperate), na.rm = T)
+mean(values(tropical), na.rm=TRUE)
+mean(values(temperate), na.rm=TRUE)
 
 ## standard deviation
-sd(values(tropical), na.rm = T)
-sd(values(temperate), na.rm = T)
+sd(values(tropical), na.rm=TRUE)
+sd(values(temperate), na.rm=TRUE)
 
 ## histogram:
 mean_trop <- calc(tropical, mean)
@@ -445,28 +449,28 @@ temperate <- data.frame(rasterToPoints(mosaic_specexp)) %>%
 ## split tropical and temperate into land and ocean
 tropical_land <- crop(land_mask, tropical)
 tropical_land <- mask(tropical, tropical_land)
-tropical_ocean <- mask(tropical, tropical_land, inverse = T)
+tropical_ocean <- mask(tropical, tropical_land, inverse = TRUE)
 plot(tropical_land[[1]])
 plot(tropical_ocean[[1]])
 
 temperate_land <- crop(land_mask, temperate)
 temperate_land <- mask(temperate, temperate_land)
-temperate_ocean <- mask(temperate, temperate_land, inverse = T)
+temperate_ocean <- mask(temperate, temperate_land, inverse = TRUE)
 plot(temperate_land[[1]])
 plot(temperate_ocean[[1]])
 
 ## summary stats and figures:
 ## mean
-mean(values(tropical_land), na.rm = T)
-mean(values(temperate_land), na.rm = T)
-mean(values(tropical_ocean), na.rm = T)
-mean(values(temperate_ocean), na.rm = T)
+mean(values(tropical_land), na.rm=TRUE)
+mean(values(temperate_land), na.rm=TRUE)
+mean(values(tropical_ocean), na.rm=TRUE)
+mean(values(temperate_ocean), na.rm=TRUE)
 
 ## standard deviation
-sd(values(tropical_land), na.rm = T)
-sd(values(temperate_land), na.rm = T)
-sd(values(tropical_ocean), na.rm = T)
-sd(values(temperate_ocean), na.rm = T)
+sd(values(tropical_land), na.rm=TRUE)
+sd(values(temperate_land), na.rm=TRUE)
+sd(values(tropical_ocean), na.rm=TRUE)
+sd(values(temperate_ocean), na.rm=TRUE)
 
 ## histogram - tropical vs. temperate 
 ## calculate mean
@@ -571,38 +575,38 @@ land_low <- mask(mosaic_specchange_mf$s_estimate_PSD_low, land)
 plot(land_low[[1]])
 land_high <- mask(mosaic_specchange_mf$s_estimate_PSD_high, land)
 plot(land_high[[1]])
-land_both <- mask(mosaic_specchange$s_estimate, land_mask)
-plot(land_high[[1]])
-ocean_low <- mask(mosaic_specchange_mf$s_estimate_PSD_low, land, inverse = T)
+land_both <- mask(mosaic_specchange$s_estimate, land)
+plot(land_both[[1]])
+ocean_low <- mask(mosaic_specchange_mf$s_estimate_PSD_low, land, inverse = TRUE)
 plot(ocean_low[[1]])
-ocean_high <- mask(mosaic_specchange_mf$s_estimate_PSD_high, land, inverse = T)
+ocean_high <- mask(mosaic_specchange_mf$s_estimate_PSD_high, land, inverse = TRUE)
 plot(ocean_high[[1]])
-ocean_both <- mask(mosaic_specchange$s_estimate, land_mask, inverse = T)
+ocean_both <- mask(mosaic_specchange$s_estimate, land, inverse = TRUE)
 plot(ocean_both[[1]])
 
-max(values(land_low[[1]]), na.rm=T)
-min(values(land_low[[1]]),  na.rm=T)
-mean(values(land_low[[1]]), na.rm=T)
-max(values(ocean_low[[1]]), na.rm=T)
-min(values(ocean_low[[1]]),  na.rm=T)
-mean(values(ocean_low[[1]]), na.rm=T)
+max(values(land_low[[1]]), na.rm=TRUE)
+min(values(land_low[[1]]),  na.rm=TRUE)
+mean(values(land_low[[1]]), na.rm=TRUE)
+max(values(ocean_low[[1]]), na.rm=TRUE)
+min(values(ocean_low[[1]]),  na.rm=TRUE)
+mean(values(ocean_low[[1]]), na.rm=TRUE)
 
 ## summary stats and figures:
 ## mean
-mean(values(land_low), na.rm = T)
-mean(values(ocean_low), na.rm = T)
-mean(values(land_high), na.rm = T)
-mean(values(ocean_high), na.rm = T)
-mean(values(land_both), na.rm = T)
-mean(values(ocean_both), na.rm = T)
+mean(values(land_low), na.rm=TRUE)
+mean(values(ocean_low), na.rm=TRUE)
+mean(values(land_high), na.rm=TRUE)
+mean(values(ocean_high), na.rm=TRUE)
+mean(values(land_both), na.rm=TRUE)
+mean(values(ocean_both), na.rm=TRUE)
 
 ## standard deviation
-sd(values(land_low), na.rm = T)
-sd(values(ocean_low), na.rm = T)
-sd(values(land_high), na.rm = T)
-sd(values(ocean_high), na.rm = T)
-sd(values(land_both), na.rm = T)
-sd(values(ocean_both), na.rm = T)
+sd(values(land_low), na.rm=TRUE)
+sd(values(ocean_low), na.rm=TRUE)
+sd(values(land_high), na.rm=TRUE)
+sd(values(ocean_high), na.rm=TRUE)
+sd(values(land_both), na.rm=TRUE)
+sd(values(ocean_both), na.rm=TRUE)
 
 ## histogram:
 low_or_high = append(append(rep("low", length(values(land_low))), 
@@ -635,7 +639,7 @@ df %>%
   scale_fill_gradient2(high = "darkblue", low = "darkred", mid = "#e7d8d3",
                        midpoint = 0) +
   facet_wrap(low_or_high~realm, nrow = 3) +
-  geom_vline(xintercept = 0)
+  geom_vline(xintercept = 0) 
 
 ## map it!
 land_df_low <- data.frame(rasterToPoints(land_low))
@@ -651,11 +655,11 @@ ocean_df_high <- data.frame(rasterToPoints(ocean_high))
 ocean_df_high$realm = "Ocean"
 ocean_df_high$low_or_high = "high"
 ocean_df_both <- data.frame(rasterToPoints(ocean_both))
-ocean_df_both$x = ocean_df_both$x + 180
+ocean_df_both$x = ocean_df_both$x +180
 ocean_df_both$realm = "Ocean"
-ocean_df_both$low_or_high = "both"
+ocean_df_both$low_or_high = "both" 
 land_df_both <- data.frame(rasterToPoints(land_both))
-land_df_both$x = land_df_both$x + 180
+land_df_both$x = land_df_both$x +180
 land_df_both$realm = "Land"
 land_df_both$low_or_high = "both"
 
@@ -697,7 +701,7 @@ hist <- df %>%
         axis.title.x = element_text(size = 10),
         plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm")) +
   facet_wrap(~group, nrow = 4)
-
+  
 ## boxplot:
 box <- df %>%
   ggplot(., aes(y = slope_spec_exp, x = realm, fill = realm)) + 
@@ -710,7 +714,7 @@ box <- df %>%
   stat_summary(fun = mean, geom = "point", shape = 5, size = 3) +
   theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm")) +
   facet_wrap(~low_or_high, nrow = 1) +
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0) 
 
 ## arrange plots side by side:
 lay <- rbind(c(1,1,1,1,2,2),
@@ -762,17 +766,17 @@ mosaic_specexp_high <- extend(mosaic_specexp_high, land)
 ## split data into land and ocean
 land_low <- mask(mosaic_specexp_low, land)
 plot(land_low[[1]])
-ocean_low <- mask(mosaic_specexp_low, land, inverse = T)
+ocean_low <- mask(mosaic_specexp_low, land, inverse = TRUE)
 plot(ocean_low[[1]])
 
 land_high <- mask(mosaic_specexp_high, land)
 plot(land_high[[1]])
-ocean_high <- mask(mosaic_specexp_high, land, inverse = T)
+ocean_high <- mask(mosaic_specexp_high, land, inverse = TRUE)
 plot(ocean_high[[1]])
 
 land_both <- mask(mosaic_specexp, land_mask)
 plot(land_both[[1]])
-ocean_both <- mask(mosaic_specexp, land_mask, inverse = T)
+ocean_both <- mask(mosaic_specexp, land_mask, inverse = TRUE)
 plot(ocean_both[[1]])
 
 ## convert raster layer to data frame
@@ -933,6 +937,7 @@ average_low %>%
   scale_fill_manual(values = pal_realm) +
   guides(fill = "none", colour = "none") + facet_wrap(~realm)
 
+saveRDS(average_low, "data-processed/temp_avg-low.rds")
 
 ## NOT ADAPTED FOR MF ANALYSIS YET
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
@@ -952,12 +957,12 @@ temperate <- data.frame(rasterToPoints(mosaic_specchange)) %>%
 
 ## summary stats and figures:
 ## mean
-mean(values(tropical[[2]]), na.rm = T)
-mean(values(temperate[[2]]), na.rm = T)
+mean(values(tropical[[2]]), na.rm=TRUE)
+mean(values(temperate[[2]]), na.rm=TRUE)
 
 ## standard deviation
-sd(values(tropical[[2]]), na.rm = T)
-sd(values(temperate[[2]]), na.rm = T)
+sd(values(tropical[[2]]), na.rm=TRUE)
+sd(values(temperate[[2]]), na.rm=TRUE)
 
 ## histogram:
 df <- data.frame(latitudinal_region = rep("Tropical", length(values(tropical[[2]]))),
@@ -1026,28 +1031,28 @@ temperate <- data.frame(rasterToPoints(mosaic_specchange)) %>%
 ## split tropical and temperate into land and ocean
 tropical_land <- crop(land_mask, tropical)
 tropical_land <- mask(tropical, tropical_land)
-tropical_ocean <- mask(tropical, tropical_land, inverse = T)
+tropical_ocean <- mask(tropical, tropical_land, inverse = TRUE)
 plot(tropical_land[[1]])
 plot(tropical_ocean[[1]])
 
 temperate_land <- crop(land_mask, temperate)
 temperate_land <- mask(temperate, temperate_land)
-temperate_ocean <- mask(temperate, temperate_land, inverse = T)
+temperate_ocean <- mask(temperate, temperate_land, inverse = TRUE)
 plot(temperate_land[[1]])
 plot(temperate_ocean[[1]])
 
 ## summary stats and figures:
 ## mean
-mean(values(tropical_land[[2]]), na.rm = T)
-mean(values(temperate_land[[2]]), na.rm = T)
-mean(values(tropical_ocean[[2]]), na.rm = T)
-mean(values(temperate_ocean[[2]]), na.rm = T)
+mean(values(tropical_land[[2]]), na.rm=TRUE)
+mean(values(temperate_land[[2]]), na.rm=TRUE)
+mean(values(tropical_ocean[[2]]), na.rm=TRUE)
+mean(values(temperate_ocean[[2]]), na.rm=TRUE)
 
 ## standard deviation
-sd(values(tropical_land[[2]]), na.rm = T)
-sd(values(temperate_land[[2]]), na.rm = T)
-sd(values(tropical_ocean[[2]]), na.rm = T)
-sd(values(temperate_ocean[[2]]), na.rm = T)
+sd(values(tropical_land[[2]]), na.rm=TRUE)
+sd(values(temperate_land[[2]]), na.rm=TRUE)
+sd(values(tropical_ocean[[2]]), na.rm=TRUE)
+sd(values(temperate_ocean[[2]]), na.rm=TRUE)
 
 ## histogram - tropical vs. temperate 
 df1 <- data.frame(Land = c(values(tropical_land[[2]])), 
@@ -1150,13 +1155,13 @@ temperate <- data.frame(rasterToPoints(mosaic_specexp)) %>%
 ## split tropical and temperate into land and ocean
 tropical_land <- crop(land_mask, tropical)
 tropical_land <- mask(tropical, tropical_land)
-tropical_ocean <- mask(tropical, tropical_land, inverse = T)
+tropical_ocean <- mask(tropical, tropical_land, inverse = TRUE)
 plot(tropical_land[[1]])
 plot(tropical_ocean[[1]])
 
 temperate_land <- crop(land_mask, temperate)
 temperate_land <- mask(temperate, temperate_land)
-temperate_ocean <- mask(temperate, temperate_land, inverse = T)
+temperate_ocean <- mask(temperate, temperate_land, inverse = TRUE)
 plot(temperate_land[[1]])
 plot(temperate_ocean[[1]])
 

@@ -844,8 +844,8 @@ create_rasterStack <- function(se_filenames) {
   
   ## name the list items 
   names(l_stack_list_PSD_low) <- names(l_stack_list_PSD_high) <- names(s_stack_list_PSD_low) <-
-    names(s_stack_list_PSD_high) <- names(l_stack_list_AWC) <- names(s_stack_list_PSD_high) <-
-    names(s_stack_list_PSD_all) <- names(s_stack_list_PSD_all) <-
+    names(s_stack_list_PSD_high) <- names(l_stack_list_AWC) <- names(s_stack_list_AWC) <-
+    names(l_stack_list_PSD_all) <- names(s_stack_list_PSD_all) <-
     names(ww_split)
   
   ## save the rasterstack 

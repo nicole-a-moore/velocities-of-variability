@@ -148,16 +148,16 @@ plot(land_both[[1]])
 
 ## summary stats and figures:
 ## mean
-mean(values(land_low), na.rm = T)
-mean(values(land_AWC), na.rm = T)
-mean(values(land_high), na.rm = T)
-mean(values(land_both), na.rm = T)
+mean(values(land_low), na.rm = TRUE)
+mean(values(land_AWC), na.rm = TRUE)
+mean(values(land_high), na.rm = TRUE)
+mean(values(land_both), na.rm = TRUE)
 
 ## standard deviation
-sd(values(land_low), na.rm = T)
-sd(values(land_AWC), na.rm = T)
-sd(values(land_high), na.rm = T)
-sd(values(land_both), na.rm = T)
+sd(values(land_low), na.rm = TRUE)
+sd(values(land_AWC), na.rm = TRUE)
+sd(values(land_high), na.rm = TRUE)
+sd(values(land_both), na.rm = TRUE)
 
 ## histogram:
 mean_land_low <- calc(land_low, mean)
@@ -284,24 +284,24 @@ temperate_both <- data.frame(rasterToPoints(mosaic_specexp)) %>%
 
 ## summary stats and figures:
 ## mean
-mean(values(tropical_low), na.rm = T)
-mean(values(temperate_low), na.rm = T)
-mean(values(tropical_AWC), na.rm = T)
-mean(values(temperate_AWC), na.rm = T)
-mean(values(tropical_high), na.rm = T)
-mean(values(temperate_high), na.rm = T)
-mean(values(tropical_both), na.rm = T)
-mean(values(temperate_both), na.rm = T)
+mean(values(tropical_low), na.rm = TRUE)
+mean(values(temperate_low), na.rm = TRUE)
+mean(values(tropical_AWC), na.rm = TRUE)
+mean(values(temperate_AWC), na.rm = TRUE)
+mean(values(tropical_high), na.rm = TRUE)
+mean(values(temperate_high), na.rm = TRUE)
+mean(values(tropical_both), na.rm = TRUE)
+mean(values(temperate_both), na.rm = TRUE)
 
 ## standard deviation
-sd(values(tropical_low), na.rm = T)
-sd(values(temperate_low), na.rm = T)
-sd(values(tropical_AWC), na.rm = T)
-sd(values(temperate_AWC), na.rm = T)
-sd(values(tropical_high), na.rm = T)
-sd(values(temperate_high), na.rm = T)
-sd(values(tropical_both), na.rm = T)
-sd(values(temperate_both), na.rm = T)
+sd(values(tropical_low), na.rm = TRUE)
+sd(values(temperate_low), na.rm = TRUE)
+sd(values(tropical_AWC), na.rm = TRUE)
+sd(values(temperate_AWC), na.rm = TRUE)
+sd(values(tropical_high), na.rm = TRUE)
+sd(values(temperate_high), na.rm = TRUE)
+sd(values(tropical_both), na.rm = TRUE)
+sd(values(temperate_both), na.rm = TRUE)
 
 ## histogram:
 trop_list <- list(tropical_low, tropical_AWC, tropical_high,tropical_both)
@@ -376,16 +376,16 @@ plot(land_both[[1]])
 
 ## summary stats and figures:
 ## mean
-mean(values(land_low), na.rm = T)
-mean(values(land_AWC), na.rm = T)
-mean(values(land_high), na.rm = T)
-mean(values(land_both), na.rm = T)
+mean(values(land_low), na.rm = TRUE)
+mean(values(land_AWC), na.rm = TRUE)
+mean(values(land_high), na.rm = TRUE)
+mean(values(land_both), na.rm = TRUE)
 
 ## standard deviation
-sd(values(land_low), na.rm = T)
-sd(values(land_AWC), na.rm = T)
-sd(values(land_high), na.rm = T)
-sd(values(land_both), na.rm = T)
+sd(values(land_low), na.rm = TRUE)
+sd(values(land_AWC), na.rm = TRUE)
+sd(values(land_high), na.rm = TRUE)
+sd(values(land_both), na.rm = TRUE)
 
 ## histogram:
 low_or_high = append(rep("Low frequencies", length(values(land_low))), 
@@ -442,9 +442,10 @@ map_df %>%
                        midpoint = 0) +
   theme(legend.title = element_text(size = 8),
         legend.text = element_text(size = 6)) + 
-  facet_wrap(~low_or_high)
+  facet_wrap(~low_or_high) 
 
 hist <- df %>%
+  filter(low_or_high %in% c("Low frequencies", "High frequencies")) %>%
   ggplot(., aes(x = slope_spec_exp, colour = low_or_high, fill = low_or_high)) + 
   geom_histogram(position = position_dodge(), binwidth = 0.0002) +
   theme_light() +
@@ -456,10 +457,13 @@ hist <- df %>%
         panel.border = element_blank(),
         panel.grid = element_blank(), 
         axis.title.x = element_text(size = 10),
-        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm"), legend.position = "none")
+        plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = -0.9, unit = "cm"), 
+        legend.position = "none") +
+  scale_x_continuous(limits = c(-0.01, 0.01))
 
 ## boxplot:
 box <- df %>%
+  filter(low_or_high %in% c("Low frequencies", "High frequencies")) %>%
   ggplot(., aes(y = slope_spec_exp, x = low_or_high, fill = low_or_high)) + 
   geom_boxplot() +
   theme_light() +
@@ -467,7 +471,8 @@ box <- df %>%
   guides(fill = "none") +
   stat_summary(fun = mean, geom = "point", shape = 5, size = 3) +
   theme(plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm")) +
-  geom_hline(yintercept = 0) 
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(limits = c(-0.01, 0.01))
 
 ## arrange plots side by side:
 lay <- rbind(c(1,1,1,1,2,2),
@@ -595,17 +600,17 @@ list_temp <- lapply(list_mosaic, FUN = function(x) {
 ## summary stats and figures:
 ## mean
 trop_means <- lapply(list_trop, FUN = function(x) {
-  mean(values(x), na.rm = T)
+  mean(values(x), na.rm = TRUE)
 })
 temp_means <- lapply(list_temp, FUN = function(x) {
-  mean(values(x), na.rm = T)
+  mean(values(x), na.rm = TRUE)
 })
 ## standard deviation
 trop_sd <- lapply(list_trop, FUN = function(x) {
-  sd(values(x), na.rm = T)
+  sd(values(x), na.rm = TRUE)
 })
 temp_sd <- lapply(list_temp, FUN = function(x) {
-  sd(values(x), na.rm = T)
+  sd(values(x), na.rm = TRUE)
 })
 
 ## histogram:

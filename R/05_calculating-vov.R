@@ -79,6 +79,13 @@ create_rasterStack <- function(path) {
       s_sp_df_PSD_high <- step_split[[step]] %>%
         select(lon, lat, s_spec_exp_PSD_high) 
       
+      l_sp_df_PSD_all <- step_split[[step]] %>%
+        select(lon, lat, l_spec_exp_PSD_all)
+      
+      s_sp_df_PSD_all <- step_split[[step]] %>%
+        select(lon, lat, s_spec_exp_PSD_all) 
+      
+      
       ## create raster layer:
       l_layer_PSD_low <- rasterFromXYZ(l_sp_df_PSD_low)
       s_layer_PSD_low <- rasterFromXYZ(s_sp_df_PSD_low)
@@ -86,6 +93,8 @@ create_rasterStack <- function(path) {
       s_layer_AWC <- rasterFromXYZ(s_sp_df_AWC)
       l_layer_PSD_high <- rasterFromXYZ(l_sp_df_PSD_high)
       s_layer_PSD_high <- rasterFromXYZ(s_sp_df_PSD_high)
+      l_layer_PSD_all <- rasterFromXYZ(l_sp_df_PSD_all)
+      s_layer_PSD_all <- rasterFromXYZ(s_sp_df_PSD_all)
       #plot(l_layer_PSD_high)
       
       ## add to temporary rasterstack:
@@ -96,6 +105,8 @@ create_rasterStack <- function(path) {
         s_temp_stack_AWC <- s_layer_AWC
         l_temp_stack_PSD_high <- l_layer_PSD_high
         s_temp_stack_PSD_high <- s_layer_PSD_high
+        l_temp_stack_PSD_all <- l_layer_PSD_all
+        s_temp_stack_PSD_all <- s_layer_PSD_all
       }
       else {
         l_temp_stack_PSD_low <- addLayer(l_layer_PSD_low, l_temp_stack_PSD_low)
@@ -104,6 +115,8 @@ create_rasterStack <- function(path) {
         s_temp_stack_AWC <- addLayer(s_layer_AWC, s_temp_stack_AWC)
         l_temp_stack_PSD_high <- addLayer(l_layer_PSD_high, l_temp_stack_PSD_high)
         s_temp_stack_PSD_high <- addLayer(s_layer_PSD_high, s_temp_stack_PSD_high)
+        l_temp_stack_PSD_all <- addLayer(l_layer_PSD_all, l_temp_stack_PSD_all)
+        s_temp_stack_PSD_all <- addLayer(s_layer_PSD_all, s_temp_stack_PSD_all)
       }
       
       ## move to nested for loop
@@ -122,6 +135,8 @@ create_rasterStack <- function(path) {
       s_stack_list_AWC <- list(s_temp_stack_AWC)
       l_stack_list_PSD_high <- list(l_temp_stack_PSD_high)
       s_stack_list_PSD_high <- list(s_temp_stack_PSD_high)
+      l_stack_list_PSD_all <- list(l_temp_stack_PSD_all)
+      s_stack_list_PSD_all <- list(s_temp_stack_PSD_all)
     }
     else {
       l_stack_list_PSD_low <- append(l_stack_list_PSD_low, l_temp_stack_PSD_low)
@@ -130,6 +145,8 @@ create_rasterStack <- function(path) {
       s_stack_list_AWC <- append(s_stack_list_AWC, s_temp_stack_AWC)
       l_stack_list_PSD_high <- append(l_stack_list_PSD_high, l_temp_stack_PSD_high)
       s_stack_list_PSD_high <- append(s_stack_list_PSD_high, s_temp_stack_PSD_high)
+      l_stack_list_PSD_all <- append(l_stack_list_PSD_all, l_temp_stack_PSD_all)
+      s_stack_list_PSD_all <- append(s_stack_list_PSD_all, s_temp_stack_PSD_all)
     }
     
     ## move to next time window width
@@ -138,7 +155,8 @@ create_rasterStack <- function(path) {
   
   ## name the list items 
   names(l_stack_list_PSD_low) <- names(l_stack_list_PSD_high) <- names(s_stack_list_PSD_low) <-
-    names(s_stack_list_PSD_high) <- names(l_stack_list_AWC) <- names(s_stack_list_PSD_high) <-
+    names(s_stack_list_PSD_high) <- names(l_stack_list_AWC) <- names(s_stack_list_AWC) <-
+    names(l_stack_list_PSD_all) <- names(s_stack_list_PSD_all) <-
     names(ww_split)
   
   ## save the rasterstack 
@@ -148,14 +166,19 @@ create_rasterStack <- function(path) {
   saveRDS(s_stack_list_AWC, paste(path, "s_stack_list_AWC.rds", sep = ""))
   saveRDS(l_stack_list_PSD_high, paste(path, "l_stack_list_PSD_high.rds", sep = ""))
   saveRDS(s_stack_list_PSD_high, paste(path, "s_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_all, paste(path, "l_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_all, paste(path, "s_stack_list_PSD_all.rds", sep = ""))
   
   stacks <- list(l_stack_list_PSD_low, s_stack_list_PSD_low, 
                  l_stack_list_AWC, s_stack_list_AWC,
-                 l_stack_list_PSD_high, s_stack_list_PSD_high)
+                 l_stack_list_PSD_high, s_stack_list_PSD_high,
+                 l_stack_list_PSD_all, s_stack_list_PSD_all)
   
   ## return the 6 lists of rasterStacks
   return(stacks)
 }
+
+write.csv(spec_exp, "data-processed/GCM_spec_exp.csv", row.names = F)
 
 #################################################
 ###                setting paths               ## 

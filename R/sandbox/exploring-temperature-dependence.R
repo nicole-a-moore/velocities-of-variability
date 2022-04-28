@@ -8,7 +8,7 @@ theme_set(theme_bw())
 starts <- rep(100, 40)
 fx <- function(nstart) kmeans(Boston, 4, nstart=nstart)
 numCores <- detectCores()
-numCores
+cl <- makePSOCKcluster(numCores)
 
 registerDoParallel(numCores)
 
@@ -278,8 +278,8 @@ fitness <- function(temp) {
 ## set model parameters:
 ##### carrying capacity #####
 ## theory-driven:
-M = 50 ## 20,1.5
-Ea = 0.2  ## units: eV
+M = 20 ## 50,0.2=no var in K
+Ea = 0.15  ## units: eV
 k = 8.617e-5 ## unts: eV K-1
 T = NA
 Kt = M^(-3/4)*exp(Ea/(k*T))
@@ -304,7 +304,6 @@ Tr = 298 # reference temperature, changes height of term curves
 b = 0.05
 
 ##### Ricker model #####
-icp = 0.5
 N0 = 100
 Tmax = 200000 
 K0 = 100
@@ -463,10 +462,10 @@ while (icp <= length(l)) {
 
 all %>%
   filter(!sim %in% 1:10) %>%
-  mutate(Nts = ifelse(is.na(Nts), 400000, Nts),
-         Nts_r = ifelse(is.na(Nts_r), 400000, Nts_r),
-         Nts_K = ifelse(is.na(Nts_K), 400000, Nts_K),
-         Nts_rK = ifelse(is.na(Nts_rK), 400000, Nts_rK)) %>%
+  mutate(Nts = ifelse(is.na(Nts), 200000, Nts),
+         Nts_r = ifelse(is.na(Nts_r), 200000, Nts_r),
+         Nts_K = ifelse(is.na(Nts_K), 200000, Nts_K),
+         Nts_rK = ifelse(is.na(Nts_rK), 200000, Nts_rK)) %>%
   gather(key = "pop_model", value = "ext_time", c(Nts, Nts_r, Nts_K, Nts_rK)) %>%
   group_by(colour, pop_model) %>%
   mutate(mean_pers_time = mean(ext_time)) %>%
@@ -509,8 +508,9 @@ all %>%
 ## make sure data looks good 
 col <- seq(0, 3.2, by = 0.1)
 names <- paste("data-processed/temperature-dependent-models_col-", 1:length(col), 
-               "_icp-0.1_adapted.rds", sep = "")
-
+               "_icp-0.1.rds", sep = "")
+names <- append(names, paste("data-processed/temperature-dependent-models_col-", 1:length(col), 
+               "_icp-0.9.rds", sep = ""))
 data <- c()
 i=1
 while(i <= length(names)) {
@@ -520,15 +520,6 @@ while(i <= length(names)) {
 }
 sims=data
 
-## remake plot from c&y but for one ICP
-# sims <- filter(data, !sim %in% c(1:10)) %>%
-#   mutate(Nts = ifelse(is.na(Nts), 89000, Nts),
-#          Nts_r = ifelse(is.na(Nts_r), 89000, Nts_r),
-#          Nts_K = ifelse(is.na(Nts_K), 89000, Nts_K),
-#          Nts_rK = ifelse(is.na(Nts_rK), 89000, Nts_rK))
-
-# sims %>%
-#   ggplot(., aes(x = -true_colour, y = Nts_rK)) + geom_point()
 
 sims %>%
   filter(!sim %in% 1:10) %>%
@@ -537,14 +528,14 @@ sims %>%
          Nts_K = ifelse(is.na(Nts_K), 200000, Nts_K),
          Nts_rK = ifelse(is.na(Nts_rK), 200000, Nts_rK)) %>%
   gather(key = "pop_model", value = "ext_time", c(Nts, Nts_r, Nts_K, Nts_rK)) %>%
-  group_by(colour, pop_model) %>%
+  group_by(colour, pop_model, l) %>%
   mutate(mean_pers_time = mean(ext_time)) %>%
   select(-true_colour) %>%
   unique(.) %>%
-  ggplot(., aes(y = mean_pers_time, x = colour, colour = pop_model)) + geom_point() +
+  ggplot(., aes(y = mean_pers_time, x = colour, colour = l)) + geom_point() +
   #scale_y_log10() +
   theme_light() +
-  labs(x = "Noise colour", y = "Mean persistence time", colour = "Population model") + 
+  labs(x = "Noise colour", y = "Mean persistence time", colour = "ICP") + 
   facet_wrap(~pop_model)
 
 sims %>%
@@ -554,14 +545,14 @@ sims %>%
          Nts_K = ifelse(is.na(Nts_K), 200000, Nts_K),
          Nts_rK = ifelse(is.na(Nts_rK), 200000, Nts_rK)) %>%
   gather(key = "pop_model", value = "ext_time", c(Nts, Nts_r, Nts_K, Nts_rK)) %>%
-  group_by(colour, pop_model) %>%
+  group_by(colour, pop_model, l) %>%
   mutate(cv = sd(ext_time)/mean(ext_time)) %>%
   ungroup() %>%
   select(-ext_time) %>%
   unique(.) %>%
-  ggplot(., aes(y = cv, x = colour, colour = pop_model)) + geom_point()  +
+  ggplot(., aes(y = cv, x = colour, colour = l)) + geom_point()  +
   theme_light() +
-  labs(x = "Noise colour", y = "CV persistence time", colour = "Population model") + 
+  labs(x = "Noise colour", y = "CV persistence time", colour = "ICP") + 
   facet_wrap(~pop_model)
 
 sims %>%
@@ -577,33 +568,48 @@ sims %>%
   labs(x = "Noise colour", y = "Mean persistence time", colour = "Population model") + 
   facet_wrap(~pop_model)
 
-sims %>%
+data %>%
+  filter(sim == 8, colour == 2.9, l == 0.1) %>%
+  mutate(time = rep(1:200000, length(unique(.$sim)))) %>%
+  ggplot(., aes(x = time, y = Nts_r, group = sim)) + geom_line() + 
+  geom_line(aes(y = r*100), colour = "red")
+
+data %>%
+  filter(sim == 2, colour == 2.9, l == 0.1) %>%
+  mutate(time = rep(1:200000, length(unique(.$sim)))) %>%
+  ggplot(., aes(x = time, y = Nts_K, group = sim)) + geom_line() + 
+  geom_line(aes(y = K), colour = "red")
+
+summary <- data %>%
   filter(!sim %in% 1:10) %>%
   mutate(Nts = ifelse(is.na(Nts), 200000, Nts),
          Nts_r = ifelse(is.na(Nts_r), 200000, Nts_r),
          Nts_K = ifelse(is.na(Nts_K), 200000, Nts_K),
          Nts_rK = ifelse(is.na(Nts_rK), 200000, Nts_rK)) %>%
   gather(key = "pop_model", value = "ext_time", c(Nts, Nts_r, Nts_K, Nts_rK)) %>%
-  group_by(colour, pop_model) %>%
-  mutate(mean_pers_time = mean(ext_time),
-         mean_max_temp = mean(max_temp)) %>%
-  select(-true_colour) %>%
-  unique(.) %>%
-  ggplot(., aes(x = mean_max_temp, y = mean_pers_time, colour = pop_model)) + geom_point()
-
-data %>%
-  filter(sim == 8, colour == 3.1) %>%
-  mutate(time = rep(1:200000, length(unique(.$sim)))) %>%
-  ggplot(., aes(x = time, y = Nts_r, group = sim)) + geom_line() + 
-  geom_line(aes(y = r*100), colour = "red")
-
-data %>%
-  filter(sim == 2, colour == 0) %>%
-  mutate(time = rep(1:200000, length(unique(.$sim)))) %>%
-  ggplot(., aes(x = time, y = Nts_K, group = sim)) + geom_line() + 
-  geom_line(aes(y = K), colour = "red")
+  group_by(colour, pop_model, l) %>%
+  mutate(mean_pers_time = mean(ext_time)) %>%
+  mutate(cv_pers_time = sd(ext_time)/mean_pers_time) %>%
+  ungroup() %>%
+  mutate(true_colour = -true_colour) %>%
+  mutate(binned_true_colour = cut(true_colour, breaks = seq(-0.5, 3.75, by = 0.25),
+                                  labels = seq(-0.375, 3.625, by = 0.25))) %>% ## bin true colour
+  group_by(binned_true_colour, pop_model, l) %>%
+  mutate(mean_pers_time_true_col = mean(ext_time)) %>%
+  mutate(cv_pers_time_true_col = sd(ext_time)/mean_pers_time_true_col) %>%
+  select(colour, pop_model, mean_pers_time, cv_pers_time, mean_pers_time_true_col,
+         cv_pers_time_true_col, l, binned_true_colour) %>%
+  unique()
 
 
+summary %>%
+  ggplot(., aes(x = binned_true_colour, y = mean_pers_time_true_col, colour = l)) + geom_point() +
+  facet_wrap(~pop_model)
+summary %>%
+  ggplot(., aes(x = binned_true_colour, y = cv_pers_time_true_col, colour = l)) + geom_point() +
+  facet_wrap(~pop_model)
+
+saveRDS(summary, "data-processed/summary.rds")
 
 ## analyze change in noise colour over time windows 
 sims <- filter(data, sim %in% c(1:10))
@@ -612,169 +618,195 @@ i = 1
 col <- seq(0, 3.2, by = 0.1)
 pop_exp_list <- list()
 element = 1
+l <- c(0.1, 0.9)
 ## loop through colours
 while (i <= length(col)) {
   
   ## loop through pop simulations
   x = 1
   while (x < 11) {
-    ## pull out population simulation
-    sim <- filter(sims, sim == x, colour == as.factor(col[i]))
     
-    if(nrow(sim) == 0) {
-      x = x + 1
-    }
-    else {
-      ## for each time window, process time series and calculate colour
-      n = 5
-      while (n < 11) {
-        year_start <- 0
-        year_stop <- n*365 
-        
-        while (year_start <= (89000 - n*365)) {
-          ## extract temps within time window
-          ts_chunk_r <- sim$Nts_r[year_start:year_stop]
-          ts_chunk_K <- sim$Nts_K[year_start:year_stop]
-          noise <- sim$noise[year_start:year_stop]
-          demsto <- sim$Nts[year_start:year_stop]
-          
-          ## if the window does not have NAs
-          if (length(which(ts_chunk_r == 0)) == 0) {
-            ## get length
-            L = length(ts_chunk_r)
-            
-            ## preprocess the time series:
-            ## a. subtracting mean
-            ts_r <- ts_chunk_r - mean(ts_chunk_r)
-            
-            ## b. windowing - multiply by a parabolic window 
-            window_r <- parabolic_window(series = ts_r, N = L)
-            ts_r <- ts_r*window_r
-            
-            ## c. bridge detrending (endmatching)
-            ## ie. subtracting from the data the line connecting the first and last points of the series
-            ts_r <- bridge_detrender(windowed_series = ts_r, N = L)
-            
-            ## calculate spectral exponent in window using PSD and AWC methods
-            r_exp_PSD <- spectral_exponent_calculator_PSD(ts_r, l = L)
-            
-            r_exp_PSD_low <- r_exp_PSD[[1]]
-            r_exp_PSD_high <- r_exp_PSD[[2]]
-            r_exp_PSD_all <- r_exp_PSD[[3]]
-            # r_plot <- r_exp_PSD[[4]]
-            # 
-            # ggsave(r_plot, 
-            #        path = "figures/pop-spectral-change", 
-            #        filename = paste(" 0.9_r_", n, "_window-start-", year_start, 
-            #                         ".png", sep = ""), 
-            #        device = "png", width = 6, height = 4)
-          }
-          else {
-            r_exp_PSD_low = r_exp_PSD_high = r_exp_PSD_all = NA
-          }
-          if (length(which(ts_chunk_K == 0)) == 0) {
-            L = length(ts_chunk_K)
-            window_K <- parabolic_window(series = ts_K, N = L)
-            ts_K <- ts_chunk_K - mean(ts_chunk_K)
-            ts_K <- ts_K*window_K
-            ts_K <- bridge_detrender(windowed_series = ts_K, N = L)
-            K_exp_PSD <- spectral_exponent_calculator_PSD(ts_K, l = L)
-            
-            K_exp_PSD_low <- K_exp_PSD[[1]]
-            K_exp_PSD_high <- K_exp_PSD[[2]]
-            K_exp_PSD_all <- K_exp_PSD[[3]]
-            # K_plot <- K_exp_PSD[[4]]
-            
-            # ggsave(K_plot, 
-            #        path = "figures/pop-spectral-change", 
-            #        filename = paste(" 0.9_K_", n, "_window-start-", year_start, 
-            #                         ".png", sep = ""), 
-            #        device = "png", width = 6, height = 4)
-          }
-          else {
-            K_exp_PSD_low = K_exp_PSD_high = K_exp_PSD_all = NA
-          }
-          if (length(which(noise == 0)) == 0) {
-            ## get length
-            L = length(noise)
-            
-            ## preprocess the time series:
-            ## a. subtracting mean
-            noise_ts <- noise - mean(noise)
-            
-            ## b. windowing - multiply by a parabolic window 
-            window_noise <- parabolic_window(series = noise_ts, N = L)
-            noise_ts <- noise_ts*window_noise
-            
-            ## c. bridge detrending (endmatching)
-            ## ie. subtracting from the data the line connecting the first and last points of the series
-            noise_ts <- bridge_detrender(windowed_series = noise_ts, N = L)
-            
-            ## calculate spectral exponent in window using PSD and AWC methods
-            noise_exp_PSD <- spectral_exponent_calculator_PSD(noise_ts, l = L)
-            
-            noise_exp_PSD_low <- noise_exp_PSD[[1]]
-            noise_exp_PSD_high <- noise_exp_PSD[[2]]
-            noise_exp_PSD_all <- noise_exp_PSD[[3]]
-          }
-          else {
-            noise_exp_PSD_low = noise_exp_PSD_high = noise_exp_PSD_all = NA
-          }
-          if (length(which(demsto == 0)) == 0) {
-            ## get length
-            L = length(demsto)
-            
-            ## preprocess the time series:
-            ## a. subtracting mean
-            demsto_ts <- demsto - mean(demsto)
-            
-            ## b. windowing - multiply by a parabolic window 
-            window_demsto <- parabolic_window(series = demsto_ts, N = L)
-            demsto_ts <- demsto_ts*window_demsto
-            
-            ## c. bridge detrending (endmatching)
-            ## ie. subtracting from the data the line connecting the first and last points of the series
-            demsto_ts <- bridge_detrender(windowed_series = demsto_ts, N = L)
-            
-            ## calculate spectral exponent in window using PSD and AWC methods
-            demsto_exp_PSD <- spectral_exponent_calculator_PSD(demsto_ts, l = L)
-            
-            demsto_exp_PSD_low <- demsto_exp_PSD[[1]]
-            demsto_exp_PSD_high <- demsto_exp_PSD[[2]]
-            demsto_exp_PSD_all <- demsto_exp_PSD[[3]]
-          }
-          else {
-            demsto_exp_PSD_low = demsto_exp_PSD_high = demsto_exp_PSD_all = NA
-          }
-          
-          ## store:
-          pop_exp_list[[element]] <- c(r_exp_PSD_low, r_exp_PSD_high, r_exp_PSD_all,
-                                       K_exp_PSD_low, K_exp_PSD_high, K_exp_PSD_all,
-                                       noise_exp_PSD_low, noise_exp_PSD_high, noise_exp_PSD_all,
-                                       demsto_exp_PSD_low, demsto_exp_PSD_high, demsto_exp_PSD_all,
-                                       year_start, year_stop, paste(n*365, "days"),
-                                       0.1, col[i], x)
-          
-          
-          
-          
-          ## move to next window
-          year_start = year_stop + 1
-          year_stop = year_stop + n*365 
-          
-          element = element + 1
-        }
-        
-        print(paste("Calculating spectral exponent for population ", x, " window width ", n, 
-                    " colour ", col[i], sep = ""))
-        
-        ## move to next window width
-        n = n + 1
+    icp = 1
+    # loop through icp 
+    while (icp <= 2) {
+      ## pull out population simulation
+      cur_l <- l[icp]
+      sim <- filter(sims, sim == x & colour == as.factor(col[i])) %>%
+        filter(l == cur_l)
+      
+      if(nrow(sim) == 0) {
+        icp = icp + 1
       }
-      x = x + 1 
+      else {
+        ## for each time window, process time series and calculate colour
+        n = 5
+        while (n < 11) {
+          year_start <- 0
+          year_stop <- n*365 
+          
+          while (year_start <= (200000 - n*365)) {
+            ## extract temps within time window
+            ts_chunk_r <- sim$Nts_r[year_start:year_stop]
+            ts_chunk_K <- sim$Nts_K[year_start:year_stop]
+            ts_chunk_rK <- sim$Nts_rK[year_start:year_stop]
+            noise <- sim$noise[year_start:year_stop]
+            demsto <- sim$Nts[year_start:year_stop]
+            
+            ## if the window does not have NAs
+            if (length(which(ts_chunk_r == 0 | is.na(ts_chunk_r))) == 0) {
+              ## get length
+              L = length(ts_chunk_r)
+              
+              ## preprocess the time series:
+              ## a. subtracting mean
+              ts_r <- ts_chunk_r - mean(ts_chunk_r)
+              
+              ## b. windowing - multiply by a parabolic window 
+              window_r <- parabolic_window(series = ts_r, N = L)
+              ts_r <- ts_r*window_r
+              
+              ## c. bridge detrending (endmatching)
+              ## ie. subtracting from the data the line connecting the first and last points of the series
+              ts_r <- bridge_detrender(windowed_series = ts_r, N = L)
+              
+              ## calculate spectral exponent in window using PSD and AWC methods
+              r_exp_PSD <- spectral_exponent_calculator_PSD(ts_r, l = L)
+              
+              r_exp_PSD_low <- r_exp_PSD[[1]]
+              r_exp_PSD_high <- r_exp_PSD[[2]]
+              r_exp_PSD_all <- r_exp_PSD[[3]]
+              # r_plot <- r_exp_PSD[[4]]
+              # 
+              # ggsave(r_plot, 
+              #        path = "figures/pop-spectral-change", 
+              #        filename = paste(" 0.9_r_", n, "_window-start-", year_start, 
+              #                         ".png", sep = ""), 
+              #        device = "png", width = 6, height = 4)
+            }
+            else {
+              r_exp_PSD_low = r_exp_PSD_high = r_exp_PSD_all = NA
+            }
+            if (length(which(ts_chunk_K == 0| is.na(ts_chunk_K))) == 0) {
+              L = length(ts_chunk_K)
+              window_K <- parabolic_window(series = ts_K, N = L)
+              ts_K <- ts_chunk_K - mean(ts_chunk_K)
+              ts_K <- ts_K*window_K
+              ts_K <- bridge_detrender(windowed_series = ts_K, N = L)
+              K_exp_PSD <- spectral_exponent_calculator_PSD(ts_K, l = L)
+              
+              K_exp_PSD_low <- K_exp_PSD[[1]]
+              K_exp_PSD_high <- K_exp_PSD[[2]]
+              K_exp_PSD_all <- K_exp_PSD[[3]]
+              # K_plot <- K_exp_PSD[[4]]
+              
+              # ggsave(K_plot, 
+              #        path = "figures/pop-spectral-change", 
+              #        filename = paste(" 0.9_K_", n, "_window-start-", year_start, 
+              #                         ".png", sep = ""), 
+              #        device = "png", width = 6, height = 4)
+            }
+            else {
+              K_exp_PSD_low = K_exp_PSD_high = K_exp_PSD_all = NA
+            }
+            if (length(which(noise == 0| is.na(noise))) == 0) {
+              ## get length
+              L = length(noise)
+              
+              ## preprocess the time series:
+              ## a. subtracting mean
+              noise_ts <- noise - mean(noise)
+              
+              ## b. windowing - multiply by a parabolic window 
+              window_noise <- parabolic_window(series = noise_ts, N = L)
+              noise_ts <- noise_ts*window_noise
+              
+              ## c. bridge detrending (endmatching)
+              ## ie. subtracting from the data the line connecting the first and last points of the series
+              noise_ts <- bridge_detrender(windowed_series = noise_ts, N = L)
+              
+              ## calculate spectral exponent in window using PSD and AWC methods
+              noise_exp_PSD <- spectral_exponent_calculator_PSD(noise_ts, l = L)
+              
+              noise_exp_PSD_low <- noise_exp_PSD[[1]]
+              noise_exp_PSD_high <- noise_exp_PSD[[2]]
+              noise_exp_PSD_all <- noise_exp_PSD[[3]]
+            }
+            else {
+              noise_exp_PSD_low = noise_exp_PSD_high = noise_exp_PSD_all = NA
+            }
+            if (length(which(ts_chunk_rK == 0| is.na(ts_chunk_rK))) == 0) {
+              ## get length
+              L = length(ts_chunk_rK)
+              window_rK <- parabolic_window(series = ts_rK, N = L)
+              ts_rK <- ts_chunk_rK - mean(ts_chunk_rK)
+              ts_rK <- ts_rK*window_rK
+              ts_rK <- bridge_detrender(windowed_series = ts_rK, N = L)
+              rK_exp_PSD <- spectral_exponent_calculator_PSD(ts_rK, l = L)
+              
+              rK_exp_PSD_low <- rK_exp_PSD[[1]]
+              rK_exp_PSD_high <- rK_exp_PSD[[2]]
+              rK_exp_PSD_all <- rK_exp_PSD[[3]]
+            }
+            else {
+              rK_exp_PSD_low = rK_exp_PSD_high = rK_exp_PSD_all = NA
+            }
+            if (length(which(demsto == 0| is.na(demsto))) == 0) {
+              ## get length
+              L = length(demsto)
+              
+              ## preprocess the time series:
+              ## a. subtracting mean
+              demsto_ts <- demsto - mean(demsto)
+              
+              ## b. windowing - multiply by a parabolic window 
+              window_demsto <- parabolic_window(series = demsto_ts, N = L)
+              demsto_ts <- demsto_ts*window_demsto
+              
+              ## c. bridge detrending (endmatching)
+              ## ie. subtracting from the data the line connecting the first and last points of the series
+              demsto_ts <- bridge_detrender(windowed_series = demsto_ts, N = L)
+              
+              ## calculate spectral exponent in window using PSD and AWC methods
+              demsto_exp_PSD <- spectral_exponent_calculator_PSD(demsto_ts, l = L)
+              
+              demsto_exp_PSD_low <- demsto_exp_PSD[[1]]
+              demsto_exp_PSD_high <- demsto_exp_PSD[[2]]
+              demsto_exp_PSD_all <- demsto_exp_PSD[[3]]
+            }
+            else {
+              demsto_exp_PSD_low = demsto_exp_PSD_high = demsto_exp_PSD_all = NA
+            }
+            
+            ## store:
+            pop_exp_list[[element]] <- c(r_exp_PSD_low, r_exp_PSD_high, r_exp_PSD_all,
+                                         K_exp_PSD_low, K_exp_PSD_high, K_exp_PSD_all,
+                                         rK_exp_PSD_low, rK_exp_PSD_high, rK_exp_PSD_all,
+                                         noise_exp_PSD_low, noise_exp_PSD_high, noise_exp_PSD_all,
+                                         demsto_exp_PSD_low, demsto_exp_PSD_high, demsto_exp_PSD_all,
+                                         year_start, year_stop, paste(n*365, "days"),
+                                         l[icp], col[i], x)
+            
+            
+            
+            
+            ## move to next window
+            year_start = year_stop + 1
+            year_stop = year_stop + n*365 
+            
+            element = element + 1
+          }
+          
+          print(paste("Calculating spectral exponent for population ", x, " window width ", n, 
+                      " colour ", col[i], sep = ""))
+          
+          ## move to next window width
+          n = n + 1
+        }
+        icp = icp + 1
+      }
     }
+    x = x + 1 
   }
-  
   i = i + 1
 }
 
@@ -782,15 +814,77 @@ while (i <= length(col)) {
 pop_exp_df <- data.frame(do.call(rbind, pop_exp_list), stringsAsFactors = FALSE)
 colnames(pop_exp_df) <- c("r_spec_exp_PSD_low", "r_spec_exp_PSD_high", "r_spec_exp_PSD_all",
                            "K_spec_exp_PSD_low", "K_spec_exp_PSD_high", "K_spec_exp_PSD_all",
+                          "rK_spec_exp_PSD_low", "rK_spec_exp_PSD_high", "rK_spec_exp_PSD_all",
                           "noise_spec_exp_PSD_low", "noise_spec_exp_PSD_high", "noise_spec_exp_PSD_all",
                           "demsto_spec_exp_PSD_low", "demsto_spec_exp_PSD_high", 
                           "demsto_spec_exp_PSD_all",
                            "window_start_year",
                            "window_stop_year", "time_window_width", "icp", "colour", "sim")
 
-write.csv(pop_exp_df, "data-processed/pop-dynamics-colour_icp-0.1.csv", row.names = F)
+#write.csv(pop_exp_df, "data-processed/pop-dynamics-colour_icp-0.1-0.9.csv", row.names = F)
 
-pop_exp_df <- read.csv("data-processed/pop-dynamics-colour_icp-0.1.csv")
+pop_exp_df <- read.csv("data-processed/pop-dynamics-colour_icp-0.1-0.9.csv")
+
+
+## gather slopes into one variable 
+pop_exp_df <- pop_exp_df %>%
+  gather(key = "spectral_slope_type", value = "spectral_slope",
+         c("r_spec_exp_PSD_low", "r_spec_exp_PSD_high", "r_spec_exp_PSD_all",
+           "K_spec_exp_PSD_low", "K_spec_exp_PSD_high", "K_spec_exp_PSD_all",
+           "rK_spec_exp_PSD_low", "rK_spec_exp_PSD_high", "rK_spec_exp_PSD_all",
+           "demsto_spec_exp_PSD_low", "demsto_spec_exp_PSD_high", 
+           "demsto_spec_exp_PSD_all")) %>%
+  filter(!is.na(spectral_slope))
+
+
+## calculate the change in spectral slopes over time 
+slopes <- pop_exp_df %>%
+  group_by(time_window_width, sim, 
+           spectral_slope_type, icp, colour) %>% # group by simulation, window width,icp,colour,and type of spectral slope estimate
+  mutate(spectral_slope = as.numeric(as.character(spectral_slope)), 
+         window_start_year = as.numeric(as.character(window_start_year))) %>%
+  do(tidy(lm(data = ., spectral_slope ~ window_start_year))) %>% # calculate slope 
+  filter(term == "window_start_year") 
+
+ggplot(slopes, aes(y = estimate, x = as.numeric(colour))) + geom_point() +
+  facet_wrap(icp~spectral_slope_type)
+
+## correlate spectral slope in time window with colour of noise in time window 
+join <- pop_exp_df %>%
+  mutate(pop_model = ifelse(str_detect(spectral_slope_type, "r_"), "Nts_r",
+                            ifelse(str_detect(spectral_slope_type, "rK_"), "Nts_rK",
+                                   ifelse(str_detect(spectral_slope_type, "K_"), "Nts_K",
+                                          ifelse(str_detect(spectral_slope_type, "demsto"), "Nts",
+                                                 "oop"))))) %>%
+  left_join(., summary, by = c("colour", "pop_model", "icp" = "l"))
+              
+## colour that the simulated time series was supposed to be
+join %>%
+  filter(!pop_model == "Nts_rK") %>%
+  group_by(colour, icp, time_window_width, window_start_year, spectral_slope_type) %>%
+  mutate(mean = mean(as.numeric(spectral_slope), na.rm=F)) %>%
+  ggplot(., aes(x = colour, y = mean, colour = cv_pers_time)) + geom_point() +
+  facet_wrap(spectral_slope_type ~ icp, nrow = 3)
+
+## true colour of the time series 
+join %>%
+  filter(!pop_model == "Nts_rK") %>%
+  group_by(colour, icp, time_window_width, window_start_year, spectral_slope_type) %>%
+  mutate(mean = mean(as.numeric(spectral_slope), na.rm=F)) %>%
+  ggplot(., aes(x = binned_true_colour, y = mean, colour = cv_pers_time_true_col)) + geom_point() +
+  facet_wrap(spectral_slope_type ~ icp, nrow = 3)
+
+## colour within windows 
+join %>%
+  filter(!pop_model == "Nts_rK") %>%
+  filter(time_window_width == "3650 days") %>%
+  ggplot(., aes(y = spectral_slope, x = noise_spec_exp_PSD_all, 
+                colour = mean_pers_time)) + geom_point() +
+  facet_wrap(spectral_slope_type ~ icp, nrow = 3)
+
+write.csv(join, "data-processed/join.csv", row.names = F)
+  
+
 
 ## nice - low spec exp of population time series is correlated with noise colour
 pop_exp_df %>%
@@ -985,3 +1079,7 @@ spectral_exponent_calculator_PSD <- function(ts_window, l) {
               ))
 }
 
+
+isna <- filter(pop_exp_df, is.na(icp))
+
+View(pop_exp_df[1:2760,])

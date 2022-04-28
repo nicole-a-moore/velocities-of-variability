@@ -863,7 +863,7 @@ create_rasterStack <- function(se_filenames, type) {
   return(stacks)
 }
 
-
+write.csv(spec_exp, paste("data-processed/ERA-40/spec_exp_qc_", type, ".csv", sep = ""), row.names = F)
 
 spec_exp %>%
   filter(time_window_width == "10 years") %>%
@@ -878,45 +878,6 @@ spec_exp %>%
   theme_light() +
   labs(x = "Time window start year", y = "Mean spectral exponent") + 
   geom_smooth(method = "lm")  
-
-spec_exp$dataset <- "ERA40"
-
-spec_exp_berk 
-spec_exp_berk$dataset = "Berkley Earth"
-spec_exp_berk = select(spec_exp_berk, -lat_lon)
-
-spec= rbind(spec_exp_berk, spec_exp)
-
-spec %>%
-  filter(time_window_width == "10 years") %>%
-  gather(key = "exp_type", value = "spec_exp", c(s_spec_exp_PSD_high, s_spec_exp_PSD_all, s_spec_exp_PSD_low,
-                                                 s_spec_exp_AWC)) %>%
-  filter(!is.na(spec_exp)) %>%
-  group_by(window_start_year, exp_type, dataset) %>% ## group data by window start year
-  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
-  select(window_start_year, mean_spec_exp, dataset) %>%
-  unique() %>%
-  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = exp_type, shape = dataset)) + geom_point() +
-  theme_light() +
-  labs(x = "Time window start year", y = "Mean spectral exponent", shape = "", colour = "") + 
-  geom_smooth(method = "lm")  + 
-  scale_colour_discrete(labels = c("AWC method", "All frequencies", 
-                                   "High frequencies", "Low frequencies")) 
-
-spec %>%
-  gather(key = "exp_type", value = "spec_exp", c(s_spec_exp_PSD_high, s_spec_exp_PSD_all, s_spec_exp_PSD_low,
-                                                 s_spec_exp_AWC)) %>%
-  filter(!is.na(spec_exp)) %>%
-  group_by(window_start_year, exp_type, time_window_width, dataset) %>% ## group data by window start year
-  mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
-  select(window_start_year, mean_spec_exp, dataset, time_window_width) %>%
-  unique() %>%
-  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = exp_type, shape = dataset)) + geom_point() +
-  theme_light() +
-  labs(x = "Time window start year", y = "Mean spectral exponent", shape = "", colour = "") + 
-  geom_smooth(method = "lm") + facet_wrap(~time_window_width) +
-  scale_colour_discrete(labels = c("AWC method", "All frequencies", 
-                                   "High frequencies", "Low frequencies")) 
 
 
 #################################################

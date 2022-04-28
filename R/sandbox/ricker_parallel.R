@@ -295,27 +295,5 @@ spectral %>%
 
 
 
-#### gams
-library(mgcv)
-smooth_interact <- all %>%
-  filter(l != 0) %>%
-   gam(log(t) ~ s(colour, l), data = .)
-
-smooth_interact_summary <- summary(smooth_interact)
-print(smooth_interact_summary$s.table)
-plot(smooth_interact, page = 1, scheme = 3)
-plot(smooth_interact, page=1, scheme=1, theta = 0, phi = 20) # will give a similar plot to the vis.gam()
-
-vis.gam(smooth_interact, 
-        view = c("colour", "l"), 
-        theta = 40, 
-        n.grid = 500,
-        border = NA,
-        type = "response")
-
-
-
-
-
 
 

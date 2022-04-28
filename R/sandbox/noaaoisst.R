@@ -832,8 +832,8 @@ create_rasterStack <- function(se_filenames) {
   
   ## name the list items 
   names(l_stack_list_PSD_low) <- names(l_stack_list_PSD_high) <- names(s_stack_list_PSD_low) <-
-    names(s_stack_list_PSD_high) <- names(l_stack_list_AWC) <- names(s_stack_list_PSD_high) <-
-    names(s_stack_list_PSD_all) <- names(s_stack_list_PSD_all) <-
+    names(s_stack_list_PSD_high) <- names(l_stack_list_AWC) <- names(s_stack_list_AWC) <-
+    names(l_stack_list_PSD_all) <- names(s_stack_list_PSD_all) <-
     names(ww_split)
   
   ## save the rasterstack 
@@ -910,44 +910,86 @@ spec_exp %>%
 
 write.csv(spec_exp, "data-processed/NOAA-OISST/spec_exp_qc.csv", row.names = F)
 
-spec_exp$dataset <- "NOAA-OISST"
+### comparing resutls gcm to results from observations
+spec_exp_noaa <- read.csv("data-processed/NOAA-OISST/spec_exp_qc.csv")
+spec_exp_noaa$dataset <- "NOAA-OISST"
 
 spec_exp_berk <- read.csv("data-processed/BerkeleyEarth/spec_exp_qc.csv")
 spec_exp_berk$dataset = "Berkley Earth"
-spec_exp = select(spec_exp, -lat_lon)
 
-spec= rbind(spec_exp_berk, spec_exp)
+spec_exp_gcm <- read.csv("data-processed/GCM_spec_exp.csv")
+spec_exp_gcm$dataset = "GCM"
 
-spec %>%
+## get rid of air temperature for places in the ocean:
+spec_exp_gcm$lat_lon <- paste(spec_exp_gcm$lat, spec_exp_gcm$lon)
+
+spec_exp_gcm <- spec_exp_gcm %>%
+  filter(lat_lon %in% spec_exp_berk$lat_lon)
+
+## rasterize and plot to make sure it worked:
+spec_exp_gcm %>%
+  filter(time_window_width == "5 years", window_start_year == "1871") %>%
+  unique() %>%
+  select(lon, lat, l_spec_exp_PSD_low) %>%
+  rasterFromXYZ() %>%
+  plot()
+
+spec_exp_berk = select(spec_exp_berk, -lat_lon)
+spec_exp_gcm = select(spec_exp_gcm, -lat_lon)
+spec_exp_noaa = select(spec_exp_noaa, -lat_lon)
+
+spec_exp_berk <- spec_exp_berk[-which(!colnames(spec_exp_berk) %in% colnames(spec_exp_gcm))]
+spec_exp_noaa <- spec_exp_noaa[-which(!colnames(spec_exp_noaa) %in% colnames(spec_exp_gcm))]
+
+spec = rbind(spec_exp_berk, spec_exp_noaa) %>%
+  rbind(., spec_exp_gcm)
+
+#### ADD PSD_ALL LATER
+
+## add in the era 40 data
+spec_exp_era_sst <- read.csv("data-processed/ERA-40/spec_exp_qc_sst.csv")
+spec_exp_era_sst$dataset = "ERA-40 sst"
+
+spec_exp_era_tas <- read.csv("data-processed/ERA-40/spec_exp_qc_tas.csv")
+spec_exp_era_tas$dataset = "ERA-40 tas"
+
+spec_exp_era_tas <- spec_exp_era_tas[-which(!colnames(spec_exp_era_tas) %in% colnames(spec_exp_gcm))]
+spec_exp_era_sst <- spec_exp_era_sst[-which(!colnames(spec_exp_era_sst) %in% colnames(spec_exp_gcm))]
+
+spec = rbind(spec_exp_era_sst, spec) %>%
+  rbind(., spec_exp_era_tas) 
+
+spec <- spec %>%
   filter(time_window_width == "10 years") %>%
-  gather(key = "exp_type", value = "spec_exp", c(s_spec_exp_PSD_high, s_spec_exp_PSD_all, s_spec_exp_PSD_low,
-                                                 s_spec_exp_AWC)) %>%
-  filter(!is.na(spec_exp)) %>%
+  gather(key = "exp_type", value = "spec_exp", 
+         c(s_spec_exp_PSD_high, s_spec_exp_PSD_low,s_spec_exp_AWC)) %>%
+  filter(!is.na(spec_exp)) 
+
+## only berk, gcm, noaa
+spec %>%
+  filter(!dataset %in% c("ERA-40 sst", "ERA-40 tas")) %>%
   group_by(window_start_year, exp_type, dataset) %>% ## group data by window start year
   mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
   select(window_start_year, mean_spec_exp, dataset) %>%
   unique() %>%
-  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = exp_type, shape = dataset)) + geom_point() +
+  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = dataset, shape = dataset)) + geom_point() +
   theme_light() +
   labs(x = "Time window start year", y = "Mean spectral exponent", shape = "", colour = "") + 
-  geom_smooth(method = "lm")  + 
-  scale_colour_discrete(labels = c("AWC method", "All frequencies", 
-                                   "High frequencies", "Low frequencies")) 
+  geom_smooth(method = "lm") +
+  facet_wrap(~exp_type)
 
+## all
 spec %>%
-  gather(key = "exp_type", value = "spec_exp", c(s_spec_exp_PSD_high, s_spec_exp_PSD_all, s_spec_exp_PSD_low,
-                                                 s_spec_exp_AWC)) %>%
-  filter(!is.na(spec_exp)) %>%
-  group_by(window_start_year, exp_type, time_window_width, dataset) %>% ## group data by window start year
+  group_by(window_start_year, exp_type, dataset) %>% ## group data by window start year
   mutate(mean_spec_exp = mean(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
-  select(window_start_year, mean_spec_exp, dataset, time_window_width) %>%
+  select(window_start_year, mean_spec_exp, dataset) %>%
   unique() %>%
-  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = exp_type, shape = dataset)) + geom_point() +
+  ggplot(., aes(x = window_start_year, y = mean_spec_exp, colour = dataset, shape = dataset)) + geom_point() +
   theme_light() +
   labs(x = "Time window start year", y = "Mean spectral exponent", shape = "", colour = "") + 
-  geom_smooth(method = "lm") + facet_wrap(~time_window_width) +
-  scale_colour_discrete(labels = c("AWC method", "All frequencies", 
-                                   "High frequencies", "Low frequencies")) 
+  geom_smooth(method = "lm") +
+  facet_wrap(~exp_type)
+
 
 
 
