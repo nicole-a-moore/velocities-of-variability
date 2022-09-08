@@ -14,7 +14,7 @@ library(foreach)
 library(doParallel)
 
 ## detect cores
-starts <- rep(100, 40)
+starts <- rep(100, 30)
 fx <- function(nstart) kmeans(Boston, 4, nstart=nstart)
 numCores <- detectCores()
 cl <- makePSOCKcluster(numCores)
@@ -198,11 +198,11 @@ d_j = 0.03 # juvenile mortality at reference temperature
 d_a = 0.07 # adult mortality rate at reference temperature 
 Ad_j = 7500 # Arrhenius constant for juvenile mortality  
 Ad_a = 16000 # Arrhenius constant for adult mortality  
-Aa = -4000 # Arrhenius constant for development
+Aa = -3000 # Arrhenius constant for development
 alpha = 1 # age at maturity
-b_tr = 50 # average per capita fecundity at reference temperature, height and shape of term 2
-Topt = 273 # temperature at which avg fecundity is maximal, shifts term 2 
-Tr = 298 # reference temperature, changes height of term curves
+b_tr = 50 # average per capita fecundity at reference temperature
+Topt = 273 # temperature at which avg fecundity is maximal
+Tr = 298 # reference temperature
 
 # ## call function over range of temperatures
 # range <- seq(from = -150, to = 50, by = 0.001)
@@ -224,13 +224,12 @@ Tr = 298 # reference temperature, changes height of term curves
 #   geom_vline(xintercept = 223.15) + geom_vline(xintercept = 313.15)
 
 ## carrying capacity
-M = 20 ## 50,0.2=no var in K
+M = 20 ## units: kg
 Ea = 0.15  ## units: eV
-k = 8.617e-5 ## unts: eV K-1
-T = NA
+k = 8.617e-5 ## units: eV K-1
 Kt = M^(-3/4)*exp(Ea/(k*T))
 
-# range <- seq(from = -50, to = 40, by = 0.001)
+# range <- seq(from = -50, to = 30, by = 0.001)
 # temps <- c(273.15 + range)
 # 
 # Kt = M^(-3/4)*exp(Ea/(k*temps))
@@ -252,7 +251,7 @@ N0 = 100
 Tmax = 200000 
 K0 = 100
 l = seq(0.1, 1, by = 0.1)
-l = seq(0.1, 1, by = 0.3)
+# l = seq(0.1, 1, by = 0.3)
 
 lon_index = 0
 lat_index = 0
@@ -281,33 +280,42 @@ while(count < length(filenames)+1) {
     
     while (y <= nrow(tas)) {
       
-      local_ts <- tas[y,]
-      
-      ## if not na, force the population models 
-      if(length(which(is.na(local_ts))) != length(local_ts)) {
+      if(file.exists(paste("data-processed/BerkeleyEarth/popdynamics_lat-", lat[y + lat_index], "_lon-", lon[x + lon_index],
+                           "_icp-", l[icp], ".csv", sep = ""))) {
+        y = y + 1
         
-        ## calculate new carrying capacity according to how it varies with temperature
-        K <- M^(-3/4)*exp(Ea/(k*(local_ts))) 
-        K[which(K <= 0)] <- 5 ## make sure none are negative
-        K <- round(K, 0)
+      }
+      else {
+        local_ts <- tas[y,]
         
-        ## calculate new growth rate according to how it varies with temperature
-        r <- sapply(FUN = fitness, local_ts)[3,]
-        r[which(r<(-1))] <- -1
-        ## make sure none are below -2
-        #plot(ts(r))
-        
-        ## loop through ICPs
-        #icp = 1 
-        #while (icp < length(l)+1) {
+        ## if not na, force the population models 
+        if(length(which(is.na(local_ts))) != length(local_ts)) {
+          
+          ## calculate new carrying capacity according to how it varies with temperature
+          K <- M^(-3/4)*exp(Ea/(k*(local_ts))) 
+          K[which(K <= 0)] <- 5 ## make sure none are negative
+          K <- round(K, 0)
+          
+          ## C&Y version:
+          K_cy <- 100 + (local_ts - 273.15)
+          
+          ## calculate new growth rate according to how it varies with temperature
+          r <- sapply(FUN = fitness, local_ts)[3,]
+          r[which(r<(-1))] <- -1
+          ## make sure none are below -2
+          #plot(ts(r))
+          
+          ## loop through ICPs
+          #icp = 1 
+          #while (icp < length(l)+1) {
           print(paste("On lat: ", y, " and lon: ", x, " and icp ", icp,  sep = ""))
           
           ## run 100 simulations per model:
           all <- foreach (z = 1:100, .combine=rbind)  %dopar% {
             
             N = N0 ## set starting population size to 100
-            N_r = Nt = N_K = N_rK = N_r_sv = N  
-            Nts <- Nts_r <- Nts_K <- Nts_rK <- Nts_r_sv <- N
+            N_r = Nt = N_K = N_K_cy = N  # N_rK 
+            Nts <- Nts_r <- Nts_K <- Nts_K_cy <- N #  Nts_rK
             i=1
             while(i < length(local_ts)) {
               
@@ -319,22 +327,28 @@ while(count < length(filenames)+1) {
               Nt_K = N_K*exp(1.5*(1 - (N_K/K[i])^l[icp])) # constant r, variable K
               Nt_K = sample(rpois(as.numeric(Nt_K), n = 1000), size = 1)
               
+              ## C&Y K:
+              Nt_K_cy = N_K_cy*exp(1.5*(1 - (N_K_cy/K_cy[i])^l[icp])) # constant r, variable K
+              Nt_K_cy = sample(rpois(as.numeric(Nt_K_cy), n = 1000), size = 1)
+              
               ## r:
               Nt_r = N_r*exp(r[i]*(1 - (N_r/K0)^l[icp])) # variable r, constant K
               Nt_r = sample(rpois(as.numeric(Nt_r), n = 1000), size = 1)
               
-              ## both:
-              Nt_rK = N_rK*exp(r[i]*(1 - (N_rK/K[i])^l[icp])) # variable r, variable K
-              Nt_rK = sample(rpois(as.numeric(N_rK), n = 1000), size = 1)
+              # ## both:
+              # Nt_rK = N_rK*exp(r[i]*(1 - (N_rK/K[i])^l[icp])) # variable r, variable K
+              # Nt_rK = sample(rpois(as.numeric(N_rK), n = 1000), size = 1)
               
               N = Nt
               N_r = Nt_r
               N_K = Nt_K
-              N_rK = Nt_rK
+              N_K_cy = Nt_K_cy
+              # N_rK = Nt_rK
               Nts <- append(Nts, Nt)
               Nts_K <- append(Nts_K, Nt_K)
+              Nts_K_cy <- append(Nts_K_cy, Nt_K_cy)
               Nts_r <- append(Nts_r, Nt_r)
-              Nts_rK <- append(Nts_rK, Nt_rK)
+              # Nts_rK <- append(Nts_rK, Nt_rK)
               
               i = i + 1
             }
@@ -342,21 +356,24 @@ while(count < length(filenames)+1) {
             
             ## return population time series
             data.frame(lat = lat[y + lat_index], lon = lon[x + lon_index], 
-                       sim = z, r = r, K = K,  Nts = Nts,   Nts_r = Nts_r, 
-                       Nts_K = Nts_K, Nts_rK = Nts_rK,l = l[icp], noise = local_ts, 
-                       max_temp = max(local_ts), min_temp = min(local_ts))
+                       sim = z, r = r, K = K,  K_cy = K_cy, Nts = Nts, Nts_r = Nts_r, 
+                       Nts_K = Nts_K, Nts_K_cy = Nts_K_cy,
+                       # Nts_rK = Nts_rK, 
+                       l = l[icp], 
+                       noise = local_ts, max_temp = max(local_ts), min_temp = min(local_ts))
             
-        }
-        
+          }
+          
           ## save the data for location 
           write.csv(all, paste("data-processed/BerkeleyEarth/popdynamics_lat-", lat[y + lat_index], "_lon-", lon[x + lon_index],
-                    "_icp-", l[icp], ".csv", sep = ""), 
+                               "_icp-", l[icp], ".csv", sep = ""), 
                     row.names = F)
           
-        #  icp = icp + 1
-        #}
+          #  icp = icp + 1
+          #}
+        }
+        y = y + 1
       }
-      y = y + 1
     }
     x = x + 1
   }
@@ -378,37 +395,19 @@ while(count < length(filenames)+1) {
   count = count + 1
 }
 
+## plot one:
+all <- read.csv("data-processed/BerkeleyEarth/popdynamics_lat-63.5_lon-32.5_icp-0.1.csv")
+
 all %>%
-    filter(sim == 10) %>%
+    filter(sim == 20) %>%
     mutate(time = rep(1:51830, length(unique(.$sim)))) %>%
-    ggplot(., aes(x = time, y = Nts_r, group = sim)) + geom_line() + 
+    ggplot(., aes(x = time, y = Nts_K_cy, group = sim)) + geom_line() + 
     geom_line(aes(y = r*100), colour = "red")
 
-
-
-all <- read.csv("data-processed/BerkeleyEarth/popdynamics_lat-51.5_lon-3.5_icp-0.1.csv")
-
+## how much variation is there between the 100 runs?
 all %>%
-  filter(sim %in% 19) %>%
-  mutate(time = rep(1:51830, length(unique(.$sim)))) %>%
-  ggplot(., aes(x = time, y = Nts_r, group = sim)) + geom_line() + 
-  geom_line(aes(y = r*100), colour = "red")
-
-all %>%
-  filter(sim %in% 19) %>%
-  mutate(time = rep(1:51830, length(unique(.$sim)))) %>%
-  ggplot(., aes(x = time, y = Nts_K, group = sim)) + geom_line() + 
-  geom_line(aes(y = K), colour = "red")
-
-all %>%
-  filter(sim %in% 19) %>%
-  mutate(time = rep(1:51830, length(unique(.$sim)))) %>%
-  ggplot(., aes(x = time, y = noise, group = sim)) + geom_line() 
-
-## how much variation between runs?
-all %>%
-  filter(sim %in% 1:10) %>%
-  mutate(time = rep(1:51830, length(unique(.$sim)))) %>%
+  filter(sim %in% 1:100) %>%
+  mutate(time = rep(1:51830, 100)) %>%
   group_by(time) %>%
   mutate(var = sd(Nts_r), 
          mean = mean(Nts_r)) %>%
@@ -425,8 +424,7 @@ lon_index = 0
 lat_index = 0
 pop_exp_list <- list()
 element = 1
-l = seq(0.1, 1, by = 0.3)
-
+l = seq(0.1, 1, by = 0.1)
 
 lat <- seq(from = 89.5, to = -89.5, length.out = 180) 
 lon <-seq(from = 0.5, to = 359.5, length.out = 360) 
@@ -439,10 +437,10 @@ lat_bound2 <- lat_index - 60
 
 ## loop through grid cells
 x = 1
-while (x <= 60) {
+while (x <= 360) {
   
   y = 1
-  while (y <= 60) {
+  while (y <= 360) {
     
     filename = paste("data-processed/BerkeleyEarth/popdynamics_lat-", 
                      lat[y + lon_index], "_lon-", lon[x + lon_index],
@@ -452,10 +450,11 @@ while (x <= 60) {
       
       sims <- read.csv(filename)
       
+      sims <- group_split(sims, sim)
+      
       num <- 1
       while (num <= 100) {
-        ## pull out population simulation
-        sim <- filter(sims, sim == num)
+        sim <- sims[[num]]
         
         ## for each time window, process time series and calculate colour
         n = 5
@@ -467,7 +466,7 @@ while (x <= 60) {
             ## extract temps within time window
             ts_chunk_r <- sim$Nts_r[year_start:year_stop]
             ts_chunk_K <- sim$Nts_K[year_start:year_stop]
-            ts_chunk_rK <- sim$Nts_rK[year_start:year_stop]
+            ts_chunk_K_cy <- sim$Nts_K_cy[year_start:year_stop]
             noise <- sim$noise[year_start:year_stop]
             demsto <- sim$Nts[year_start:year_stop]
             
@@ -507,8 +506,8 @@ while (x <= 60) {
             }
             if (length(which(ts_chunk_K == 0)) == 0) {
               L = length(ts_chunk_K)
-              window_K <- parabolic_window(series = ts_K, N = L)
               ts_K <- ts_chunk_K - mean(ts_chunk_K)
+              window_K <- parabolic_window(series = ts_K, N = L)
               ts_K <- ts_K*window_K
               ts_K <- bridge_detrender(windowed_series = ts_K, N = L)
               K_exp_PSD <- spectral_exponent_calculator_PSD(ts_K, l = L)
@@ -527,27 +526,49 @@ while (x <= 60) {
             else {
               K_exp_PSD_low = K_exp_PSD_high = K_exp_PSD_all = NA
             }
-            if (length(which(ts_chunk_rK == 0)) == 0) {
-              ## get length
-              L = length(ts_chunk_rK)
-              window_rK <- parabolic_window(series = ts_rK, N = L)
-              ts_rK <- ts_chunk_rK - mean(ts_chunk_rK)
-              ts_rK <- ts_rK*window_rK
-              ts_rK <- bridge_detrender(windowed_series = ts_rK, N = L)
-              rK_exp_PSD <- spectral_exponent_calculator_PSD(ts_rK, l = L)
+            if (length(which(ts_chunk_K_cy == 0)) == 0) {
+              L = length(ts_chunk_K_cy)
+              ts_K_cy <- ts_chunk_K_cy - mean(ts_chunk_K_cy)
+              window_K_cy <- parabolic_window(series = ts_K_cy, N = L)
+              ts_K_cy <- ts_K_cy*window_K_cy
+              ts_K_cy <- bridge_detrender(windowed_series = ts_K_cy, N = L)
+              K_cy_exp_PSD <- spectral_exponent_calculator_PSD(ts_K_cy, l = L)
               
-              rK_exp_PSD_low <- rK_exp_PSD[[1]]
-              rK_exp_PSD_high <- rK_exp_PSD[[2]]
-              rK_exp_PSD_all <- rK_exp_PSD[[3]]
+              K_cy_exp_PSD_low <- K_cy_exp_PSD[[1]]
+              K_cy_exp_PSD_high <- K_cy_exp_PSD[[2]]
+              K_cy_exp_PSD_all <- K_cy_exp_PSD[[3]]
+              # K_cy_plot <- K_cy_exp_PSD[[4]]
+              
+              # ggsave(K_cy_plot, 
+              #        path = "figures/pop-spectral-change", 
+              #        filename = paste(" 0.9_K_", n, "_window-start-", year_start, 
+              #                         ".png", sep = ""), 
+              #        device = "png", width = 6, height = 4)
             }
             else {
-              rK_exp_PSD_low = rK_exp_PSD_high = rK_exp_PSD_all = NA
+              K_cy_exp_PSD_low = K_cy_exp_PSD_high = K_cy_exp_PSD_all = NA
             }
+            # if (length(which(ts_chunk_rK == 0)) == 0) {
+            #   ## get length
+            #   L = length(ts_chunk_K_cy)
+            #   window_rK <- parabolic_window(series = ts_rK, N = L)
+            #   ts_rK <- ts_chunk_rK - mean(ts_chunk_rK)
+            #   ts_rK <- ts_rK*window_rK
+            #   ts_rK <- bridge_detrender(windowed_series = ts_rK, N = L)
+            #   rK_exp_PSD <- spectral_exponent_calculator_PSD(ts_rK, l = L)
+            #   
+            #   rK_exp_PSD_low <- rK_exp_PSD[[1]]
+            #   rK_exp_PSD_high <- rK_exp_PSD[[2]]
+            #   rK_exp_PSD_all <- rK_exp_PSD[[3]]
+            # }
+            # else {
+            #   rK_exp_PSD_low = rK_exp_PSD_high = rK_exp_PSD_all = NA
+            # }
             if (length(which(noise == 0)) == 0) {
               ## get length
               L = length(noise)
-              window_noise <- parabolic_window(series = noise, N = L)
               ts_noise <- noise - mean(noise)
+              window_noise <- parabolic_window(series = noise, N = L)
               ts_noise <- ts_noise*window_noise
               ts_noise <- bridge_detrender(windowed_series = ts_noise, N = L)
               noise_exp_PSD <- spectral_exponent_calculator_PSD(ts_noise, l = L)
@@ -589,7 +610,7 @@ while (x <= 60) {
             ## store:
             pop_exp_list[[element]] <- c(r_exp_PSD_low, r_exp_PSD_high, r_exp_PSD_all,
                                          K_exp_PSD_low, K_exp_PSD_high, K_exp_PSD_all,
-                                         rK_exp_PSD_low, rK_exp_PSD_high, rK_exp_PSD_all,
+                                         K_cy_exp_PSD_low, K_cy_exp_PSD_high, K_cy_exp_PSD_all,
                                          noise_exp_PSD_low, noise_exp_PSD_high, noise_exp_PSD_all,
                                          demsto_exp_PSD_low, demsto_exp_PSD_high, demsto_exp_PSD_all,
                                          year_start, year_stop, paste(n*365, "days"),
@@ -610,7 +631,7 @@ while (x <= 60) {
                       sep = ""))
           
           ## move to next window width
-          n = n + 1
+          n = n + 5
         }
         num = num + 1
       }
@@ -625,149 +646,104 @@ while (x <= 60) {
 pop_exp_df <- data.frame(do.call(rbind, pop_exp_list), stringsAsFactors = FALSE)
 colnames(pop_exp_df) <- c("r_spec_exp_PSD_low", "r_spec_exp_PSD_high", "r_spec_exp_PSD_all",
                           "K_spec_exp_PSD_low", "K_spec_exp_PSD_high", "K_spec_exp_PSD_all",
-                          "rK_spec_exp_PSD_low", "rK_spec_exp_PSD_high", "rK_spec_exp_PSD_all",
+                          "K_cy_spec_exp_PSD_low", "K_cy_spec_exp_PSD_high", "K_cy_spec_exp_PSD_all",
                           "noise_spec_exp_PSD_low", "noise_spec_exp_PSD_high", "noise_spec_exp_PSD_all",
                           "demsto_spec_exp_PSD_low", "demsto_spec_exp_PSD_high","demsto_spec_exp_PSD_all",
                           "window_start_year",
                           "window_stop_year", "time_window_width", 
                           "icp", "lat", "lon", "sim")
 
-#write.csv(pop_exp_df, "data-processed/BerkeleyEarth/forced-pop-dynams_chunk2.csv", row.names = F)
-pop_exp_df <- read.csv("data-processed/BerkeleyEarth/forced-pop-dynams_chunk1.csv")
-
-pop_exp_df %>%
-  mutate(lat_lon = paste(lat, lon, sep = "_"),
-         noise_spec_exp_PSD_low = as.numeric(as.character(noise_spec_exp_PSD_low)),
-         r_spec_exp_PSD_low = as.numeric(as.character(r_spec_exp_PSD_low))
-         ) %>%
-  group_by(lat_lon, time_window_width, sim) %>%
-  filter(lat_lon %in% lat_lon[1:10]) %>%
-  ggplot(., aes(x = noise_spec_exp_PSD_low, 
-                y = r_spec_exp_PSD_low, 
-                colour = time_window_width)) + geom_point() +
-  facet_wrap(~time_window_width)
-
-pop_exp_df %>%
+#write.csv(pop_exp_df, "data-processed/BerkeleyEarth/forced-pop-dynams_chunk1_icp0.9_cy.csv", row.names = F)
+pop_exp_df <- read.csv("data-processed/BerkeleyEarth/forced-pop-dynams_chunk1_icp0.1_cy.csv") %>%
+ # rbind(., read.csv("data-processed/BerkeleyEarth/forced-pop-dynams_chunk1_icp0.9.csv")) %>%
   mutate(lat_lon = paste(lat, lon, sep = "_"),
          noise_spec_exp_PSD_low = as.numeric(as.character(noise_spec_exp_PSD_low)),
          r_spec_exp_PSD_low = as.numeric(as.character(r_spec_exp_PSD_low)),
-         window_start_year = as.numeric(as.character(window_start_year))
-  ) %>%
+         r_spec_exp_PSD_all = as.numeric(as.character(r_spec_exp_PSD_all)),
+         noise_spec_exp_PSD_all = as.numeric(as.character(noise_spec_exp_PSD_all)))
+
+pop_exp_df %>%
   ggplot(., aes(x = window_start_year, 
                 y = noise_spec_exp_PSD_low)) + geom_point(colour = "black") +
   geom_smooth(method = "lm", se = F, colour = "black") +
   geom_point(aes(y = r_spec_exp_PSD_low, colour = sim), position = position_jitter(width = 0.05)) +
   geom_smooth(method = "lm", se = F, aes(y = r_spec_exp_PSD_low, colour = sim)) +
-  facet_wrap(~time_window_width) 
+  facet_wrap(icp~time_window_width) 
 
 pop_exp_df %>%
-  mutate(lat_lon = paste(lat, lon, sep = "_"),
-         noise_spec_exp_PSD_low = as.numeric(as.character(noise_spec_exp_PSD_low)),
-         K_spec_exp_PSD_low = as.numeric(as.character(K_spec_exp_PSD_low)),
-         window_start_year = as.numeric(as.character(window_start_year))
-  ) %>%
   ggplot(., aes(x = window_start_year, 
                 y = noise_spec_exp_PSD_low)) + geom_point(colour = "black") +
   geom_smooth(method = "lm", se = F, colour = "black") +
   geom_point(aes(y = K_spec_exp_PSD_low, colour = sim), position = position_jitter(width = 0.05)) +
   geom_smooth(method = "lm", se = F, aes(y = K_spec_exp_PSD_low, colour = sim)) +
-  facet_wrap(~time_window_width) 
+  facet_wrap(icp~time_window_width) 
 
 ## facet by unique grid cell location 
 pop_exp_df %>%
-  mutate(lat_lon = paste(lat, lon, sep = "_"),
-         noise_spec_exp_PSD_low = as.numeric(as.character(noise_spec_exp_PSD_low)),
-         r_spec_exp_PSD_low = as.numeric(as.character(r_spec_exp_PSD_low)),
-         window_start_year = as.numeric(as.character(window_start_year))
-  ) %>%
-  filter(time_window_width == "3650 days") %>%
-  ggplot(., aes(x = window_start_year, 
-                y = noise_spec_exp_PSD_low)) + geom_point(colour = "black") +
-  geom_smooth(method = "lm", se = F, colour = "black") +
-  geom_point(aes(y = r_spec_exp_PSD_low, colour = sim), position = position_jitter(width = 0.05)) +
-  geom_smooth(method = "lm", se = F, aes(y = r_spec_exp_PSD_low, colour = sim, group = sim)) +
-  facet_wrap(~lat_lon) 
-
-pop_exp_df %>%
-  mutate(lat_lon = paste(lat, lon, sep = "_"),
-         noise_spec_exp_PSD_low = as.numeric(as.character(noise_spec_exp_PSD_low)),
-         K_spec_exp_PSD_low = as.numeric(as.character(K_spec_exp_PSD_low)),
-         window_start_year = as.numeric(as.character(window_start_year))
-  ) %>%
+  filter(lat_lon %in% unique(pop_exp_df$lat_lon)[1:20]) %>%
   filter(time_window_width == "3650 days") %>%
   ggplot(., aes(x = window_start_year, 
                 y = noise_spec_exp_PSD_low)) + geom_point(colour = "black") +
   geom_smooth(method = "lm", se = F, colour = "black") +
   geom_point(aes(y = K_spec_exp_PSD_low, colour = sim), position = position_jitter(width = 0.05)) +
   geom_smooth(method = "lm", se = F, aes(y = K_spec_exp_PSD_low, colour = sim, group = sim)) +
-  facet_wrap(~lat_lon) 
-
-pop_exp_df %>%
-  mutate(lat_lon = paste(lat, lon, sep = "_"),
-         noise_spec_exp_PSD_all = as.numeric(as.character(noise_spec_exp_PSD_all)),
-         r_spec_exp_PSD_all = as.numeric(as.character(r_spec_exp_PSD_all)),
-         window_start_year = as.numeric(as.character(window_start_year))
-  ) %>%
-  filter(time_window_width == "3650 days") %>%
-  ggplot(., aes(x = window_start_year, 
-                y = noise_spec_exp_PSD_all)) + geom_point(colour = "black") +
-  geom_smooth(method = "lm", se = F, colour = "black") +
-  geom_point(aes(y = r_spec_exp_PSD_all, colour = sim), position = position_jitter(width = 0.05)) +
-  geom_smooth(method = "lm", se = F, aes(y = r_spec_exp_PSD_all, colour = sim, group = sim)) +
-  facet_wrap(~lat_lon) 
+  facet_wrap(icp~lat_lon) 
 
 ## regress and plot correlation between slopes
 ## for population dynamics without forcing:
+pop_exp_df$window_start_year <- as.numeric(as.character(pop_exp_df$window_start_year))
+
 noise <- pop_exp_df %>%
   mutate(lat_lon = paste(lat, lon, sep = "_")) %>%
-  group_by(lat_lon, time_window_width, sim) %>% # group by location, window width, and simulation
-  do(tidy(lm(data = ., noise_spec_exp_PSD_low ~ window_start_year))) %>% # calculate slope 
+  group_by(lat_lon, time_window_width, sim, icp) %>% # group by location, window width, and simulation
+  do(tidy(lm(data = ., noise_spec_exp_PSD_all ~ window_start_year))) %>% # calculate slope 
   filter(term == "window_start_year") 
 
 pops <- pop_exp_df %>%
   mutate(lat_lon = paste(lat, lon, sep = "_")) %>%
-  filter(!is.na(demsto_spec_exp_PSD_low)) %>% 
-  group_by(lat_lon, time_window_width, sim) %>% # group by location, window width, and simulation
+  filter(!is.na(demsto_spec_exp_PSD_all)) %>% 
+  group_by(lat_lon, time_window_width, sim, icp) %>% # group by location, window width, and simulation
   do(tidy(lm(data = ., demsto_spec_exp_PSD_all ~ window_start_year))) %>% # calculate slope 
   filter(term == "window_start_year") 
 
 ## left join 
-colnames(pops)[4:8] <- paste(colnames(pops)[4:8], "_popdynam", sep = "")
-colnames(noise)[4:8] <- paste(colnames(noise)[4:8], "_noise", sep = "")
+colnames(pops)[5:9] <- paste(colnames(pops)[5:9], "_popdynam", sep = "")
+colnames(noise)[5:9] <- paste(colnames(noise)[5:9], "_noise", sep = "")
 
 demsto <- left_join(pops, noise) 
 
-## group by lat_lon, window width and calculate mean slopes across all simulations
+## group by lat_lon, window width, icp and calculate mean slopes across all simulations
 demsto <- demsto %>%
-  group_by(lat_lon, time_window_width) %>% 
+  group_by(lat_lon, time_window_width, icp) %>% 
   mutate(estimate_popdynam = mean(estimate_popdynam, na.rm=TRUE)) 
 
-demsto$type = "demographic stochasticty"
+demsto$type = "demographic stochasticity"
 
 ## regress and plot correlation between slopes
 ## for r:
 noise <- pop_exp_df %>%
   mutate(lat_lon = paste(lat, lon, sep = "_")) %>%
-  group_by(lat_lon, time_window_width, sim) %>% # group by location, window width, and simulation
-  do(tidy(lm(data = ., noise_spec_exp_PSD_low ~ window_start_year))) %>% # calculate slope 
+  group_by(lat_lon, time_window_width, sim, icp) %>% # group by location, window width, and simulation
+  do(tidy(lm(data = ., noise_spec_exp_PSD_all ~ window_start_year))) %>% # calculate slope 
   filter(term == "window_start_year") 
 
 pops <- pop_exp_df %>%
   mutate(lat_lon = paste(lat, lon, sep = "_")) %>%
-  filter(!is.na(r_spec_exp_PSD_low)) %>% 
-  group_by(lat_lon, time_window_width, sim) %>% # group by location, window width, and simulation
+  filter(!is.na(r_spec_exp_PSD_all)) %>% 
+  group_by(lat_lon, time_window_width, sim, icp) %>% # group by location, window width, and simulation
+  filter(n() >= 2) %>%
   do(tidy(lm(data = ., r_spec_exp_PSD_all ~ window_start_year))) %>% # calculate slope 
   filter(term == "window_start_year") 
   
 ## left join 
-colnames(pops)[4:8] <- paste(colnames(pops)[4:8], "_popdynam", sep = "")
-colnames(noise)[4:8] <- paste(colnames(noise)[4:8], "_noise", sep = "")
+colnames(pops)[5:9] <- paste(colnames(pops)[5:9], "_popdynam", sep = "")
+colnames(noise)[5:9] <- paste(colnames(noise)[5:9], "_noise", sep = "")
  
 change_r <- left_join(pops, noise) 
 
 ## group by lat_lon, window width and calculate mean slopes across all simulations
 change_r <- change_r %>%
-  group_by(lat_lon, time_window_width) %>% 
+  group_by(lat_lon, time_window_width, icp) %>% 
   mutate(estimate_popdynam = mean(estimate_popdynam, na.rm = TRUE)) 
 
 change_r$type = "forced_r"
@@ -776,94 +752,291 @@ change_r$type = "forced_r"
 ## for K:
 noise <- pop_exp_df %>%
   mutate(lat_lon = paste(lat, lon, sep = "_")) %>%
-  group_by(lat_lon, time_window_width, sim) %>% # group by location, window width, and simulation
-  do(tidy(lm(data = ., noise_spec_exp_PSD_low ~ window_start_year))) %>% # calculate slope 
+  group_by(lat_lon, time_window_width, sim, icp) %>% # group by location, window width, and simulation
+  do(tidy(lm(data = ., noise_spec_exp_PSD_all ~ window_start_year))) %>% # calculate slope 
   filter(term == "window_start_year") 
 
 pops <- pop_exp_df %>%
   mutate(lat_lon = paste(lat, lon, sep = "_")) %>%
-  filter(!is.na(K_spec_exp_PSD_low)) %>% 
-  group_by(lat_lon, time_window_width, sim) %>% # group by location, window width, and simulation
+  filter(!is.na(K_spec_exp_PSD_all)) %>% 
+  group_by(lat_lon, time_window_width, sim, icp) %>% # group by location, window width, and simulation
+  filter(n() >= 2) %>%
   do(tidy(lm(data = ., K_spec_exp_PSD_all ~ window_start_year))) %>% # calculate slope 
   filter(term == "window_start_year") 
 
 ## left join 
-colnames(pops)[4:8] <- paste(colnames(pops)[4:8], "_popdynam", sep = "")
-colnames(noise)[4:8] <- paste(colnames(noise)[4:8], "_noise", sep = "")
+colnames(pops)[5:9] <- paste(colnames(pops)[5:9], "_popdynam", sep = "")
+colnames(noise)[5:9] <- paste(colnames(noise)[5:9], "_noise", sep = "")
 
 change_K <- left_join(pops, noise) 
 
 ## group by lat_lon, window width and calculate mean slopes across all simulations
 change_K <- change_K %>%
-  group_by(lat_lon, time_window_width) %>% 
+  group_by(lat_lon, time_window_width, icp) %>% 
   mutate(estimate_popdynam = mean(estimate_popdynam, na.rm = TRUE)) 
 
 change_K$type = "forced_K"
 
-change <- rbind(change_r, demsto) %>% rbind(., change_K)
+## regress and plot correlation between slopes
+## for K cy style:
+noise <- pop_exp_df %>%
+  mutate(lat_lon = paste(lat, lon, sep = "_")) %>%
+  group_by(lat_lon, time_window_width, sim, icp) %>% # group by location, window width, and simulation
+  do(tidy(lm(data = ., noise_spec_exp_PSD_all ~ window_start_year))) %>% # calculate slope 
+  filter(term == "window_start_year") 
+
+pops <- pop_exp_df %>%
+  mutate(lat_lon = paste(lat, lon, sep = "_")) %>%
+  filter(!is.na(K_cy_spec_exp_PSD_all)) %>% 
+  group_by(lat_lon, time_window_width, sim, icp) %>% # group by location, window width, and simulation
+  filter(n() >= 2) %>%
+  do(tidy(lm(data = ., K_cy_spec_exp_PSD_all ~ window_start_year))) %>% # calculate slope 
+  filter(term == "window_start_year") 
+
+## left join 
+colnames(pops)[5:9] <- paste(colnames(pops)[5:9], "_popdynam", sep = "")
+colnames(noise)[5:9] <- paste(colnames(noise)[5:9], "_noise", sep = "")
+
+change_K_cy <- left_join(pops, noise) 
+
+## group by lat_lon, window width and calculate mean slopes across all simulations
+change_K_cy <- change_K_cy %>%
+  group_by(lat_lon, time_window_width, icp) %>% 
+  mutate(estimate_popdynam = mean(estimate_popdynam, na.rm = TRUE)) 
+
+change_K_cy$type = "forced_K_cy"
+
+## combine:
+change <- rbind(change_r, demsto) %>% rbind(., change_K)   %>% 
+  rbind(., change_K_cy)
 
 ## plot correlation 
 change %>%
   ggplot(aes(x = estimate_noise, y = estimate_popdynam, col = type)) + geom_point() +
-  facet_wrap(~time_window_width) +
+  facet_wrap(icp~time_window_width) +
   geom_hline(yintercept = 0) + 
+  geom_vline(xintercept = 0) 
+
+change %>%
+  filter(type %in% c("forced_r", "forced_K", "forced_K_cy",
+                                    "demographic stochasticity")) %>%
+  ggplot(., aes(x = estimate_noise, y = estimate_popdynam, colour = icp)) + geom_point() +
+  facet_wrap(~type) +
+  labs(x = "Change in spectral exponent of temperature",
+       y = "Change in spectral exponent of population size", colour = "ICP") +
+  theme(panel.background = element_blank()) +
+  geom_hline(yintercept = 0) + 
+  geom_vline(xintercept = 0) +
+  scale_x_continuous(limits = c(-9e-8, 9e-6)) + 
+  scale_y_continuous(limits = c(-5e-6, 5e-6)) 
+
+## plot distribution of population size spectral exponents 
+change %>%
+  filter(type %in% c("forced_K_cy",
+                     "demographic stochasticity"
+                     #, "forced_r", "forced_K"
+                     )) %>%
+  ggplot(., aes(x = estimate_popdynam, fill = type)) + geom_histogram() +
+  facet_wrap(~type) +
   geom_vline(xintercept = 0)
 
-## gather slopes into one variable 
-pop_exp_df <- pop_exp_df %>%
-  gather(key = "spectral_slope_type", value = "spectral_slope",
-         c("r_spec_exp_PSD_low", "r_spec_exp_PSD_high", "r_spec_exp_PSD_all",
-           "K_spec_exp_PSD_low", "K_spec_exp_PSD_high", "K_spec_exp_PSD_all",
-           "rK_spec_exp_PSD_low", "rK_spec_exp_PSD_high", "rK_spec_exp_PSD_all",
-           "demsto_spec_exp_PSD_low", "demsto_spec_exp_PSD_high", 
-           "demsto_spec_exp_PSD_all")) %>%
-  filter(!is.na(spectral_slope)) %>%
-  mutate(lat_lon = paste(lat, lon, sep = "_"))
 
-pop_exp_df %>%
-  filter(time_window_width == "3650 days") %>%
-  filter(!spectral_slope_type %in% c("rK_spec_exp_PSD_low", "rK_spec_exp_PSD_high", 
-                                     "rK_spec_exp_PSD_all"))%>%
-  group_by(lat_lon, icp, time_window_width, window_start_year, spectral_slope_type) %>%
-  mutate(mean = mean(as.numeric(spectral_slope), na.rm=F)) %>%
-  ungroup() %>%
-  select(-sim, -spectral_slope) %>%
-  unique(.) %>%
-  ggplot(., aes(x = noise_spec_exp_PSD_all, y = mean, 
-                colour = time_window_width)) + geom_point(size = 0.1) +
-  facet_wrap(icp~spectral_slope_type)
+##########################################################
+###             5) analyze extinction risk              ## 
+##########################################################
+## read in 100 population simulations for each location and calculate:
+## 1) time to extinction (0, 10, 20, 30, 30, 50 individuals)
+## 2) time to reach 50% population size
+## 3) number of times 50% pop size is reached
+## analyze change in noise colour over time windows 
+icp = 1
+lon_index = 0
+lat_index = 0
+l = seq(0.1, 1, by = 0.1)
 
+lat <- seq(from = 89.5, to = -89.5, length.out = 180) 
+lon <-seq(from = 0.5, to = 359.5, length.out = 360) 
 
-## read in simulation data and plot underneath 
-join <- read.csv("data-processed/join.csv")
+## get lat and lon bounds to extract in between:
+lon_bound1 <- lon_index 
+lon_bound2 <- lon_index + 60
+lat_bound1 <- lat_index
+lat_bound2 <- lat_index - 60
 
-## colour within windows 
-join %>%
-  filter(!pop_model == "Nts_rK") %>%
-  filter(time_window_width == "3650 days") %>%
-  ggplot(., aes(y = spectral_slope, x = noise_spec_exp_PSD_all, 
-                colour = mean_pers_time)) + geom_point() +
-  facet_wrap(spectral_slope_type ~ icp, nrow = 3) 
+MTE_all <- data.frame()
+
+## loop through grid cells
+x = 1
+while (x <= 360) {
   
-sub <- pop_exp_df %>%
-  filter(time_window_width == "3650 days") %>%
-  filter(!spectral_slope_type %in% c("rK_spec_exp_PSD_low", "rK_spec_exp_PSD_high", 
-                                     "rK_spec_exp_PSD_all"))%>%
-  group_by(lat_lon, icp, time_window_width, window_start_year, spectral_slope_type, sim) %>%
-  mutate(mean = mean(as.numeric(spectral_slope), na.rm=F)) %>%
-  ungroup() %>%
-  select(-sim, -spectral_slope) %>%
-  unique(.) 
+  y = 1
+  while (y <= 360) {
+    
+    filename = paste("data-processed/BerkeleyEarth/popdynamics_lat-", 
+                     lat[y + lon_index], "_lon-", lon[x + lon_index],
+                     "_icp-", l[icp], ".csv", sep = "")
+    ## read in data:
+    if (file.exists(filename)) {
+      
+      sims <- read.csv(filename)
+    
+      MTE_50 <- sims %>%
+        group_by(sim) %>%
+        summarise(Nts = first(which(Nts <= 50)),
+                  Nts_r = first(which(Nts_r <= 50)),
+                  Nts_K = first(which(Nts_K <= 50)),
+                  Nts_K_cy = first(which(Nts_K_cy <= 50)))
+      
+      MTE_50 <- gather(MTE_50, key = "pop_model", value = "extinction_time", c(Nts, Nts_K, Nts_r, Nts_K_cy))
+      MTE_50$extinction_metric <- "MTE_50"
+      
 
+      MTE_40 <- sims %>%
+        group_by(sim) %>%
+        summarise(Nts = first(which(Nts <= 40)),
+                  Nts_r = first(which(Nts_r <= 40)),
+                  Nts_K = first(which(Nts_K <= 40)),
+                  Nts_K_cy = first(which(Nts_K_cy <= 40)))
+      
+      MTE_40 <- gather(MTE_40, key = "pop_model", value = "extinction_time", c(Nts, Nts_K, Nts_r, Nts_K_cy))
+      MTE_40$extinction_metric <- "MTE_40"
+      
+      
+      MTE_30 <- sims %>%
+        group_by(sim) %>%
+        summarise(Nts = first(which(Nts <= 30)),
+                  Nts_r = first(which(Nts_r <= 30)),
+                  Nts_K = first(which(Nts_K <= 30)),
+                  Nts_K_cy = first(which(Nts_K_cy <= 30)))
+      
+      MTE_30 <- gather(MTE_30, key = "pop_model", value = "extinction_time", c(Nts, Nts_K, Nts_r, Nts_K_cy))
+      MTE_30$extinction_metric <- "MTE_30"
+      
+      
+      MTE_20 <- sims %>%
+        group_by(sim) %>%
+        summarise(Nts = first(which(Nts <= 20)),
+                  Nts_r = first(which(Nts_r <= 20)),
+                  Nts_K = first(which(Nts_K <= 20)),
+                  Nts_K_cy = first(which(Nts_K_cy <= 20)))
+      
+      MTE_20 <- gather(MTE_20, key = "pop_model", value = "extinction_time", c(Nts, Nts_K, Nts_r, Nts_K_cy))
+      MTE_20$extinction_metric <- "MTE_20"
+      
+      MTE_10 <- sims %>%
+        group_by(sim) %>%
+        summarise(Nts = first(which(Nts <= 10)),
+                  Nts_r = first(which(Nts_r <= 10)),
+                  Nts_K = first(which(Nts_K <= 10)),
+                  Nts_K_cy = first(which(Nts_K_cy <= 10)))
+      
+      MTE_10 <- gather(MTE_10, key = "pop_model", value = "extinction_time", c(Nts, Nts_K, Nts_r, Nts_K_cy))
+      MTE_10$extinction_metric <- "MTE_10"
+      
+      MTE_5 <- sims %>%
+        group_by(sim) %>%
+        summarise(Nts = first(which(Nts <= 5)),
+                  Nts_r = first(which(Nts_r <= 5)),
+                  Nts_K = first(which(Nts_K <= 5)),
+                  Nts_K_cy = first(which(Nts_K_cy <= 5)))
+      
+      MTE_5 <- gather(MTE_5, key = "pop_model", value = "extinction_time", c(Nts, Nts_K, Nts_r, Nts_K_cy))
+      MTE_5$extinction_metric <- "MTE_5"
+      
+      ## number of times 50 or fewer individuals is reached 
+      n50 <- sims %>%
+        group_by(sim) %>%
+        summarise(Nts = length(which(Nts <= 50)),
+                  Nts_r = length(which(Nts_r <= 50)),
+                  Nts_K = length(which(Nts_K <= 50)),
+                  Nts_K_cy = length(which(Nts_K_cy <= 50)))
+      
+      n50 <- gather(n50, key = "pop_model", value = "extinction_time", c(Nts, Nts_K, Nts_r, Nts_K_cy))
+      n50$extinction_metric <- "n50"
+      
+      ## number of times 50 or fewer individuals is reached 
+      n30 <- sims %>%
+        group_by(sim) %>%
+        summarise(Nts = length(which(Nts <= 30)),
+                  Nts_r = length(which(Nts_r <= 30)),
+                  Nts_K = length(which(Nts_K <= 30)),
+                  Nts_K_cy = length(which(Nts_K_cy <= 30)))
+      
+      n30 <- gather(n30, key = "pop_model", value = "extinction_time", c(Nts, Nts_K, Nts_r, Nts_K_cy))
+      n30$extinction_metric <- "n30"
+  
+      ## bind all:
+      MTE <- rbind(MTE_10, MTE_20, MTE_30, MTE_40, MTE_50, MTE_5, n50, n30)
+      
+      ## add other info
+      MTE$lat <- sims$lat[1]
+      MTE$lon <- sims$lon[1]
+      MTE$l <- sims$l[1]
+      
+      ## bind to rest of the data:
+      MTE_all <- rbind(MTE_all, MTE)
+      
+      print(paste("On lat: ", lat[y + lon_index], " and lon: ", lon[x + lon_index],
+                  sep = ""))
+    }
+    y = y + 1
+  }
+  x = x + 1
+}
+
+
+#write.csv(MTE_all, "data-processed/BerkeleyEarth/MTE_all_0.1.csv", row.names = F)
+MTE_all <- read.csv("data-processed/BerkeleyEarth/MTE_all_0.1.csv")
+
+
+## plot extinction risk
+colnames(MTE_all)
+
+MTE_all %>%
+  ggplot(aes(x = extinction_time, fill = l)) + geom_histogram() + 
+  facet_wrap(~extinction_metric)
+
+
+MTE_all %>%
+  filter(extinction_metric == "n50") %>%
+  ggplot(aes(x = extinction_time)) + geom_histogram()  +
+  facet_wrap(~pop_model)
+
+## 30 individuals seems like good extinction metric for simplest forced model
+MTE_all %>%
+  filter(pop_model == "Nts_K_cy") %>%
+  ggplot(aes(x = extinction_time)) + geom_histogram() +
+  facet_wrap(~extinction_metric)
+
+## next: plot MTE_30 (and other metrics) across baseline noise colour 
+## bring in spectral analysis Berk Earth data 
+spec <- read.csv("data-processed/BerkeleyEarth/forced-pop-dynams_chunk1_icp0.1_cy.csv") %>%
+  filter(window_start_year == "0", time_window_width == "3650 days") %>%
+  select(noise_spec_exp_PSD_low, noise_spec_exp_PSD_high, noise_spec_exp_PSD_all, lat, lon)
+
+MTE_gr <- MTE_all %>%
+  filter(pop_model == "Nts_K_cy") %>%
+  select(-sim, -pop_model) %>%
+  unique() %>%
+  mutate(extinction_time = ifelse(is.na(extinction_time), 51830, extinction_time)) %>%
+  group_by(extinction_metric, lat, lon) %>%
+  mutate(extinction_time = mean(extinction_time, na.rm = T)) %>%
+  unique()
+  
+ggplot(MTE_gr, aes(x = extinction_time)) + geom_histogram() +
+  facet_wrap(~extinction_metric)
+
+join <- left_join(MTE_gr, spec) %>%
+  gather(key = "slope_type", value = "spectral_slope", c(noise_spec_exp_PSD_low, 
+                                                         noise_spec_exp_PSD_high, noise_spec_exp_PSD_all))
 join %>%
-  filter(!pop_model == "Nts_rK") %>%
-  filter(time_window_width == "3650 days") %>%
-  ggplot(., aes(y = spectral_slope, x = noise_spec_exp_PSD_all, 
-                colour = mean_pers_time)) + geom_point() +
-  geom_point(data=sub, aes(x = noise_spec_exp_PSD_all, y = mean), colour = "black") +
-  facet_wrap(icp~spectral_slope_type)
+  filter(extinction_metric %in% c("n50")) %>%
+  ggplot(aes(x = spectral_slope, y = extinction_time)) +
+  geom_point() +
+  facet_wrap(extinction_metric~slope_type)
 
 
+## what about a change?
 
 ##############################################
 #####              FUNCTIONS:           ######
@@ -914,7 +1087,7 @@ spectral_exponent_calculator_PSD <- function(ts_window, l) {
   high_freq <- filter(spectral, freq > 1/16)
   low_freq <- filter(spectral, freq < 1/16)
   
-  ## plot spectrum:
+  # plot spectrum:
   # plot <- spectral %>%
   #   ggplot(aes(x = freq, y = power)) + geom_line() +
   #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm", colour = "red") +
@@ -944,14 +1117,7 @@ spectral_exponent_calculator_PSD <- function(ts_window, l) {
     filter(term == "log10(freq)")
   
   return(list(-model_output_low$estimate, -model_output_high$estimate, -model_output_all$estimate 
-              # ,plot
+              ,plot
   ))
 }
-
-
-
-
-
-
-
 

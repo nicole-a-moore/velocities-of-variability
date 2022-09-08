@@ -178,10 +178,6 @@ all %>%
   theme(legend.position = "none") +
   scale_x_log10(breaks = c(10^1, 10^3, 10^5))
   
-  
-
-
-
 library(plotly)
 
 all %>%
@@ -194,9 +190,7 @@ all %>%
           type="scatter3d", mode="markers", color=.$l)
 
 
-
-
-## plot soem series
+## plot some series
 colours = seq(0, 3.2, by = 0.1)
 all_results <- list()
 l = seq(0, 1, by = 0.1)
@@ -242,8 +236,8 @@ while (icp <= length(l)) {
           i = i + 1
         }
       }
-      data.frame(N = Nts, K = K[1:extinction_time], l = l[icp], t = extinction_time, colour = colours[col],
-        time = 1:extinction_time,
+      data <-data.frame(N = Nts, K = K[1:extinction_time], l = l[icp], t = extinction_time, colour = colours[col],
+        time = 1:extinction_time,noise=noise[1:extinction_time],
         true_colour = output[[2]])
     }
     
@@ -257,6 +251,8 @@ while (icp <= length(l)) {
   
   icp = icp + 1
 }
+
+all <- do.call("rbind", all_results) 
 
 all <- all %>%
   mutate(unique_run = paste(true_colour, t)) 
@@ -294,6 +290,16 @@ spectral %>%
 ## low ICP (undercompensatory) = red 
 
 
+red <- all %>%
+  filter(colour == "2.5") %>%
+  filter(l %in% c("0.1", "0.5", "0.9"))
 
+one <- red %>% filter(l == 0.5) 
+
+data %>%
+  filter(time <= 365) %>%
+  ggplot(., aes(x = time, y = K)) + geom_line() +
+  geom_line(data = filter(data, time <= 365), aes(x = time, y = N), colour = "red", alpha = 0.5, inherit.aes = F) +
+  theme_light()
 
 
