@@ -4,17 +4,9 @@ library(fractal)
 library(tidyverse)
 library(broom)
 
-
-## what i want: 
-## choose a basline colour
-## choose a target colour
-## choose how many "steps" between colours
-## output the change in noise/day
-## see simulated noise series 
-
 # start_colour = function(){return(0)}
 # end_colour = function(){return(2)}
-# num_steps = function(){return(10)}
+# num_steps = function(){return(220)}
 # by = function() {
 #   return((end_colour() - start_colour())/num_steps())
 #   }
@@ -123,85 +115,85 @@ library(broom)
 # }
 # 
 # plot_spectral_change <- function() {
-#  
+# 
 #   ## get simulated noise
 #   noise_data = noise()
 #   corr_noise = correct_noise()
 #   corr_noise_cond_data = correct_noise_conditional()
-#   
-#   ## make dataframe 
-#   data = data.frame(noise_data = c(noise_data)[1:200000], 
+# 
+#   ## make dataframe
+#   data = data.frame(noise_data = c(noise_data)[1:200000],
 #                     corr_noise = corr_noise[1:200000],
 #                     corr_noise_cond_data = corr_noise_cond_data[1:200000],
 #                     time = 1:200000)
-#   
+# 
 #   ## change NA to 0
 #   data[which(is.na(data))] <- 0
 #   element = 1
 #   spec_exp_list <- list()
-#   
+# 
 #   n = 5
 #   while (n < 11) {
 #     year_start <- 1
 #     year_stop <- 1 + n*365
-#     
+# 
 #     while (year_start <= (150000 - n*365)) {
 #       ## extract temps within time window
 #       ts_chunk <- data[year_start:year_stop,c(1,2,3)]
-#       
+# 
 #       ## get length
 #       L = nrow(ts_chunk)
-#       
+# 
 #       ## preprocess the time series:
 #       ## a. subtracting mean
 #       ts_n <- ts_chunk$noise_data - mean(ts_chunk$noise_data)
 #       ts_cn <- ts_chunk$corr_noise - mean(ts_chunk$corr_noise)
 #       ts_cnc <- ts_chunk$corr_noise_cond_data - mean(ts_chunk$corr_noise_cond_data)
-#       
-#       ## b. windowing - multiply by a parabolic window 
+# 
+#       ## b. windowing - multiply by a parabolic window
 #       window <- parabolic_window(series = ts_n, N = L)
 #       ts_n <- ts_n*window
 #       window <- parabolic_window(series = ts_cn, N = L)
 #       ts_cn <- ts_cn*window
 #       window <- parabolic_window(series = ts_cnc, N = L)
 #       ts_cnc <- ts_cnc*window
-#       
+# 
 #       ## c. bridge detrending (endmatching)
 #       ## ie. subtracting from the data the line connecting the first and last points of the series
 #       ts_n <- bridge_detrender(windowed_series = ts_n, N = L)
 #       ts_cn <- bridge_detrender(windowed_series = ts_cn, N = L)
 #       ts_cnc <- bridge_detrender(windowed_series = ts_cnc, N = L)
-#       
+# 
 #       ## calculate spectral exponent in window using PSD and AWC methods
 #       exp_PSD_n <- spectral_exponent_calculator_PSD(ts_n, l = L)
 #       exp_PSD_cn <- spectral_exponent_calculator_PSD(ts_cn, l = L)
 #       exp_PSD_cnc <- spectral_exponent_calculator_PSD(ts_cnc, l = L)
-#       
+# 
 #       exp_PSD_low_n <- exp_PSD_n[[1]]
 #       exp_PSD_all_n <- exp_PSD_n[[3]]
 #       exp_PSD_low_cn <- exp_PSD_cn[[1]]
 #       exp_PSD_all_cn <- exp_PSD_cn[[3]]
 #       exp_PSD_low_cnc <- exp_PSD_cnc[[1]]
 #       exp_PSD_all_cnc <- exp_PSD_cnc[[3]]
-#       
+# 
 #       spec_exp_list[[element]] <- c(exp_PSD_low_n, exp_PSD_all_n,
 #                                     exp_PSD_low_cn, exp_PSD_all_cn,
 #                                     exp_PSD_low_cnc, exp_PSD_all_cnc,
-#                                     year_start, year_stop, 
+#                                     year_start, year_stop,
 #                                     paste(n, "years"))
-#       
-#       
+# 
+# 
 #       ## move to next window
 #       year_start = year_stop + 1
-#       year_stop = year_stop + n*365 
-#       
+#       year_stop = year_stop + n*365
+# 
 #       element = element + 1
 #     }
-#     
+# 
 #     ## move to next window width
 #     n = n + 1
 #   }
-#   
+# 
 #   ## bind rows in list into data frame
 #   spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
 #   colnames(spec_exp_df) <- c("exp_PSD_low_n", "exp_PSD_all_n",
@@ -214,17 +206,17 @@ library(broom)
 #              exp_PSD_low_cn, exp_PSD_all_cn,
 #              exp_PSD_low_cnc, exp_PSD_all_cnc)) %>%
 #     mutate(ts_type = ifelse(`Time series type` %in% c("exp_PSD_low_n", "exp_PSD_all_n"),
-#                             "simulated noise",
+#                             "original simulation",
 #                             ifelse(`Time series type` %in% c("exp_PSD_low_cn", "exp_PSD_all_cn"),
-#                                    "corrected noise",
-#                                    "conditionally corrected noise")),
+#                                    "corrected simulation",
+#                                    "conditionally-corrected simulation")),
 #            se_type = ifelse(`Time series type` %in% c("exp_PSD_low_n", "exp_PSD_low_cn",
 #                                                       "exp_PSD_low_cnc"),
 #                             "low", "all"))
-#   
+# 
 #   ## convert numbers to numeric
 #   spec_exp_df[,c(1,2,5)] <- sapply(spec_exp_df[,c(1,2,5)], as.numeric)
-#  
+# 
 #   return(spec_exp_df)
 # }
 
@@ -302,7 +294,11 @@ ui <- fluidPage(
              actionButton("spec", "Click to measure spectral change")
       )),
     plotOutput("spec_plot", height = "600px"),
-    textOutput("plot_desc")
+    plotOutput("spec_lms", height = "400px"),
+    textOutput("plot_desc"),
+    
+    br(),
+    br()
     
 )
 
@@ -662,12 +658,43 @@ server <- function(input, output) {
         
       })
       
+      spec_lms = eventReactive(input$spec, {
+        ## calculate spectral change
+        spec_exp_df = spectral_change()
+        
+        exp_slope = (end_colour() - start_colour())/200000
+        
+        ## fit linear models and plot different slope estimates beside expected slope
+        spec_exp_df %>%
+          mutate(ts_type = factor(.$ts_type,  levels = c("original simulation", "corrected simulation",
+                                                         "conditionally-corrected simulation"), 
+                                  ordered = TRUE)) %>%
+          mutate(time_window_width = factor(.$time_window_width, 
+                                            levels = c("5 years", "6 years", "7 years", 
+                                                       "8 years", "9 years", "10 years"), 
+                                            ordered = TRUE)) %>%
+          filter(se_type != "all") %>%
+          group_by(time_window_width, ts_type) %>%
+          do(tidy(lm(`Measured spectral exponent` ~ window_start_year, data = .), conf.int = TRUE)) %>% 
+          filter(term == "window_start_year") %>% 
+          ungroup() %>%
+          ggplot(aes(x = time_window_width, colour = ts_type, y = estimate)) + geom_point() +
+          geom_point(y = exp_slope, colour = "black", shape = 3) + theme_bw() +
+          theme(panel.grid = element_blank(), legend.position = "top") + 
+          scale_y_continuous(limits = c(exp_slope - 0.000005, exp_slope + 0.000005)) +
+          labs(x = "Time window width", colour = "", y = "Estimated change in spectral exponent")
+      })
+      
       output$spec_plot <- renderPlot({
         spec_plot()
       })
       
+      output$spec_lms <- renderPlot({
+        spec_lms()
+      })
+      
       output$plot_desc <- renderText({
-        "*Black line in plot represents the theoretical slope based on the simulation input parameters."
+        "*Black line and black plus represent the theoretical change in spectral exponent based on the simulation input parameters."
       })
       
     })
