@@ -50,56 +50,63 @@ one_over_f <- function(beta){
   return(list(noise, as.numeric(true_colour$coefficients[2])))
 }
 
+## write population model:
+popmod <- function(t, # number of time steps
+                   N0, # initial population size
+                   K # carrying capacity 
+){
+  N <- numeric(t)
+  N[1] <- N0
+  for(i in 2:t){
+    N[i] <- sample(rpois(as.numeric(N[i-1]*exp(1.5*(1 - (N[i-1]/K[i])^lambda[icp]))), n = 1000), 
+                   size = 1)
+  }
+  return(N)
+}
+
 colours = seq(0, 3.2, by = 0.1)
 all_results <- list()
-l = c(0.1, 0.5, 0.9)
+lambda = c(0.1, 0.5, 0.9)
 
 K0 = 100
 N0 = 100
 Tmax = 51830
 
-icp = 1
-while (icp <= length(l)) {
+col = 1
+all_col <- list()
+while (col <=  length(colours)) {
   
-  col = 1
-  all_col <- list()
-  while (col <=  length(colours)) {
+  ## run 100 simulations per model:
+  icp = 1
+  while (icp <= length(l)) {
     print(paste("On colour ", col, " and icp ", icp, sep = ""))
     
+    ## run 100 simulations per colour:
     all <- foreach (z = 1:100, .combine=rbind)  %dopar% {
-      N = N0 ## set starting population size to 100
       
       ## generate coloured noise: 
       output <- one_over_f(beta = colours[col])
       noise = output[[1]]
       
+      N = N0 ## set starting population size to 100
+      
       K <- K0 + round(noise, digits = 0) ## generate new carrying capacity
       K[which(K <= 0)] <- 5 ## make sure none are negative
       
-      Nts <- c()
-      i=1
-      while(i <= Tmax) {
-        Nt = N*exp(1.5*(1 - (N/K[i])^l[icp]))
-        Nt = sample(rpois(as.numeric(Nt), n = 1000), size = 1)
-        
-        Nts <- append(Nts, Nt)
-        N = Nt   
-        i = i + 1
-      }
+      ## run pop model
+      Nts = popmod(t = 51830, N0 = N0, K = K) # C & Y model - change
       
-      data.frame(t = 1:51830, sim = z, K = K, N = Nts, lamda = l[icp], 
+      data.frame(t = 1:51830, sim = z, K = K, N = Nts, lambda = lambda[icp], 
                  noise = noise, colour = colours[col], true_colour = output[[2]])
     }
-    
     ## write results from colour 
-    write.csv(all, paste("data-processed/BerkeleyEarth/simulations/CYsims_icp-", l[icp], "_colour-", 
+    write.csv(all, paste("data-processed/BerkeleyEarth/simulations/CYsims_icp-", lambda[icp], "_colour-", 
                          colours[col], ".csv", sep = ""), row.names = F)
     
-    col = col + 1
+    icp = icp + 1
   }
-  
-  ## move to next ICP
-  icp = icp + 1
+  ## move to next colour
+  col = col + 1
 }
 
 ## plot a few:
@@ -116,7 +123,7 @@ all %>%
 ## 3) number of times 50% and 30% pop size is reached
 ## analyze change in noise colour over time windows 
 icp = 1
-l = c(0.1, 0.5, 0.9)
+lambda = c(0.1, 0.5, 0.9)
 colours = seq(0, 3.2, by = 0.1)
 
 MTE_all <- data.frame()
@@ -129,7 +136,7 @@ while (icp <= length(l)) {
   col = 1
   while (col <= length(colours)) {
     
-    filename = paste("data-processed/BerkeleyEarth/simulations/CYsims_icp-", l[icp], "_colour-", 
+    filename = paste("data-processed/BerkeleyEarth/simulations/CYsims_icp-", lambda[icp], "_colour-", 
                      colours[col], ".csv", sep = "")
     
     ## read in data:
@@ -270,8 +277,8 @@ ggplot(MTE_gr, aes(x = extinction_time)) + geom_histogram() +
   facet_wrap(~extinction_metric)
 
 join <- left_join(MTE_gr, spec) %>%
-  gather(key = "slope_type", value = "spectral_slope", c("s_exp_PSD_high_all","s_exp_PSD_low_all", 
-                                                         "s_exp_PSD_all_all")) %>%
+  gather(key = "slope_type", value = "spectral_slope", c("s_spec_exp_PSD_high_all","s_spec_exp_PSD_low_all", 
+                                                         "s_spec_exp_PSD_all_all")) %>%
   gather(key = "change_slope_type", value = "change_spectral_slope", c("s_estimate_PSD_high","s_estimate_PSD_low", 
                                                          "s_estimate_PSD_all"))
 
@@ -285,7 +292,7 @@ join %>%
 
 join %>%
   filter(extinction_metric %in% c("n50")) %>%
-  filter(slope_type == "s_exp_PSD_low_all") %>%
+  filter(slope_type == "s_spec_exp_PSD_low_all") %>%
   filter(change_slope_type == "s_estimate_PSD_low") %>%
   ggplot(aes(x = change_spectral_slope, y = extinction_time, shape = slope_type, 
              col = spectral_slope)) +
@@ -294,7 +301,7 @@ join %>%
 
 join %>%
   filter(extinction_metric %in% c("n50")) %>%
-  filter(slope_type == "s_exp_PSD_low_all") %>%
+  filter(slope_type == "s_spec_exp_PSD_low_all") %>%
   filter(change_slope_type == "s_estimate_PSD_low") %>%
   ggplot(aes(x = change_spectral_slope, y = spectral_slope)) +
   geom_point() 
@@ -314,15 +321,19 @@ MTE_all <- MTE_all %>%
 MTE_all <- select(MTE_all, -colour)
 
 MTE_all <- rename(MTE_all, "spectral_slope" = true_colour)
-MTE_all$slope_type = "sim"
+MTE_all$slope_source = "sim"
 MTE_all$spectral_slope = -MTE_all$spectral_slope
 
+join$slope_source <- "real"
+
 rbind(MTE_all, join) %>%
-  filter(change_slope_type == "s_estimate_PSD_low" | is.na(change_slope_type)) %>%
+  filter(slope_type == "s_spec_exp_PSD_all_all" | is.na(slope_type)) %>%
   filter(extinction_metric %in% c("n50")) %>%
-  ggplot(aes(x = spectral_slope, y = extinction_time, shape  = slope_type,
-             col = change_spectral_slope)) +
-  geom_point() 
+  ggplot(aes(x = spectral_slope, y = extinction_time, colour = slope_type)) +
+  geom_point() +
+  labs(x = "Spectral slope", y = "Number of times population size <50 ind.",
+       colour = "Spectral slope type") 
+  
 
 
 rbind(MTE_all, join) %>%

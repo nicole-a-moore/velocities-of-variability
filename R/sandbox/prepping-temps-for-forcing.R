@@ -143,15 +143,15 @@ while(count < length(filenames)+1) {
   ## save spatial data 
   ArrayToNc(altered_tas, file_path = paste("data-processed/BerkeleyEarth/be_prepped-temps_lon-", 
                                            lon_bound1,"-", lon_bound2,
-                                        "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
+                                        "_lat-", lat_bound1 + 90, "-", lat_bound2 + 90,".nc", sep = ""))
 
   ## advance lat and long indecies to move to next chunk
   if (count == 6) {
-    lat_index <- lat_index + 60
+    lat_index <- lat_index - 60
     lon_index <- 0
   }
   else if (count == 12) {
-    lat_index <- lat_index + 60
+    lat_index <- lat_index - 60
     lon_index <- 0
   }
   else {

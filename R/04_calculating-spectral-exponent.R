@@ -58,10 +58,10 @@ spectral_exponent_calculator_PSD <- function(ts_window, l) {
   spectral <- data.frame(freq = freq, power = amp^2)
   
   # ## plot spectrum:
-  # spectral %>% 
-  #   ggplot(aes(x = freq, y = power)) + geom_line() +
-  #   scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm")
-  
+  spectral %>%
+    ggplot(aes(x = freq, y = power)) + geom_line() +
+    scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm")
+
   ## get estimate of spectral exponent over time series window:
   ## fit slope to low freqeuncies
   model_output_low <- spectral %>%
