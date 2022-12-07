@@ -59,8 +59,7 @@ while (i < length(filenames)+1) {
   i = i+1
 }
 
-saveRDS(names_sst,
-        "data-processed/NOAA-OISST/sst_filenames.rds")
+saveRDS(names_sst, "data-processed/NOAA-OISST/sst_filenames.rds")
 
 
 ## get paths and filenames 
@@ -72,11 +71,10 @@ files_sst <- readRDS("data-processed/NOAA-OISST/sst_filenames.rds")
 dates <- paste(rep(seq(1981, 2022), each = 365), ".", rep(seq(1:365), 41), sep = "")
 dates <- dates[244:(41*365+72)]
 
-reorganize_GCM(filenames = files_sst)
 
 ## detrend and make spatial chunks 
 reorganize_GCM <- function(filenames) {
-
+  
   #####       REORGANIZE INTO SPATIAL CHUNKS      #####
   ## to detrend and perform sliding spectral analysis, need the whole time series for each location at once
   ## to satisfy this requirement while avoiding memory exhaustion, reorganize data
@@ -129,19 +127,19 @@ reorganize_GCM <- function(filenames) {
         
         # ggplot(local_ts, aes(x = time, y = temp)) + geom_line() +
         #   geom_smooth(method = "lm")
-
+        
         if (!length(which(is.na(local_ts$temp))) == nrow(local_ts)) {
           #####     REMOVING OUTLIERS    #####  
           ## temperature remove values > 60C (333.15K)
           local_ts$temp[which(local_ts$temp > 60)] <- NA
-        
+          
           #####     LINEARLY AND SEASONALLY DETREND TIME SERIES IN EACH RASTER CELL    #####
           ## create empty objects
           local_ts$md <- str_split_fixed(dates, "\\.", n=2)[,2]
           
           ts_df <- local_ts %>%
             group_by(md) %>%
-            do(mutate(., temp_profile = mean(.$temp, na.rm=T))) %>% ## compute temp climatology for each day of year
+            do(mutate(., temp_profile = mean(.$temp, na.rm=TRUE))) %>% ## compute temp climatology for each day of year
             ungroup() %>%
             mutate(s_detrended_temp = temp - temp_profile) %>% ## create column representing seasonally detrended
             arrange(., time)
@@ -174,7 +172,7 @@ reorganize_GCM <- function(filenames) {
               l_detrended[first(which(is.na(detrended$s_temps))):first(which(!is.na(detrended$s_temps)))-1] = NA
               s_detrended[first(which(is.na(detrended$s_temps))):first(which(!is.na(detrended$s_temps)))-1] = NA
             }
-
+            
             l_detrended_temps[y,x,] <- l_detrended
             s_detrended_temps[y,x,] <- s_detrended ## save time series 
           }
@@ -213,6 +211,9 @@ reorganize_GCM <- function(filenames) {
   ## returns list of spatial chunk filenames 
   return(sp_files)
 }
+
+reorganize_GCM(filenames = files_sst)
+
 
 ## mark cells where lots of the time series is missing
 lon_index = 0
@@ -377,7 +378,7 @@ spectral_exponent_calculator_AWC <- function(ts_window, N) {
   wavelets <- biwavelet::wt(data.frame(time = 1:N, val = ts_window), do.sig = F)
   
   ## b. calculate arithmetic mean with respect to the translation coefficient (b)
-  data <- data.frame(avg_wavelet_coeff = rowMeans(sqrt(wavelets$power), na.rm = T), period = wavelets$period)
+  data <- data.frame(avg_wavelet_coeff = rowMeans(sqrt(wavelets$power), na.rm = TRUE), period = wavelets$period)
   
   # # plot average coefficients versus period on a log–log plot
   # ggplot(data = data, aes(x = period, y = avg_wavelet_coeff)) +
@@ -616,10 +617,9 @@ sliding_window_spec_exp <- function(names) {
     colnames(s_model_output_AWC)[4:7] <- paste("s", colnames(s_model_output_AWC)[4:7], "AWC", sep = "_")
     s_model_output_AWC$time_window_width = "10 years"
     
-    
     ## bind model output columns to spectral exponent data:
-    spec_exp_df <- left_join(spec_exp_df, l_model_output_PSD_low) %>%
-      left_join(., s_model_output_PSD_low) %>%
+    spec_exp_df <- left_join(spec_exp_df, s_model_output_PSD_low) %>%
+      left_join(., l_model_output_PSD_low) %>%
       left_join(., l_model_output_AWC) %>%
       left_join(., s_model_output_AWC) %>%
       left_join(., l_model_output_PSD_high) %>%
@@ -667,6 +667,79 @@ sliding_window_spec_exp <- function(names) {
 }
 
 se_filenames_sst <- readRDS("data-processed/NOAA-OISST/noaa_se_filenames.rds")
+
+######################################################################################################################
+#####    make data frame that has lat, lon, first ts noise colour, whole ts noise colour, and change in colour  ######
+######################################################################################################################
+se_filenames = se_filenames_sst
+file = 1
+while (file <= length(se_filenames)) {
+  
+  if(file == 1){
+    data <- read.csv(se_filenames[[file]]) %>%
+      filter(window_start_year %in% c(1981, 2016)) %>%
+      select(lat, lon, time_window_width, window_start_year,
+             s_spec_exp_PSD_high, s_spec_exp_PSD_low, s_spec_exp_PSD_all,
+             s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all) %>%
+      filter(time_window_width == "5 years") %>%
+      unique() 
+  }
+  else {
+    data <- read.csv(se_filenames[[file]]) %>%
+      filter(window_start_year %in% c(1981, 2016)) %>%
+      select(lat, lon, time_window_width, window_start_year,
+             s_spec_exp_PSD_high, s_spec_exp_PSD_low, s_spec_exp_PSD_all,
+             s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all) %>%
+      filter(time_window_width == "5 years") %>%
+      unique() %>%
+      rbind(., data)
+  }
+  
+  file = file + 1
+}
+
+saveRDS(data, "data-processed/NOAA-OISST/NOAA_noise-colour.rds")
+
+data <- readRDS("data-processed//NOAA-OISST/NOAA_noise-colour.rds")
+
+## find mean spectral colour across marine environments in 2016 
+data %>%
+  filter(window_start_year == "2016") %>%
+  select(lat, lon, s_spec_exp_PSD_low) %>%
+  unique()%>%
+  summarise(mean(s_spec_exp_PSD_low))
+
+## 1.602594
+
+## find 95% quantiles
+data %>%
+  filter(window_start_year == "2016") %>%
+  select(lat, lon, s_spec_exp_PSD_low) %>%
+  unique()%>%
+  ggplot(aes(x = s_spec_exp_PSD_low)) + geom_histogram()
+
+data %>%
+  filter(window_start_year == "2016") %>%
+  select(lat, lon, s_spec_exp_PSD_low) %>%
+  unique()%>%
+  summarise(quantile(s_spec_exp_PSD_low, 0.05),
+            quantile(s_spec_exp_PSD_low, 0.95))
+
+## min = 1.149833
+## max = 1.997999
+
+## find min and max spectral change across marine environments 
+data %>%
+  select(lat, lon, s_estimate_PSD_low) %>%
+  unique()%>%
+  summarise(min(s_estimate_PSD_low),
+            max(s_estimate_PSD_low))
+
+## min = -0.0484271 per 140 years = -0.1895386/200000 days 
+## max = 0.05200901 per 140 years = 0.2035578/200000 days 
+
+
+
 
 ####################################################################
 #####    transform spectral exponent data into a rasterStack  ######

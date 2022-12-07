@@ -140,7 +140,7 @@ reorganize_GCM <- function(filenames) {
     temps_df <- as.array(spatial_temps)  
     
     ## loop through cells in spatial chunk, removing outliers and interpolating missing vals in time series
-    l_detrended_temps <- s_detrended_temps <- fake_temps <- s_detrended_fake <- temps_df
+    l_detrended_temps <- s_detrended_temps <- temps_df
     x = 1 ## longitude
     while (x < ncol(temps_df) + 1) {
       y = 1 ## latitude
@@ -207,35 +207,6 @@ reorganize_GCM <- function(filenames) {
           l_detrended_temps[y,x,] <- l_detrended
           s_detrended_temps[y,x,] <- s_detrended 
           
-          ## make fake time series:
-          fake_ts <- rep(og_temps[first(which(!is.na(og_temps))):(first(which(!is.na(og_temps)))+1825)], 29)[1:length(og_temps)] + runif(length(og_temps), -5, 5)
-          
-          if(length(which(is.na(s_detrended))) != 0 & length(which(is.na(s_detrended)))!= length(s_detrended)) {
-            if(first(which(is.na(detrended$s_temps))) == 1) {
-              fake_ts[first(which(is.na(og_temps))):(first(which(!is.na(og_temps)))-1)] = NA
-            }
-          }
-          
-          ## get rid of mean
-          fake_ts <- fake_ts - mean(fake_ts, na.rm = TRUE)
-          
-          ## make sure variance is 109.086
-          fake_ts = fake_ts*1/sqrt(var(fake_ts, na.rm = TRUE))*sqrt(109.086)
-          
-          ## make one with seasonal trend removed:
-          fake_ts_s <- rep(s_detrended[first(which(!is.na(og_temps))):(first(which(!is.na(og_temps)))+1825)], 29)[1:length(s_detrended)] + runif(length(s_detrended), -5, 5)
-          
-          if(length(which(is.na(s_detrended))) != 0 & length(which(is.na(s_detrended)))!= length(s_detrended)) {
-            if(first(which(is.na(detrended$s_temps))) == 1) {
-              fake_ts_s[first(which(is.na(og_temps))):(first(which(!is.na(og_temps)))-1)] = NA
-            }
-          }
-          
-          ## save 
-          fake_temps[y,x,] <- fake_ts
-          s_detrended_fake[y,x,] <- fake_ts_s 
-          
-          
           print(paste("Done detrending and interpolating x ", x,  " y ", y, " of chunk #", count,sep = ""))
         }
         y = y + 1
@@ -252,11 +223,7 @@ reorganize_GCM <- function(filenames) {
                                                    "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
     ArrayToNc(s_detrended_temps, file_path = paste("data-processed/BerkeleyEarth/be_s-detrended_lon-", lon_bound1,"-", lon_bound2,
                                                    "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
-    ArrayToNc(fake_temps, file_path = paste("data-processed/BerkeleyEarth/be_fake-temps_lon-", lon_bound1,"-", lon_bound2,
-                                                   "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
-    ArrayToNc(s_detrended_fake, file_path = paste("data-processed/BerkeleyEarth/be_s-detrended-fake_lon-", lon_bound1,"-", lon_bound2,
-                                                   "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
-    
+  
     ## advance lat and lon indecies to move to next spatial chunk
     if (count %in% c(6, 12)) {
       lat_index <- lat_index - 60
@@ -467,7 +434,6 @@ sliding_window_spec_exp <- function(names) {
 
   l_filenames <- str_replace_all(names, "spatial_temps", 'l-detrended')
   s_filenames <-  str_replace_all(names, "spatial_temps", 's-detrended')
-  s_fake_filenames <-  str_replace_all(names, "spatial_temps", 's-detrended-fake')
   
   ## read in the ocean coordinates
   ocean <- read.csv("data-processed/masks/cmip5-ocean-coords.csv")
@@ -490,10 +456,6 @@ sliding_window_spec_exp <- function(names) {
     s_detrended_tas = ncvar_get(s_open, "var1_1")
     nc_close(s_open)
     
-    s_fake = nc_open(s_fake_filenames[count])
-    s_detrended_fake = ncvar_get(s_fake, "var1_1")
-    nc_close(s_fake)
-    
     spec_exp_list <- list()
     x = 1 ## longitude
     while (x < ncol(l_detrended_tas)+1) {
@@ -503,7 +465,6 @@ sliding_window_spec_exp <- function(names) {
       spec_exp_list[[x]] <- foreach(y=1:60, combine=rbind)  %dopar% {
         l_local_ts <- l_detrended_tas[y,x,] ## get the local detrended time series
         s_local_ts <- s_detrended_tas[y,x,]
-        s_local_fake <- s_detrended_fake[y,x,]
         
         ## if no time series, skip to next latitude
         if (length(which(is.na(l_local_ts))) == 51830) {
@@ -513,7 +474,6 @@ sliding_window_spec_exp <- function(names) {
           local_ts <- data.frame(time = 1:length(l_local_ts), ## add integer time 
                                  l_temp = l_local_ts,
                                  s_temp = s_local_ts,
-                                 s_temp_fake = s_local_fake,
                                  date = dates) %>% ## add a date column
             mutate(year = str_split_fixed(.$date, 
                                           pattern = "\\.", n = 2)[,1]) %>% ## add a year column
@@ -527,31 +487,22 @@ sliding_window_spec_exp <- function(names) {
           ## preprocess the time series:
           ## a. subtracting mean
           ts_s_all <- local_ts$s_temp[first:nrow(local_ts)] - mean(local_ts$s_temp[first:nrow(local_ts)])
-          ts_s_all_fake <- local_ts$s_temp_fake[first:nrow(local_ts)] - 
-            mean(local_ts$s_temp_fake[first:nrow(local_ts)])
-          
+     
           ## b. windowing - multiply by a parabolic window
           window_s <- parabolic_window(series = ts_s_all, N = L)
           ts_s_all <- ts_s_all*window_s
-          window_s_fake <- parabolic_window(series = ts_s_all_fake, N = L)
-          ts_s_all_fake <- ts_s_all_fake*window_s_fake
-
+      
           ## c. bridge detrending (endmatching)
           ## ie. subtracting from the data the line connecting the first and last points of the series
           ts_s_all <- bridge_detrender(windowed_series = ts_s_all, N = L)
-          ts_s_all_fake <- bridge_detrender(windowed_series = ts_s_all_fake, N = L)
-
+       
           ## calculate spectral exponent in window using PSD and AWC methods
           s_exp_PSD_all <- spectral_exponent_calculator_PSD(ts_s_all, l = L)
-          s_exp_PSD_all_fake <- spectral_exponent_calculator_PSD(ts_s_all_fake, l = L)
-
+      
           s_exp_PSD_low_all <- s_exp_PSD_all[[1]]
           s_exp_PSD_high_all <- s_exp_PSD_all[[2]]
           s_exp_PSD_all_all <- s_exp_PSD_all[[3]]
-          s_exp_PSD_low_all_fake <- s_exp_PSD_all_fake[[1]]
-          s_exp_PSD_high_all_fake <- s_exp_PSD_all_fake[[2]]
-          s_exp_PSD_all_all_fake <- s_exp_PSD_all_fake[[3]]
-          
+        
           #########################################
           ##        SENSITIVITY ANALYSIS:        ##
           #########################################
@@ -577,29 +528,21 @@ sliding_window_spec_exp <- function(names) {
                 ## preprocess the time series:
                 ## a. subtracting mean
                 ts_s <- ts_chunk$s_temp - mean(ts_chunk$s_temp)
-                ts_s_fake <- ts_chunk$s_temp_fake - mean(ts_chunk$s_temp_fake)
-                
+             
                 ## b. windowing - multiply by a parabolic window 
                 window_s <- parabolic_window(series = ts_s, N = L)
                 ts_s <- ts_s*window_s
-                window_s_fake <- parabolic_window(series = ts_s_fake, N = L)
-                ts_s_fake <- ts_s_fake*window_s_fake
                
                 ## c. bridge detrending (endmatching)
                 ## ie. subtracting from the data the line connecting the first and last points of the series
                 ts_s <- bridge_detrender(windowed_series = ts_s, N = L)
-                ts_s_fake <- bridge_detrender(windowed_series = ts_s_fake, N = L)
-                
+                 
                 ## calculate spectral exponent in window using PSD and AWC methods
                 s_exp_PSD <- spectral_exponent_calculator_PSD(ts_s, l = L)
-                s_exp_PSD_fake <- spectral_exponent_calculator_PSD(ts_s_fake, l = L)
                 
                 s_exp_PSD_low <- s_exp_PSD[[1]]
                 s_exp_PSD_high <- s_exp_PSD[[2]]
                 s_exp_PSD_all <- s_exp_PSD[[3]]
-                s_exp_PSD_low_fake <- s_exp_PSD_fake[[1]]
-                s_exp_PSD_high_fake <- s_exp_PSD_fake[[2]]
-                s_exp_PSD_all_fake <- s_exp_PSD_fake[[3]]
                 
                 if (n == 10) {
                   ## calculate on linearly-detrended time series
@@ -619,20 +562,20 @@ sliding_window_spec_exp <- function(names) {
                   s_exp_AWC <- spectral_exponent_calculator_AWC(ts_s, N = L)
                   
                   ## store:
-                  all_windows[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low, s_exp_PSD_low_fake, 
+                  all_windows[[element]] <- c(l_exp_PSD_low, s_exp_PSD_low,
                                               l_exp_AWC, s_exp_AWC, 
-                                              l_exp_PSD_high, s_exp_PSD_high, s_exp_PSD_high_fake,
-                                              l_exp_PSD_all, s_exp_PSD_all, s_exp_PSD_all_fake,
+                                              l_exp_PSD_high, s_exp_PSD_high, 
+                                              l_exp_PSD_all, s_exp_PSD_all, 
                                               year_start, year_stop, 
                                               lat[y + lat_index],
                                               lon[x + lon_index], paste(n, "years"))
                 } 
                 else {
                   ## store:
-                  all_windows[[element]] <- c(NA, s_exp_PSD_low, s_exp_PSD_low_fake, 
+                  all_windows[[element]] <- c(NA, s_exp_PSD_low, 
                                               NA, NA, 
-                                              NA, s_exp_PSD_high, s_exp_PSD_high_fake,
-                                              NA, s_exp_PSD_all, s_exp_PSD_all_fake,
+                                              NA, s_exp_PSD_high, 
+                                              NA, s_exp_PSD_all,
                                               year_start, year_stop, 
                                               lat[y + lat_index],
                                               lon[x + lon_index], paste(n, "years"))
@@ -653,9 +596,6 @@ sliding_window_spec_exp <- function(names) {
           all_windows$s_exp_PSD_low_all <- rep(s_exp_PSD_low_all, nrow(all_windows))
           all_windows$s_exp_PSD_high_all <- rep(s_exp_PSD_high_all,  nrow(all_windows))
           all_windows$s_exp_PSD_all_all <- rep(s_exp_PSD_all_all,  nrow(all_windows))
-          all_windows$s_exp_PSD_low_all_fake <- rep(s_exp_PSD_low_all_fake, nrow(all_windows))
-          all_windows$s_exp_PSD_high_all_fake <- rep(s_exp_PSD_high_all_fake,  nrow(all_windows))
-          all_windows$s_exp_PSD_all_all_fake <- rep(s_exp_PSD_all_all_fake,  nrow(all_windows))
           all_windows
         }
       }
@@ -670,16 +610,14 @@ sliding_window_spec_exp <- function(names) {
     
     ## bind rows in list into data frame
     spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
-    colnames(spec_exp_df) <- c("l_spec_exp_PSD_low", "s_spec_exp_PSD_low", "s_spec_exp_PSD_low_fake",
+    colnames(spec_exp_df) <- c("l_spec_exp_PSD_low", "s_spec_exp_PSD_low", 
                                "l_spec_exp_AWC", "s_spec_exp_AWC",
-                               "l_spec_exp_PSD_high", "s_spec_exp_PSD_high", "s_spec_exp_PSD_high_fake",
-                               "l_spec_exp_PSD_all", "s_spec_exp_PSD_all", "s_spec_exp_PSD_all_fake",
+                               "l_spec_exp_PSD_high", "s_spec_exp_PSD_high", 
+                               "l_spec_exp_PSD_all", "s_spec_exp_PSD_all", 
                                "window_start_year",
-                               "window_stop_year", "lat", "lon", "time_window_width", 
+                               "window_stop_year", "lat", "lon", 
                                "s_spec_exp_PSD_low_all", "s_spec_exp_PSD_high_all",
-                               "s_spec_exp_PSD_all_all",
-                               "s_spec_exp_PSD_low_all_fake", "s_spec_exp_PSD_high_all_fake",
-                               "s_spec_exp_PSD_all_all_fake")
+                               "s_spec_exp_PSD_all_all", "time_window_width")
     
     ## convert numbers to numeric
     spec_exp_df[,1:15] <- sapply(spec_exp_df[,1:15], as.numeric)
@@ -755,49 +693,16 @@ sliding_window_spec_exp <- function(names) {
     colnames(s_model_output_AWC)[3:6] <- paste("s", colnames(s_model_output_AWC)[3:6], "AWC", sep = "_")
     s_model_output_AWC$time_window_width = "10 years"
     
-    ## for fake time series:
-    s_model_output_fake_low <- spec_exp_df %>%
-      group_by(lat, lon) %>%
-      do(tidy(lm(., formula = s_spec_exp_PSD_low_fake ~ window_start_year, na.rm = TRUE))) %>%
-      filter(term == "window_start_year") %>%
-      select(-term)
-    
-    colnames(s_model_output_fake_low)[3:6] <- paste("s", colnames(s_model_output_fake_low)[3:6],
-                                                    "PSD_low_fake", sep = "_")
-    s_model_output_fake_low$time_window_width = "5 years"
-    
-    s_model_output_fake_high <- spec_exp_df %>%
-      group_by(lat, lon) %>%
-      do(tidy(lm(., formula = s_spec_exp_PSD_high_fake ~ window_start_year, na.rm = TRUE))) %>%
-      filter(term == "window_start_year") %>%
-      select(-term)
-    
-    colnames(s_model_output_fake_high)[3:6] <- paste("s", colnames(s_model_output_fake_high)[3:6],
-                                                    "PSD_high_fake", sep = "_")
-    s_model_output_fake_high$time_window_width = "5 years"
-    
-    s_model_output_fake_all <- spec_exp_df %>%
-      group_by(lat, lon) %>%
-      do(tidy(lm(., formula = s_spec_exp_PSD_all_fake ~ window_start_year, na.rm = TRUE))) %>%
-      filter(term == "window_start_year") %>%
-      select(-term)
-    
-    colnames(s_model_output_fake_all)[3:6] <- paste("s", colnames(s_model_output_fake_all)[3:6],
-                                                    "PSD_all_fake", sep = "_")
-    s_model_output_fake_all$time_window_width = "5 years"
     
     ## bind model output columns to spectral exponent data:
-    spec_exp_df <- left_join(spec_exp_df, l_model_output_PSD_low) %>%
-      left_join(., s_model_output_PSD_low) %>%
+    spec_exp_df <- left_join(spec_exp_df, s_model_output_PSD_low) %>%
+      left_join(., l_model_output_PSD_low) %>%
       left_join(., l_model_output_AWC) %>%
       left_join(., s_model_output_AWC) %>%
       left_join(., l_model_output_PSD_high) %>%
       left_join(., s_model_output_PSD_high) %>%
       left_join(., l_model_output_PSD_all) %>%
-      left_join(., s_model_output_PSD_all) %>%
-      left_join(., s_model_output_fake_low) %>%
-      left_join(., s_model_output_fake_high) %>%
-      left_join(., s_model_output_fake_all) 
+      left_join(., s_model_output_PSD_all)
     
     ## add filename to list:
     if(count == 1) {
@@ -849,74 +754,30 @@ data <- read.csv(se_filenames_tas[[1]]) %>%
   filter(lat_lon %in% unique(lat_lon)[c(6,32,82,56,99,101,85,23,66,
                                         8,302,45,74,80,232,145,2,4,55,66,7)])
 
-data <- data %>%
-  group_by(lat_lon) %>%
-  mutate(s_spec_exp_PSD_low_fake_constant = first(s_spec_exp_PSD_low)) %>%
-  ungroup()
-
-data %>%
-  ggplot(aes(x = window_start_year, y = s_spec_exp_PSD_low)) + geom_point(colour = "red") +
-  geom_point(aes(y = s_spec_exp_PSD_low_fake_constant), colour = "lightblue") +
-  facet_wrap(~lat_lon) + labs(x = "Year", y = "Spectral exponent")
-
-ggsave("figures/extinction-risk/fake-time-series.png", width = 8, height = 5)
-
-data %>%
-  filter(lat_lon ==first(lat_lon)) %>%
-  ggplot(aes(x = window_start_year, y = s_spec_exp_PSD_low)) + geom_point(colour = "red", size = 0.5) +
-  geom_point(aes(y = s_spec_exp_PSD_low_fake_constant), colour = "lightblue", size = 0.5) +
-  facet_wrap(~lat_lon) + labs(x = "Year", y = "Spectral exponent")
-
-ggsave("figures/extinction-risk/fake-time-series_one.png", width = 3, height = 2.5)
-
-data %>%
-  ggplot(aes(x = window_start_year, y = s_spec_exp_PSD_low)) + geom_point(colour = "red") +
-  geom_point(aes(y = s_spec_exp_PSD_low_fake_constant), colour = "lightblue") +
-  geom_point(aes(y = s_spec_exp_PSD_low_fake), colour = "navyblue") +
-  facet_wrap(~lat_lon) + 
-  labs(x = "Year", y = "Spectral exponent")
-
-ggsave("figures/extinction-risk/fake-time-series-with-noise.png", width = 8, height = 5)
-
-data %>%
-  filter(lat_lon ==first(lat_lon)) %>%
-  ggplot(aes(x = window_start_year, y = s_spec_exp_PSD_low)) + geom_point(colour = "red", size = 0.5) +
-  geom_point(aes(y = s_spec_exp_PSD_low_fake_constant), colour = "lightblue", size = 0.5) +
-  geom_point(aes(y = s_spec_exp_PSD_low_fake), colour = "navyblue", size = 0.5) +
-  facet_wrap(~lat_lon) + labs(x = "Year", y = "Spectral exponent")
-
-ggsave("figures/extinction-risk/fake-time-series-with-noise_one.png", width = 3, height = 2.5)
-
-
 ######################################################################################################################
 #####    make data frame that has lat, lon, first ts noise colour, whole ts noise colour, and change in colour  ######
 ######################################################################################################################
+se_filenames = se_filenames_tas
 file = 1
 while (file <= length(se_filenames)) {
   
   if(file == 1){
     data <- read.csv(se_filenames[[file]]) %>%
-      filter(window_start_year == 1880) %>%
-      select(lat, lon, time_window_width, 
+      filter(window_start_year %in% c(1880, 2015)) %>%
+      select(lat, lon, time_window_width, window_start_year,
              s_spec_exp_PSD_high, s_spec_exp_PSD_low, s_spec_exp_PSD_all,
              s_spec_exp_PSD_high_all, s_spec_exp_PSD_low_all, s_spec_exp_PSD_all_all,
-             s_spec_exp_PSD_high_fake, s_spec_exp_PSD_low_fake, s_spec_exp_PSD_all_fake,
-             s_spec_exp_PSD_high_all_fake, s_spec_exp_PSD_low_all_fake, s_spec_exp_PSD_all_all_fake,
-             s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all,
-             s_estimate_PSD_low_fake, s_estimate_PSD_high_fake, s_estimate_PSD_all_fake) %>%
+             s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all) %>%
       filter(time_window_width == "5 years") %>%
       unique() 
   }
   else {
     data <- read.csv(se_filenames[[file]]) %>%
-      filter(window_start_year == 1880) %>%
-      select(lat, lon, time_window_width, 
+      filter(window_start_year %in% c(1880, 2015)) %>%
+      select(lat, lon, time_window_width, window_start_year,
              s_spec_exp_PSD_high, s_spec_exp_PSD_low, s_spec_exp_PSD_all,
              s_spec_exp_PSD_high_all, s_spec_exp_PSD_low_all, s_spec_exp_PSD_all_all,
-             s_spec_exp_PSD_high_fake, s_spec_exp_PSD_low_fake, s_spec_exp_PSD_all_fake,
-             s_spec_exp_PSD_high_all_fake, s_spec_exp_PSD_low_all_fake, s_spec_exp_PSD_all_all_fake,
-             s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all,
-             s_estimate_PSD_low_fake, s_estimate_PSD_high_fake, s_estimate_PSD_all_fake) %>%
+             s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all) %>%
       filter(time_window_width == "5 years") %>%
       unique() %>%
       rbind(., data)
@@ -931,6 +792,41 @@ data <- readRDS("data-processed/BerkeleyEarth/BE_noise-colour.rds")
 
 ## TO DO: check why some lat values are NA
 
+## find mean spectral colour across terrestrial environments in 2015 
+data %>%
+  filter(window_start_year == "2015") %>%
+  select(lat, lon, s_spec_exp_PSD_low) %>%
+  unique()%>%
+  summarise(mean(s_spec_exp_PSD_low))
+
+## 0.8307651
+
+## find 95% quantiles
+data %>%
+  filter(window_start_year == "2015") %>%
+  select(lat, lon, s_spec_exp_PSD_low) %>%
+  unique()%>%
+  ggplot(aes(x = s_spec_exp_PSD_low)) + geom_histogram()
+
+data %>%
+  filter(window_start_year == "2015") %>%
+  select(lat, lon, s_spec_exp_PSD_low) %>%
+  unique()%>%
+  summarise(quantile(s_spec_exp_PSD_low, 0.05),
+            quantile(s_spec_exp_PSD_low, 0.95))
+
+## min = 0.07916834
+## max = 1.507507 
+
+## find min and max spectral change across terrestrial environments 
+data %>%
+ select(lat, lon, s_estimate_PSD_low) %>%
+  unique()%>%
+  summarise(min(s_estimate_PSD_low),
+            max(s_estimate_PSD_low))
+
+## min = -0.0181565 per 140 years = -0.07106262/200000 days 
+## max = 0.01290973 per 140 years = 0.05052732/200000 days 
 
 
 ####################################################################

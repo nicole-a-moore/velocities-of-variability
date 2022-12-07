@@ -54,7 +54,7 @@ one_over_f <- function(beta){
   noise <- noise*1/sqrt(var(noise))*sqrt(4140)
   noise <- noise - mean(noise)
   
-  ## estimate noise colour from a linear regression of pwoer spectrum:
+  ## estimate noise colour from a linear regression of power spectrum:
   l <- length(noise)
   dft <- fft(noise)/l
   amp <- sqrt(Im(dft[-1])^2 + Re(dft[-1])^2) ## get rid of first term (represents DC component - y axis shift)

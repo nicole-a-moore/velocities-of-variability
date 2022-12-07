@@ -4,9 +4,9 @@ library(fractal)
 library(tidyverse)
 library(broom)
 
-# start_colour = function(){return(0)}
-# end_colour = function(){return(2)}
-# num_steps = function(){return(220)}
+# start_colour = function(){return(0.9)}
+# end_colour = function(){return(1)}
+# num_steps = function(){return(110)}
 # by = function() {
 #   return((end_colour() - start_colour())/num_steps())
 #   }
