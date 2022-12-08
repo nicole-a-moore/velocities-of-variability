@@ -20,11 +20,11 @@ resample_GCM <- function(historical_filenames, rcp85_filenames, path) {
   file = 1
   dates <- c()
   start <- Sys.time()
-  model_6o8 <- str_detect(path, "06") | str_detect(path, "08")
+  model_3 <- str_detect(path, "03")
   while (file < (length(filenames)+1)) { 
     
     ## create raster stack to store data 
-    if (model_6o8) {
+    if (model_3) {
       ## these two annoying models have an unevenly spaced grid. alas, we must get around this...
       og_temps = brick(paths[file], stopIfNotEqualSpaced = FALSE)
       dates <- append(dates, names(og_temps))

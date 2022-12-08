@@ -17,7 +17,7 @@ select <- dplyr::select
 #####    1.  transform spectral exponent data into a rasterStack  ######
 ########################################################################
 ## function to convert output from script 04 into 6 rasterStacks (one for each sliding window width, from 5-10 years) that can be used with the gVoCC functions 
-create_rasterStack <- function(path) {
+create_rasterStack <- function(path, gcm) {
   
   se_filenames <- readRDS(paste(path, "se_filenames.rds",  sep = ""))
   
@@ -160,14 +160,14 @@ create_rasterStack <- function(path) {
     names(ww_split)
   
   ## save the rasterstack 
-  saveRDS(l_stack_list_PSD_low, paste(path, "l_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_low, paste(path, "s_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(l_stack_list_AWC, paste(path, "l_stack_list_AWC.rds", sep = ""))
-  saveRDS(s_stack_list_AWC, paste(path, "s_stack_list_AWC.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_high, paste(path, "l_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_high, paste(path, "s_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_all, paste(path, "l_stack_list_PSD_all.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_all, paste(path, "s_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_low, paste(path, gcm, "_l_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_low, paste(path, gcm, "_s_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(l_stack_list_AWC, paste(path, gcm, "_l_stack_list_AWC.rds", sep = ""))
+  saveRDS(s_stack_list_AWC, paste(path, gcm, "_s_stack_list_AWC.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_high, paste(path, gcm, "_l_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_high, paste(path, gcm, "_s_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_all, paste(path, gcm, "_l_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_all, paste(path, gcm, "_s_stack_list_PSD_all.rds", sep = ""))
   
   stacks <- list(l_stack_list_PSD_low, s_stack_list_PSD_low, 
                  l_stack_list_AWC, s_stack_list_AWC,
@@ -177,8 +177,6 @@ create_rasterStack <- function(path) {
   ## return the 6 lists of rasterStacks
   return(stacks)
 }
-
-write.csv(spec_exp, "data-processed/GCM_spec_exp.csv", row.names = F)
 
 #################################################
 ###                setting paths               ## 
@@ -517,3 +515,11 @@ gcm_files <- list(CMCC_CMS_01, GFDL_CM3_02, GFDL_ESM2G_03, HadGEM2_ES_04,
 ###     calling functions on spectral exponent files             ## 
 ###################################################################
 path = folders[i]
+gcm = gcm_models[i]
+
+spec_exp <- create_rasterStack(path = path)
+
+write.csv(spec_exp, paste(path, gcm, "_spec_exp.csv",  sep = ""), row.names = F)
+          
+          
+          

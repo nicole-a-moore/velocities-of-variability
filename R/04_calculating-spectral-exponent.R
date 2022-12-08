@@ -10,7 +10,6 @@ library(wsyn)
 
 select <- dplyr::select
 
-
 ##############################################
 #####              FUNCTIONS:           ######
 ##############################################
@@ -116,7 +115,7 @@ spectral_exponent_calculator_AWC <- function(ts_window, N) {
 ## returns a list containing: 
 ##      - matrix of change in spectral exponents using each window width
 ##      - data frame of spectral exponents within each sliding window across all locations and for all window widths 
-sliding_window_spec_exp <- function(path) {
+sliding_window_spec_exp <- function(path, gcm = gcm) {
   
   ## read in spatial chunk file names:
   filepath = paste(path, "sp_files.rds", sep = "")
@@ -124,12 +123,13 @@ sliding_window_spec_exp <- function(path) {
   
   #remove me for use on cluster 
   #names = str_replace_all(names, 'CMIP5-GCMs', '/Volumes/ADATA HV620/CMIP5-GCMs')
+  #ocean <- read.csv("data-processed/masks/cmip5-ocean-coords.csv")
   
   l_filenames <- str_replace_all(names, "spatial_temps", 'l-detrended')
   s_filenames <-  str_replace_all(names, "spatial_temps", 's-detrended')
   
   ## read in the ocean coordinates
-  ocean <- read.csv("data-processed/masks/cmip5-ocean-coords.csv")
+  ocean <- read.csv("cmip5-ocean-coords.csv")
   ocean_coords <- paste(ocean$lat, ocean$lon)
   
   lat <- seq(from = 89.5, to = -89.5, length.out = 180) 
@@ -282,8 +282,7 @@ sliding_window_spec_exp <- function(path) {
     spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
     colnames(spec_exp_df) <- c("l_spec_exp_PSD_low", "s_spec_exp_PSD_low", "l_spec_exp_AWC", "s_spec_exp_AWC",
                                "l_spec_exp_PSD_high", "s_spec_exp_PSD_high", "l_spec_exp_PSD_all", "s_spec_exp_PSD_all",
-                               "window_start_year",
-                               "window_stop_year", "lat", "lon", "time_window_width")
+                               "window_start_year","window_stop_year", "lat", "lon", "time_window_width")
 
     ## convert numbers to numeric
     spec_exp_df[,1:12] <- sapply(spec_exp_df[,1:12], as.numeric)
@@ -351,7 +350,6 @@ sliding_window_spec_exp <- function(path) {
     colnames(s_model_output_AWC)[4:7] <- paste("s", colnames(s_model_output_AWC)[4:7], "AWC", sep = "_")
     s_model_output_AWC$time_window_width = "10 years"
     
-
     ## bind model output columns to spectral exponent data:
     spec_exp_df <- left_join(spec_exp_df, l_model_output_PSD_low) %>%
       left_join(., s_model_output_PSD_low) %>%
@@ -364,14 +362,14 @@ sliding_window_spec_exp <- function(path) {
 
     ## add filename to list:
     if(count == 1) {
-      se_filenames <- paste(path, "spec-exp_long-", 
+      se_filenames <- paste(path, gcm, "_spec-exp_long-", 
                             lon_index,"-", lon_index + 60, "_lat-",
                             90-lat_index,"-", 90-lat_index-60,
                             "_new.csv", sep = "")
     }
     else {
       se_filenames <- append(se_filenames,
-                             paste(path, "spec-exp_long-", 
+                             paste(path, gcm, "_spec-exp_long-", 
                                    lon_index,"-", lon_index + 60,"_lat-",
                                    90-lat_index,"-", 90-lat_index-60,  
                                    "_new.csv", sep = ""))
@@ -744,5 +742,6 @@ command_args <- commandArgs(trailingOnly = TRUE)
 i = as.numeric(command_args[1])
 
 p <- folders[i]
+gcm <- gcm_models[i]
 
-spec_exp = sliding_window_spec_exp(path = p)
+spec_exp = sliding_window_spec_exp(path = p, gcm = gcm)
