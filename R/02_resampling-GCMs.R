@@ -3,11 +3,12 @@
 .libPaths(c("~/projects/def-jsunday/nikkim/VoV/packages", .libPaths()))
 library(tidyverse)
 library(raster)
+library(stringr)
 
 #################################################
 ###                   FUNCTIONS                ## 
 #################################################
-resample_GCM <- function(historical_filenames, rcp85_filenames, path) {
+resample_GCM <- function(historical_filenames, rcp85_filenames, path, file) {
   
   #####      EXTRACTING DATA FROM FILES      #####
   ## create vector of file names:
@@ -17,28 +18,40 @@ resample_GCM <- function(historical_filenames, rcp85_filenames, path) {
   r <- raster(ymx = 90, ymn = -90, xmn = 0, xmx = 360, res = 1) 
   
   ## for each file in the set of GCM files:
-  file = 1
+  file = file
   dates <- c()
   start <- Sys.time()
   model_3 <- str_detect(path, "03")
   while (file < (length(filenames)+1)) { 
     
     ## create raster stack to store data 
-    if (model_3) {
+    if(model_3) {
       ## these two annoying models have an unevenly spaced grid. alas, we must get around this...
       og_temps = brick(paths[file], stopIfNotEqualSpaced = FALSE)
-      dates <- append(dates, names(og_temps))
     }
     else {
       og_temps <- stack(paths[file])
+    }
+    
+    ## if GCM has overlap between historical and rcp data, crop data at 2005-21-31 / 2006-01-01
+    if(historical_filenames[file] == "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc") {
+      lastday <- which(str_replace_all(names(og_temps), "X","") == "2005.12.31")
+      og_temps <- og_temps[[1:lastday]]
+      
+      ## save dates
+      dates <- append(dates, names(og_temps)[1:lastday])
+    }
+    else {
+      ## save dates
       dates <- append(dates, names(og_temps))
     }
     
     #####      STANDARDIZE TO 1X1 DEGREE GRID   #####
     ## resample temperatures so all GCMs are on a 1 degree x 1 degree grid of the same extent
     new_temps <- resample(og_temps, r, method = 'bilinear',
-                            filename = paste(path, "resampled_", filenames[file], sep = ""))
-  
+                            filename = paste(path, "test_resampled_", filenames[file], sep = ""),
+                          overwrite = TRUE)
+    
     print(paste0("Done file number: ", file), stdout())
     file = file + 1
   }
@@ -66,7 +79,7 @@ resample_GCM <- function(historical_filenames, rcp85_filenames, path) {
 #################################################
 ## set 'path' to where you have the GCM files stored on your computer
 ## for me, they are here:
-#path = "/Volumes/SundayLab/CMIP5-GCMs/" ## change me
+#path = "/Volumes/NIKKI/CMIP5-GCMs/" ## change me
 path = "CMIP5-GCMs/"
 
 ## create vector of file folders to put data into
@@ -297,8 +310,7 @@ MIROC5_hist <- c("tas_day_MIROC5_historical_r1i1p1_18700101-18791231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19700101-19791231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19800101-19891231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19900101-19991231.nc",
-                 "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc",
-                 "tas_day_MIROC5_historical_r1i1p1_20100101-20121231.nc")
+                 "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc")
 MIROC5_rcp85 <- c("tas_day_MIROC5_rcp85_r1i1p1_20060101-20091231.nc",
                   "tas_day_MIROC5_rcp85_r1i1p1_20100101-20191231.nc",
                   "tas_day_MIROC5_rcp85_r1i1p1_20200101-20291231.nc",
@@ -402,13 +414,14 @@ gcm_files <- list(CMCC_CMS_01, GFDL_CM3_02, GFDL_ESM2G_03, HadGEM2_ES_04,
 
 command_args <- commandArgs(trailingOnly = TRUE)
 i = as.numeric(command_args[1])
+file = as.numeric(command_args[2])
 
 element = gcm_files[[i]]
 hfn <- element[[1]]
 rfn <- element[[2]]
 p <- folders[i]
   
-d = resample_GCM(historical_filenames = hfn, rcp85_filenames = rfn, path = p)
+d = resample_GCM(historical_filenames = hfn, rcp85_filenames = rfn, path = p, file = file)
   
 
 

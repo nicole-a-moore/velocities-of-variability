@@ -91,7 +91,7 @@ spectral_exponent_calculator_AWC <- function(ts_window, N) {
   wavelets <- biwavelet::wt(data.frame(time = 1:N, val = ts_window), do.sig = F)
   
   ## b. calculate arithmetic mean with respect to the translation coefficient (b)
-  data <- data.frame(avg_wavelet_coeff = rowMeans(sqrt(wavelets$power), na.rm = T), period = wavelets$period)
+  data <- data.frame(avg_wavelet_coeff = rowMeans(sqrt(wavelets$power), na.rm = TRUE), period = wavelets$period)
   
   ## plot average coefficients versus period on a log–log plot
   # ggplot(data = data, aes(x = period, y = avg_wavelet_coeff)) + 
@@ -115,14 +115,14 @@ spectral_exponent_calculator_AWC <- function(ts_window, N) {
 ## returns a list containing: 
 ##      - matrix of change in spectral exponents using each window width
 ##      - data frame of spectral exponents within each sliding window across all locations and for all window widths 
-sliding_window_spec_exp <- function(path, gcm = gcm) {
+sliding_window_spec_exp <- function(path, gcm) {
   
   ## read in spatial chunk file names:
   filepath = paste(path, "sp_files.rds", sep = "")
   names = readRDS(filepath)
   
   #remove me for use on cluster 
-  #names = str_replace_all(names, 'CMIP5-GCMs', '/Volumes/ADATA HV620/CMIP5-GCMs')
+  #names = str_replace_all(names, 'CMIP5-GCMs', '/Volumes/NIKKI/CMIP5-GCMs')
   #ocean <- read.csv("data-processed/masks/cmip5-ocean-coords.csv")
   
   l_filenames <- str_replace_all(names, "spatial_temps", 'l-detrended')
@@ -166,7 +166,7 @@ sliding_window_spec_exp <- function(path, gcm = gcm) {
           }
           
           ## if no time series, skip to next latitude
-          if (length(which(is.na(l_local_ts))) == 83950) {
+          if (length(which(is.na(l_local_ts))) == length(l_local_ts)) {
             y = y + 1
           }
           else {
@@ -277,107 +277,127 @@ sliding_window_spec_exp <- function(path, gcm = gcm) {
       }
       x = x + 1
     }
-
-    ## bind rows in list into data frame
-    spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
-    colnames(spec_exp_df) <- c("l_spec_exp_PSD_low", "s_spec_exp_PSD_low", "l_spec_exp_AWC", "s_spec_exp_AWC",
-                               "l_spec_exp_PSD_high", "s_spec_exp_PSD_high", "l_spec_exp_PSD_all", "s_spec_exp_PSD_all",
-                               "window_start_year","window_stop_year", "lat", "lon", "time_window_width")
-
-    ## convert numbers to numeric
-    spec_exp_df[,1:12] <- sapply(spec_exp_df[,1:12], as.numeric)
-
-    ## regress spectral exponent and extract slope representing change in spectral exponent over time for each location and window width
-    l_model_output_PSD_low <- spec_exp_df %>%
-      filter(time_window_width == "10 years") %>%
-      group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = l_spec_exp_PSD_low ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-
-    colnames(l_model_output_PSD_low)[5:8] <- paste("l", colnames(l_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
-
-    s_model_output_PSD_low <- spec_exp_df %>%
-      group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = s_spec_exp_PSD_low ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-
-    colnames(s_model_output_PSD_low)[5:8] <- paste("s", colnames(s_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
     
-    l_model_output_PSD_high <- spec_exp_df %>%
-      filter(time_window_width == "10 years") %>%
-      group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = l_spec_exp_PSD_high ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-    
-    colnames(l_model_output_PSD_high)[5:8] <- paste("l", colnames(l_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
-    
-    s_model_output_PSD_high <- spec_exp_df %>%
-      group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = s_spec_exp_PSD_high ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-    
-    colnames(s_model_output_PSD_high)[5:8] <- paste("s", colnames(s_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
-    
-    l_model_output_PSD_all <- spec_exp_df %>%
-      filter(time_window_width == "10 years") %>%
-      group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = l_spec_exp_PSD_all ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-    
-    colnames(l_model_output_PSD_all)[5:8] <- paste("l", colnames(l_model_output_PSD_all)[5:8], "PSD_all", sep = "_")
-    
-    s_model_output_PSD_all <- spec_exp_df %>%
-      group_by(lat, lon, time_window_width) %>%
-      do(tidy(lm(., formula = s_spec_exp_PSD_all ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-    
-    colnames(s_model_output_PSD_all)[5:8] <- paste("s", colnames(s_model_output_PSD_all)[5:8], "PSD_all", sep = "_")
-    
-    l_model_output_AWC <- spec_exp_df %>%
-      filter(time_window_width == "10 years") %>%
-      group_by(lat, lon) %>%
-      do(tidy(lm(., formula = l_spec_exp_AWC ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-  
-    colnames(l_model_output_AWC)[4:7] <- paste("l", colnames(l_model_output_AWC)[4:7], "AWC", sep = "_")
-    l_model_output_AWC$time_window_width = "10 years"
-    
-    s_model_output_AWC <- spec_exp_df %>%
-      group_by(lat, lon) %>%
-      do(tidy(lm(., formula = s_spec_exp_AWC ~ window_start_year))) %>%
-      filter(term == "window_start_year")
-    
-    colnames(s_model_output_AWC)[4:7] <- paste("s", colnames(s_model_output_AWC)[4:7], "AWC", sep = "_")
-    s_model_output_AWC$time_window_width = "10 years"
-    
-    ## bind model output columns to spectral exponent data:
-    spec_exp_df <- left_join(spec_exp_df, l_model_output_PSD_low) %>%
-      left_join(., s_model_output_PSD_low) %>%
-      left_join(., l_model_output_AWC) %>%
-      left_join(., s_model_output_AWC) %>%
-      left_join(., l_model_output_PSD_high) %>%
-      left_join(., s_model_output_PSD_high) %>%
-      left_join(., l_model_output_PSD_all) %>%
-      left_join(., s_model_output_PSD_all)
-
-    ## add filename to list:
-    if(count == 1) {
-      se_filenames <- paste(path, gcm, "_spec-exp_long-", 
-                            lon_index,"-", lon_index + 60, "_lat-",
-                            90-lat_index,"-", 90-lat_index-60,
-                            "_new.csv", sep = "")
+    ## check if completely empty (all cells in chunk are ocean)
+    if (length(spec_exp_list) == 0) {
+      ## add blank filename to list:
+      if(count == 1) {
+        se_filenames <- paste(path, gcm, "_spec-exp_long-", 
+                              lon_index,"-", lon_index + 60, "_lat-",
+                              90-lat_index,"-", 90-lat_index-60,
+                              "_new.csv", sep = "")
+      }
+      else {
+        se_filenames <- append(se_filenames,
+                               paste(path, gcm, "_spec-exp_long-", 
+                                     lon_index,"-", lon_index + 60,"_lat-",
+                                     90-lat_index,"-", 90-lat_index-60,  
+                                     "_new.csv", sep = ""))
+      }
     }
     else {
-      se_filenames <- append(se_filenames,
-                             paste(path, gcm, "_spec-exp_long-", 
-                                   lon_index,"-", lon_index + 60,"_lat-",
-                                   90-lat_index,"-", 90-lat_index-60,  
-                                   "_new.csv", sep = ""))
+      ## bind rows in list into data frame
+      spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
+      colnames(spec_exp_df) <- c("l_spec_exp_PSD_low", "s_spec_exp_PSD_low", "l_spec_exp_AWC", "s_spec_exp_AWC",
+                                 "l_spec_exp_PSD_high", "s_spec_exp_PSD_high", "l_spec_exp_PSD_all", "s_spec_exp_PSD_all",
+                                 "window_start_year","window_stop_year", "lat", "lon", "time_window_width")
+      
+      ## convert numbers to numeric
+      spec_exp_df[,1:12] <- sapply(spec_exp_df[,1:12], as.numeric)
+      
+      ## regress spectral exponent and extract slope representing change in spectral exponent over time for each location and window width
+      l_model_output_PSD_low <- spec_exp_df %>%
+        filter(time_window_width == "10 years") %>%
+        group_by(lat, lon, time_window_width) %>%
+        do(tidy(lm(., formula = l_spec_exp_PSD_low ~ window_start_year))) %>%
+        filter(term == "window_start_year")
+      
+      colnames(l_model_output_PSD_low)[5:8] <- paste("l", colnames(l_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
+      
+      s_model_output_PSD_low <- spec_exp_df %>%
+        group_by(lat, lon, time_window_width) %>%
+        do(tidy(lm(., formula = s_spec_exp_PSD_low ~ window_start_year))) %>%
+        filter(term == "window_start_year")
+      
+      colnames(s_model_output_PSD_low)[5:8] <- paste("s", colnames(s_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
+      
+      l_model_output_PSD_high <- spec_exp_df %>%
+        filter(time_window_width == "10 years") %>%
+        group_by(lat, lon, time_window_width) %>%
+        do(tidy(lm(., formula = l_spec_exp_PSD_high ~ window_start_year))) %>%
+        filter(term == "window_start_year")
+      
+      colnames(l_model_output_PSD_high)[5:8] <- paste("l", colnames(l_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
+      
+      s_model_output_PSD_high <- spec_exp_df %>%
+        group_by(lat, lon, time_window_width) %>%
+        do(tidy(lm(., formula = s_spec_exp_PSD_high ~ window_start_year))) %>%
+        filter(term == "window_start_year")
+      
+      colnames(s_model_output_PSD_high)[5:8] <- paste("s", colnames(s_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
+      
+      l_model_output_PSD_all <- spec_exp_df %>%
+        filter(time_window_width == "10 years") %>%
+        group_by(lat, lon, time_window_width) %>%
+        do(tidy(lm(., formula = l_spec_exp_PSD_all ~ window_start_year))) %>%
+        filter(term == "window_start_year")
+      
+      colnames(l_model_output_PSD_all)[5:8] <- paste("l", colnames(l_model_output_PSD_all)[5:8], "PSD_all", sep = "_")
+      
+      s_model_output_PSD_all <- spec_exp_df %>%
+        group_by(lat, lon, time_window_width) %>%
+        do(tidy(lm(., formula = s_spec_exp_PSD_all ~ window_start_year))) %>%
+        filter(term == "window_start_year")
+      
+      colnames(s_model_output_PSD_all)[5:8] <- paste("s", colnames(s_model_output_PSD_all)[5:8], "PSD_all", sep = "_")
+      
+      l_model_output_AWC <- spec_exp_df %>%
+        filter(time_window_width == "10 years") %>%
+        group_by(lat, lon) %>%
+        do(tidy(lm(., formula = l_spec_exp_AWC ~ window_start_year))) %>%
+        filter(term == "window_start_year")
+      
+      colnames(l_model_output_AWC)[4:7] <- paste("l", colnames(l_model_output_AWC)[4:7], "AWC", sep = "_")
+      l_model_output_AWC$time_window_width = "10 years"
+      
+      s_model_output_AWC <- spec_exp_df %>%
+        group_by(lat, lon) %>%
+        do(tidy(lm(., formula = s_spec_exp_AWC ~ window_start_year))) %>%
+        filter(term == "window_start_year")
+      
+      colnames(s_model_output_AWC)[4:7] <- paste("s", colnames(s_model_output_AWC)[4:7], "AWC", sep = "_")
+      s_model_output_AWC$time_window_width = "10 years"
+      
+      ## bind model output columns to spectral exponent data:
+      spec_exp_df <- left_join(spec_exp_df, l_model_output_PSD_low) %>%
+        left_join(., s_model_output_PSD_low) %>%
+        left_join(., l_model_output_AWC) %>%
+        left_join(., s_model_output_AWC) %>%
+        left_join(., l_model_output_PSD_high) %>%
+        left_join(., s_model_output_PSD_high) %>%
+        left_join(., l_model_output_PSD_all) %>%
+        left_join(., s_model_output_PSD_all)
+
+      ## add filename to list:
+      if(count == 1) {
+        se_filenames <- paste(path, gcm, "_spec-exp_long-", 
+                              lon_index,"-", lon_index + 60, "_lat-",
+                              90-lat_index,"-", 90-lat_index-60,
+                              "_new.csv", sep = "")
+      }
+      else {
+        se_filenames <- append(se_filenames,
+                               paste(path, gcm, "_spec-exp_long-", 
+                                     lon_index,"-", lon_index + 60,"_lat-",
+                                     90-lat_index,"-", 90-lat_index-60,  
+                                     "_new.csv", sep = ""))
+      }
+      
+      ## save spectral exponent for this chunk:
+      write.csv(spec_exp_df, se_filenames[count], row.names = FALSE)
+      
     }
-    
-    ## save spectral exponent for this chunk:
-    write.csv(spec_exp_df, se_filenames[count], row.names = FALSE)
-    
+
     ## advance lat and long indecies to move to next chunk
     if (count == 6) {
       lat_index <- lat_index + 60
@@ -405,7 +425,7 @@ sliding_window_spec_exp <- function(path, gcm = gcm) {
 #################################################
 ## set 'path' to where you have the GCM files stored on your computer
 ## for me, they are here:
-#path = "/Volumes/SundayLab/CMIP5-GCMs/" ## change me
+#path = "/Volumes/NIKKI/CMIP5-GCMs/" ## change me
 path = "CMIP5-GCMs/"
 
 ## create vector of file folders to put data into:
@@ -636,8 +656,7 @@ MIROC5_hist <- c("tas_day_MIROC5_historical_r1i1p1_18700101-18791231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19700101-19791231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19800101-19891231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19900101-19991231.nc",
-                 "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc",
-                 "tas_day_MIROC5_historical_r1i1p1_20100101-20121231.nc")
+                 "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc")
 MIROC5_rcp85 <- c("tas_day_MIROC5_rcp85_r1i1p1_20060101-20091231.nc",
                   "tas_day_MIROC5_rcp85_r1i1p1_20100101-20191231.nc",
                   "tas_day_MIROC5_rcp85_r1i1p1_20200101-20291231.nc",

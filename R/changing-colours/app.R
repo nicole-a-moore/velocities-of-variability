@@ -4,9 +4,9 @@ library(fractal)
 library(tidyverse)
 library(broom)
 
-# start_colour = function(){return(0.9)}
+# start_colour = function(){return(1)}
 # end_colour = function(){return(1)}
-# num_steps = function(){return(110)}
+# num_steps = function(){return(20)}
 # by = function() {
 #   return((end_colour() - start_colour())/num_steps())
 #   }
@@ -18,7 +18,8 @@ library(broom)
 #   each = ceiling(200000/num_steps())
 # 
 #   if(by == 0) {
-#     alpha = rep(start_colour(), 200000)
+#     alpha = rep(c(start_colour(), start_colour() + 0.000001), num_steps())
+#     alpha = rep(alpha, each = each)[1:200000]
 #     delta = -alpha/-2
 #   }
 #   else {
@@ -220,8 +221,6 @@ library(broom)
 #   return(spec_exp_df)
 # }
 
-
- 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
   
@@ -337,7 +336,8 @@ server <- function(input, output) {
     each = ceiling(200000/num_steps())
     
     if(by == 0) {
-      alpha = rep(start_colour(), 200000)
+      alpha = rep(c(start_colour(), start_colour() + 0.000001), num_steps())
+      alpha = rep(alpha, each = each)[1:200000]
       delta = -alpha/-2
     }
     else {
@@ -549,7 +549,8 @@ server <- function(input, output) {
       each = each()
       
       if(by == 0) {
-        alpha = rep(start_colour(), 200000)
+        alpha = rep(c(start_colour(), start_colour() + 0.000001), num_steps())
+        alpha = rep(alpha, each = each)[1:200000]
         delta = -alpha/-2
       }
       else {

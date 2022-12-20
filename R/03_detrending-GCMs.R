@@ -23,8 +23,6 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
   remove <- c(b4_1871_af_2101, ly_days)
   date_new <- dates[-remove]
   
-  
-  
   #####       REORGANIZE INTO SPATIAL CHUNKS      #####
   ## to detrend and perform sliding spectral analysis, need the whole time series for each location at once
   ## to satisfy this requirement while avoiding memory exhaustion, reorganize data
@@ -82,8 +80,8 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
         local_ts <- data.frame(time = 1:(length(temps_df[1,1,])), 
                                temp = temps_df[y,x,])
         
-        ggplot(local_ts, aes(x = time, y = temp)) + geom_line() +
-          geom_smooth(method = "lm")
+        # ggplot(local_ts, aes(x = time, y = temp)) + geom_line() +
+        #   geom_smooth(method = "lm")
         
         if (!length(which(is.na(local_ts$temp))) == nrow(local_ts)) {
           #####     REMOVING OUTLIERS, INTERPOLATING MISSING TEMPS    #####
@@ -91,8 +89,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, dates) {
           local_ts$temp[which(local_ts$temp > 333.15)] <- NA
           
           ## interpolate if temps are missing
-          if(length(which(is.na(local_ts$temp))) != 0 & length(which(is.na(local_ts$temp))) 
-             != length(local_ts$temp)) {
+          if(length(which(is.na(local_ts$temp))) != 0 & length(which(is.na(local_ts$temp))) != length(local_ts$temp)) {
             local_ts$temp <- na_kalman(local_ts$temp, smooth = TRUE, model = "StructTS")
             temps_df[y,x,] <- local_ts$temp ## save changed time series if it needed changing
           }
@@ -394,8 +391,7 @@ MIROC5_hist <- c("tas_day_MIROC5_historical_r1i1p1_18700101-18791231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19700101-19791231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19800101-19891231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19900101-19991231.nc",
-                 "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc",
-                 "tas_day_MIROC5_historical_r1i1p1_20100101-20121231.nc")
+                 "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc")
 MIROC5_rcp85 <- c("tas_day_MIROC5_rcp85_r1i1p1_20060101-20091231.nc",
                   "tas_day_MIROC5_rcp85_r1i1p1_20100101-20191231.nc",
                   "tas_day_MIROC5_rcp85_r1i1p1_20200101-20291231.nc",

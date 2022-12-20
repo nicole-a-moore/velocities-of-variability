@@ -1,3 +1,5 @@
+## TO CHANGE: read in average tas and tos across all GCMs instead of first GCM
+
 ## whole workflow for first GCM  !!!
 library(tidyverse)
 library(raster)
@@ -14,6 +16,28 @@ pal_lat <- c(pal[2], pal[4])
 pal = pnw_palette("Shuksan2",5, type = "discrete")
 pal_lat_and_realm <-  c(pal[5], pal[4], pal[1], pal[2])
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+#####        set up filenames      #####
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+## set up file names and paths
+path = "/Volumes/NIKKI/CMIP5-GCMs/"
+
+## create vector of file folders to put data into
+gcm_models <- c("01_CMCC-CMS_tas",
+                "02_GFDL-CM3_tas",
+                "03_GFDL-ESM2G_tas",
+                "04_HadGEM2-ES_tas",
+                "05_inmcm4_tas",
+                "06_IPSL-CM5A-MR_tas",
+                "07_MIROC-ESM-CHEM_tas",
+                "08_MIROC5_tas",
+                "09_MPI-ESM-LR_tas",
+                "10_MPI-ESM-MR_tas",
+                "11_MRI-CGCM3_tas")
+
+folders <- paste(path, gcm_models, "/", sep = "")
+
+gcm = 2
 ## for now: just do for seasonally detrended data, not linearly detrended
 ## create data that has tas on land and tos in the ocean
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
@@ -23,10 +47,12 @@ pal_lat_and_realm <-  c(pal[5], pal[4], pal[1], pal[2])
 #####       spectral exponent      #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## extract 10 year time window 
-s_stack_tas_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_PSD_low.rds")[[6]] 
-s_stack_tas_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_AWC.rds")[[6]] 
-s_stack_tas_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs/01_CMCC-CESM/s_stack_list_PSD_high.rds")[[6]] 
-
+s_stack_tas_PSD_low <- readRDS(paste(path, gcm_models[gcm], "/", 
+                                     gcm_models[gcm], "_s_stack_list_PSD_low.rds", sep = ""))[[6]] 
+s_stack_tas_AWC <- readRDS(paste(path, gcm_models[gcm], "/", 
+                                 gcm_models[gcm], "_s_stack_list_AWC.rds", sep = ""))[[6]] 
+s_stack_tas_PSD_high <- readRDS(paste(path, gcm_models[gcm], "/", 
+                                      gcm_models[gcm], "_s_stack_list_PSD_high.rds", sep = ""))[[6]] 
 s_stack_tos_PSD_low <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_low_tos.rds")[[6]] 
 s_stack_tos_AWC <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_AWC_tos.rds")[[6]] 
 s_stack_tos_PSD_high <- readRDS("/Volumes/SundayLab/CMIP5-GCMs_tos/01_CMCC-CESM/s_stack_list_PSD_high_tos.rds")[[6]] 
@@ -83,31 +109,22 @@ saveRDS(mosaic_specexp_AWC, "data-processed/01_tos-tas-mosaic_spectral-exponent_
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 #####        spectral change       #####
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
-### get tas data
-path = "/Volumes/SundayLab/CMIP5-GCMs/" 
-
-## create vector of file folders to put data into:
-gcm_models <- c("01_CMCC-CESM", "02_CMCC-CM", '03_CMCC-CMS', '04_MPI-ESM-LR', '05_MPI-ESM-MR',
-                "06_GFDL-ESM2G", '07_GFDL-CM3', '08_GFDL-ESM2M', '09_HadGEM2-CC', '10_HadGEM2-ES',
-                "11_HadGEM2-AO", '12_IPSL-CM5A-LR', '13_IPSL-CM5B-LR', '14_MIROC5', '15_MIROC5-ESM-CHEM',
-                '16_MIROC5-ESM', "17_inmcm4", '18_CNRM-CM5', "19_MRI-CGCM3", '20_MRI-ESM1',
-                '21_IPSL-CM5A-MR')
-
-folders <- paste(path, gcm_models, "/", sep = "")
-
-path = folders[1]
+path = folders[gcm]
 
 ## calculate average change in spectral exponent for each time series, across all sliding window widths 
 se_filenames <- readRDS(paste(path, "se_filenames.rds",  sep = ""))
+se_filenames <- str_replace_all(se_filenames, "CMIP5-GCMs", "/Volumes/NIKKI/CMIP5-GCMs")
 
 ## combine all spectral exponent csvs into one big dataframe
 file = 1
 while (file < length(se_filenames) + 1) {
-  if (file == 1) {
-    spec_exp <- read.csv(se_filenames[file])
-  }
-  else {
-    spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
+  if(file.exists(se_filenames[file])) {
+    if (file == 1) {
+      spec_exp <- read.csv(se_filenames[file])
+    }
+    else {
+      spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
+    }
   }
   print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
   file = file + 1
@@ -124,9 +141,17 @@ spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels =
 
 tas <- spec_exp %>%
   filter(time_window_width == "10 years") %>%
-  select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high) %>%
+  select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high,
+         s_estimate_AWC) %>%
   unique() %>%
   mutate(lon = ifelse(lon >= 180, lon - 180, lon + 178))
+
+raster_tas <- rasterFromXYZ(tas)
+
+## save:
+saveRDS(raster_tas, paste(path, gcm_models[gcm], "_spectral-change_multifrac.rds.rds", sep = ""))
+
+
 
 ### get tos data
 path = "/Volumes/SundayLab/CMIP5-GCMs_tos/" 
@@ -188,8 +213,9 @@ raster_tos[isna == 1] <- raster_tas[isna == 1]
 mosaic_specchange <- raster_tos
 plot(mosaic_specchange$s_estimate_PSD_low)
 
-## save:
-saveRDS(mosaic_specchange, "data-processed/01_tos-tas-mosaic_spectral-change_multifrac.rds")
+mosaic_specchange_tas = raster_tas
+
+
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ##### 1a. Analyze spectral exponent on land vs. ocean #####

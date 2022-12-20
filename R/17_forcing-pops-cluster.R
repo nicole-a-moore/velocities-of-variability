@@ -213,7 +213,7 @@ while (col <  length(base_col)) {
     }
     
     ## write results of 100 sims for base colour x icp combo
-    write.csv(all, paste("pop-sims/tvfdpopdynam_icp-", lambda[icp], "_base-col-", 
+    write.csv(all, paste("/Volumes/NIKKI/pop-sims/tvfdpopdynam_icp-", lambda[icp], "_base-col-", 
                          start_colour, "_20-steps.csv", sep = ""), row.names = F)
     
     icp = icp + 1

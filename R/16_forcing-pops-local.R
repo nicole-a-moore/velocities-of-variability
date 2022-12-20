@@ -45,8 +45,9 @@ tvfd <- function(start_colour, end_colour, num_steps, Tmax) {
   
   ## simulate the time series
   alpha <- seq(start_colour, end_colour, by = by)
-  alpha_inc = rep(alpha, each = each)[1:Tmax]
-  alpha_stable = rep(start_colour, Tmax)
+  alpha_inc = rep(alpha, each = each)[1:Tmax]  
+  alpha_stable = rep(c(start_colour, start_colour + 0.000001), num_steps)
+  alpha_stable = rep(alpha_stable, each = each)[1:200000]
   
   delta_inc = -alpha_inc/-2
   delta_dec = rev(delta_inc)
@@ -89,7 +90,7 @@ tvfd <- function(start_colour, end_colour, num_steps, Tmax) {
     }
   }
   
-  else if (any(alpha > 1)) {
+  else if (any(alpha >= 1)) {
    
     ## fix it so that each time step begins at last time step value:
     breaks = seq(1, 220000, by = each)
@@ -108,6 +109,11 @@ tvfd <- function(start_colour, end_colour, num_steps, Tmax) {
       to_add = new_noise_dec[breaks[i] - 1] - new_noise_dec[breaks[i]]
       
       new_noise_dec[breaks[i]:(breaks[i+1] - 1)] = new_noise_dec[breaks[i]:(breaks[i+1] - 1)] + to_add
+      
+      ## stable
+      to_add = new_noise_stable[breaks[i] - 1] - new_noise_stable[breaks[i]]
+      
+      new_noise_stable[breaks[i]:(breaks[i+1] - 1)] = new_noise_stable[breaks[i]:(breaks[i+1] - 1)] + to_add
       
       i = i + 1
     }
@@ -140,19 +146,18 @@ N0 = 100
 Tmax = 200000
 
 col = 1
-
 while (col <  length(base_col)) {
   
   start_colour = base_col[col]
   end_colour = base_col[col+1]
   
-  ## run 100 simulations per model:
+  ## run 500 simulations per model:
   icp = 1
   while (icp <= length(lambda)) {
     print(paste("On base colour ", col, " and icp ", icp, sep = ""))
     
     ## run 100 simulations per colour:
-    all <- foreach (z = 1:100, .combine=rbind)  %dopar% {
+    all <- foreach (z = 1:500, .combine=rbind)  %dopar% {
       
       noise_stable = noise_dec = noise_inc = rep(NA, Tmax)
 
@@ -195,20 +200,29 @@ while (col <  length(base_col)) {
       Nts_inc = popmod(t = Tmax, N0 = N0, K = K_inc)
       Nts_dec = popmod(t = Tmax, N0 = N0, K = K_dec)
   
-      data.frame(t = 1:Tmax, sim = z, 
-                 N_stable = Nts_stable,
-                 N_inc = Nts_inc,
-                 N_dec = Nts_dec,
-                 lambda = lambda[icp], 
-                 noise_stable = noise_stable, 
-                 noise_inc = noise_inc, 
-                 noise_dec = noise_dec, 
+      ## save extinction risk metrics 
+      data.frame(sim = z,
+                 N_stable = first(which(Nts_stable == 0)),
+                 N_inc = first(which(Nts_inc == 0)),
+                 N_dec = first(which(Nts_dec == 0)),
+                 lambda = lambda[icp],
                  base_col = start_colour)
+      
+      ## save whole time series 
+      # data.frame(t = 1:Tmax, sim = z, 
+      #            N_stable = Nts_stable,
+      #            N_inc = Nts_inc,
+      #            N_dec = Nts_dec,
+      #            lambda = lambda[icp], 
+      #            noise_stable = noise_stable, 
+      #            noise_inc = noise_inc, 
+      #            noise_dec = noise_dec, 
+      #            base_col = start_colour)
     }
     
-    ## write results of 100 sims for base colour x icp combo
-    write.csv(all, paste("data-processed/tvfd-pop-sims/tvfdpopdynam_icp-", lambda[icp], "_base-col-", 
-                         start_colour, "_20-steps.csv", sep = ""), row.names = F)
+    ## write results of 500 sims for base colour x icp combo
+    write.csv(all, paste("data-processed/pop-sims_semi-stable/tvfdpopdynam_icp-", lambda[icp], "_base-col-", 
+                         start_colour, "_20-steps_500.csv", sep = ""), row.names = F)
     
     icp = icp + 1
   }
