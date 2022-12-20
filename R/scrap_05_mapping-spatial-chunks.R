@@ -4,12 +4,20 @@ library(tidyverse)
 library(ncdf4)
 
 ## set up file names and paths
-path = "/Volumes/SundayLab/CMIP5-GCMs/"
-gcm_models <- c("01_CMCC-CESM", "02_CMCC-CM", '03_CMCC-CMS', '04_MPI-ESM-LR', '05_MPI-ESM-MR',
-                "06_GFDL-ESM2G", '07_GFDL-CM3', '08_GFDL-ESM2M', '09_HadGEM2-CC', '10_HadGEM2-ES',
-                "11_HadGEM2-AO", '12_IPSL-CM5A-LR', '13_IPSL-CM5B-LR', '14_MIROC5', '15_MIROC5-ESM-CHEM',
-                '16_MIROC5-ESM', "17_inmcm4", '18_CNRM-CM5', "19_MRI-CGCM3", '20_MRI-ESM1',
-                '21_IPSL-CM5A-MR')
+path = "/Volumes/NIKKI/CMIP5-GCMs/"
+
+## create vector of file folders to put data into
+gcm_models <- c("01_CMCC-CMS_tas",
+                "02_GFDL-CM3_tas",
+                "03_GFDL-ESM2G_tas",
+                "04_HadGEM2-ES_tas",
+                "05_inmcm4_tas",
+                "06_IPSL-CM5A-MR_tas",
+                "07_MIROC-ESM-CHEM_tas",
+                "08_MIROC5_tas",
+                "09_MPI-ESM-LR_tas",
+                "10_MPI-ESM-MR_tas",
+                "11_MRI-CGCM3_tas")
 
 folders <- paste(path, gcm_models, "/", sep = "")
 

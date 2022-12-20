@@ -17,18 +17,21 @@ select <- dplyr::select
 #####    1.  transform spectral exponent data into a rasterStack  ######
 ########################################################################
 ## function to convert output from script 04 into 6 rasterStacks (one for each sliding window width, from 5-10 years) that can be used with the gVoCC functions 
-create_rasterStack <- function(path, gcm) {
+create_rasterStack <- function(p, gcm) {
   
-  se_filenames <- readRDS(paste(path, "se_filenames.rds",  sep = ""))
+  se_filenames <- readRDS(paste(p, "se_filenames.rds",  sep = ""))
+  se_filenames <- str_replace_all(se_filenames, "CMIP5-GCMs", "/Volumes/NIKKI/CMIP5-GCMs")
   
   ## combine all spectral exponent csvs into one big dataframe
   file = 1
   while (file < length(se_filenames) + 1) {
-    if (file == 1) {
-      spec_exp <- read.csv(se_filenames[file])
-    }
-    else {
-      spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
+    if(file.exists(se_filenames[file])) {
+      if (file == 1) {
+        spec_exp <- read.csv(se_filenames[file])
+      }
+      else {
+        spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
+      }
     }
     print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
     file = file + 1
@@ -160,14 +163,14 @@ create_rasterStack <- function(path, gcm) {
     names(ww_split)
   
   ## save the rasterstack 
-  saveRDS(l_stack_list_PSD_low, paste(path, gcm, "_l_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_low, paste(path, gcm, "_s_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(l_stack_list_AWC, paste(path, gcm, "_l_stack_list_AWC.rds", sep = ""))
-  saveRDS(s_stack_list_AWC, paste(path, gcm, "_s_stack_list_AWC.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_high, paste(path, gcm, "_l_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_high, paste(path, gcm, "_s_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_all, paste(path, gcm, "_l_stack_list_PSD_all.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_all, paste(path, gcm, "_s_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_low, paste(p, gcm, "_l_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_low, paste(p, gcm, "_s_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(l_stack_list_AWC, paste(p, gcm, "_l_stack_list_AWC.rds", sep = ""))
+  saveRDS(s_stack_list_AWC, paste(p, gcm, "_s_stack_list_AWC.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_high, paste(p, gcm, "_l_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_high, paste(p, gcm, "_s_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_all, paste(p, gcm, "_l_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_all, paste(p, gcm, "_s_stack_list_PSD_all.rds", sep = ""))
   
   stacks <- list(l_stack_list_PSD_low, s_stack_list_PSD_low, 
                  l_stack_list_AWC, s_stack_list_AWC,
@@ -178,26 +181,244 @@ create_rasterStack <- function(path, gcm) {
   return(stacks)
 }
 
+#########################################################################################
+##### 2. calculate average change in spectral exponent for each time series in gcm ######
+#########################################################################################
+df_avergage_se_over_time <- function(p, gcm, i) {
+  
+  num = 1
+  widths = c("5 years", "6 years", "7 years", "8 years", "9 years", "10 years")
+  while(num <= length(widths)) {
+    ## read in raster stack layers for the time window 
+    s_stack_tas_PSD_low <- readRDS(paste(p, gcm_models[i], "_s_stack_list_PSD_low.rds", sep = ""))[[num]] 
+    s_stack_tas_PSD_high <- readRDS(paste(p, gcm_models[i], "_s_stack_list_PSD_high.rds", sep = ""))[[num]] 
+    
+    if(num == 6) {
+      s_stack_tas_AWC <- readRDS(paste(p, gcm_models[i], "_s_stack_list_AWC.rds", sep = ""))[[6]] 
+      l_stack_tas_PSD_low <- readRDS(paste(p, gcm_models[i], "_l_stack_list_PSD_low.rds", sep = ""))[[6]] 
+      l_stack_tas_AWC <- readRDS(paste(p, gcm_models[i], "_l_stack_list_AWC.rds", sep = ""))[[6]] 
+      l_stack_tas_PSD_high <- readRDS(paste(p, gcm_models[i], "_l_stack_list_PSD_high.rds", sep = ""))[[6]]
+      
+      ## make list of sensitivity layers
+      list_tas <- c(s_stack_tas_PSD_low, s_stack_tas_PSD_high, s_stack_tas_AWC,
+                    l_stack_tas_PSD_low, l_stack_tas_PSD_high, l_stack_tas_AWC)
+
+    }
+    else {
+      list_tas <- c(s_stack_tas_PSD_low, s_stack_tas_PSD_high)
+    }
+    ## crop to only land
+    land <- raster("data-processed/masks/cmip5-land.grd") 
+    extent(land) <- c(0, 360, -90, 90)
+    land <- crop(land, list_tas[[1]])
+    land[land != 1] <- NA
+    
+    list_tas <- sapply(list_tas, FUN = mask, land)
+    list_tas <- sapply(list_tas, FUN = stack)
+    
+    ## convert raster layer to data frame
+    df_low <- data.frame(rasterToPoints(list_tas[[1]]))
+    df_low <- gather(df_low, key = "window_number", value = "spec_exp", c(3:ncol(df_low)))
+    df_low$exponent_type = "s_PSD_low"
+    df_low$time_window_width = widths[num]
+   
+    df_high <- data.frame(rasterToPoints(list_tas[[2]]))
+    df_high <- gather(df_high, key = "window_number", value = "spec_exp", c(3:ncol(df_high)))
+    df_high$exponent_type = "s_PSD_high"
+    df_high$time_window_width = widths[num]
+    
+    average_low <- df_low %>%
+      group_by(window_number) %>% ## group data by window start year
+      mutate(mean_spec_exp = mean(spec_exp),
+             sd_spec_exp = sd(spec_exp))  %>% ## calculate average spectral exponent across all locations for each window 
+      ungroup() %>%
+      select(-x, -y, -window_number, -spec_exp) %>%
+      unique() 
+    average_low$year = seq(1871, 2100-num-4, by = num+4)
+    
+    average_high <- df_high %>%
+      group_by(window_number) %>% ## group data by window start year
+      mutate(mean_spec_exp = mean(spec_exp),
+             sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+      ungroup() %>%
+      select(-x, -y, -window_number, -spec_exp) %>%
+      unique() 
+    average_high$year = seq(1871, 2100-num-4, by = num+4)
+    
+    all = rbind(average_high, average_low)
+    all_data = rbind(df_high, df_low)
+    
+    if(num == 6) {
+      df_awc_s <- data.frame(rasterToPoints(list_tas[[3]]))
+      df_awc_s <- gather(df_awc_s, key = "window_number", value = "spec_exp", c(3:ncol(df_awc_s)))
+      df_awc_s$exponent_type = "s_AWC"
+      df_awc_s$time_window_width = widths[num]
+      
+      average_awc_s <- df_awc_s %>%
+        group_by(window_number) %>% ## group data by window start year
+        mutate(mean_spec_exp = mean(spec_exp),
+               sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+        ungroup() %>%
+        select(-x, -y, -window_number, -spec_exp) %>%
+        unique() 
+      average_awc_s$year = seq(1871, 2100-num-4, by = num+4)
+      
+      df_low_l <- data.frame(rasterToPoints(list_tas[[4]]))
+      df_low_l <- gather(df_low_l, key = "window_number", value = "spec_exp", c(3:ncol(df_low_l)))
+      df_low_l$exponent_type = "l_PSD_low"
+      df_low_l$time_window_width = widths[num]
+      
+      df_high_l <- data.frame(rasterToPoints(list_tas[[5]]))
+      df_high_l <- gather(df_high_l, key = "window_number", value = "spec_exp", c(3:ncol(df_high_l)))
+      df_high_l$exponent_type = "l_PSD_high"
+      df_high_l$time_window_width = widths[num]
+      
+      df_awc_l <- data.frame(rasterToPoints(list_tas[[6]]))
+      df_awc_l <- gather(df_awc_l, key = "window_number", value = "spec_exp", c(3:ncol(df_awc_l)))
+      df_awc_l$exponent_type = "l_AWC"
+      df_awc_l$time_window_width = widths[num]
+      
+      average_low_l <- df_low_l %>%
+        group_by(window_number) %>% ## group data by window start year
+        mutate(mean_spec_exp = mean(spec_exp),
+               sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+        ungroup() %>%
+        select(-x, -y, -window_number, -spec_exp) %>%
+        unique() 
+      average_low_l$year = seq(1871, 2100-num-4, by = num+4)
+      
+      average_high_l <- df_high_l %>%
+        group_by(window_number) %>% ## group data by window start year
+        mutate(mean_spec_exp = mean(spec_exp),
+               sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+        ungroup() %>%
+        select(-x, -y, -window_number, -spec_exp) %>%
+        unique() 
+      average_high_l$year = seq(1871, 2100-num-4, by = num+4)
+      
+      average_awc_l <- df_awc_l %>%
+        group_by(window_number) %>% ## group data by window start year
+        mutate(mean_spec_exp = mean(spec_exp),
+               sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
+        ungroup() %>%
+        select(-x, -y, -window_number, -spec_exp) %>%
+        unique() 
+      average_awc_l$year = seq(1871, 2100-num-4, by = num+4)
+      
+      all = rbind(all, average_awc_s) %>%
+        rbind(., average_low_l) %>%
+        rbind(., average_high_l) %>%
+        rbind(., average_awc_l)
+      
+      all_data = rbind(all_data, df_awc_s) %>%
+        rbind(., df_low_l) %>%
+        rbind(., df_high_l) %>%
+        rbind(., df_awc_l)
+      
+      key = data.frame(window_number = unique(df_low$window_number),
+                       year = seq(1871, 2100-num-4, by = num+4))
+      all_data = left_join(all_data, key)
+      
+    }
+    
+    plot = all %>%
+      ggplot(., aes(x = year, y = mean_spec_exp, colour = exponent_type)) + geom_point() +
+      theme_light() +
+      geom_errorbar(aes(ymin = mean_spec_exp - sd_spec_exp, ymax = mean_spec_exp + sd_spec_exp), 
+                    alpha = 0.3) +
+      labs(x = "Time window start year", y = "Mean spectral exponent", colour = "Sensitivity set:") +
+      geom_smooth(method = "lm")
+    
+    ggsave(plot, 
+           filename = paste("figures/spectral-analysis_GCMs/", gcm_models[i], "_global-se-over-time_", width, ".png", sep = ""), 
+           width = 6, height = 4, device = "png")
+    
+    ## write out
+    width = str_replace_all(widths[num], " ", "_")
+    write.csv(all, paste(p, gcm_models[i], "_average-se-over-time_", width, ".csv", sep = ""))
+    write.csv(all_data, paste(p, gcm_models[i], "_all-se-over-time_", width, ".csv", sep = ""))
+    
+    num = num + 1
+  }
+  
+  return(NA)
+}
+
+raster_avg_change <- function(p, gcm) {
+  ## calculate average change in spectral exponent for each time series, across all sliding window widths 
+  se_filenames <- readRDS(paste(p, "se_filenames.rds",  sep = ""))
+  se_filenames <- str_replace_all(se_filenames, "CMIP5-GCMs", "/Volumes/NIKKI/CMIP5-GCMs")
+  
+  ## combine all spectral exponent csvs into one big dataframe
+  file = 1
+  while (file < length(se_filenames) + 1) {
+    if(file.exists(se_filenames[file])) {
+      if (file == 1) {
+        spec_exp <- read.csv(se_filenames[file])
+      }
+      else {
+        spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
+      }
+    }
+    print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
+    file = file + 1
+  }
+  
+  r <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, 
+              crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"),
+              res = 1)
+  
+  ## reorder time_window_width so list elements are in order of increasing time window widths:
+  spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels = 
+                                         c("5 years", "6 years", "7 years", "8 years",
+                                           "9 years", "10 years"))
+  
+  ## loop through and save each window width
+  widths = unique(spec_exp$time_window_width)
+  num = 1 
+  while(num <= length(widths)) {
+    tas <- spec_exp %>%
+      filter(time_window_width == widths[num]) %>%
+      select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high,
+             l_estimate_AWC, s_estimate_AWC) %>%
+      unique() %>%
+      mutate(lon = ifelse(lon >= 180, lon - 180, lon + 178))
+    
+    raster_tas <- rasterFromXYZ(tas)
+    raster_tas <- extend(raster_tas, c(0, 360, -90, 90))
+    
+    ## save:
+    width = str_replace_all(widths[num], " ", "_")
+    saveRDS(raster_tas, paste(p, gcm, "_spectral-change_multifrac_", width, ".rds", sep = ""))
+    
+    num = num + 1
+  }
+  
+  return(NA)
+}
+
+
+
+
 #################################################
 ###                setting paths               ## 
 #################################################
 ## set 'path' to where you have the GCM files stored on your computer
 ## for me, they are here:
-#path = "/Volumes/SundayLab/CMIP5-GCMs/" ## change me
-path = "CMIP5-GCMs/"
+path = "/Volumes/NIKKI/CMIP5-GCMs/" 
 
 ## create vector of file folders to put data into:
-gcm_models <- c("01_CMCC-CMS_tos",
-                "02_GFDL-CM3_tos",
-                "03_GFDL-ESM2G_tos",
-                "04_HadGEM2-ES_tos",
-                "05_inmcm4_tos",
-                "06_IPSL-CM5A-MR_tos",
-                "07_MIROC-ESM-CHEM_tos",
-                "08_MIROC5_tos",
-                "09_MPI-ESM-LR_tos",
-                "10_MPI-ESM-MR_tos",
-                "11_MRI-CGCM3_tos")
+gcm_models <- c("01_CMCC-CMS_tas",
+                "02_GFDL-CM3_tas",
+                "03_GFDL-ESM2G_tas",
+                "04_HadGEM2-ES_tas",
+                "05_inmcm4_tas",
+                "06_IPSL-CM5A-MR_tas",
+                "07_MIROC-ESM-CHEM_tas",
+                "08_MIROC5_tas",
+                "09_MPI-ESM-LR_tas",
+                "10_MPI-ESM-MR_tas",
+                "11_MRI-CGCM3_tas")
 
 folders <- paste(path, gcm_models, "/", sep = "")
 
@@ -414,8 +635,7 @@ MIROC5_hist <- c("tas_day_MIROC5_historical_r1i1p1_18700101-18791231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19700101-19791231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19800101-19891231.nc",
                  "tas_day_MIROC5_historical_r1i1p1_19900101-19991231.nc",
-                 "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc",
-                 "tas_day_MIROC5_historical_r1i1p1_20100101-20121231.nc")
+                 "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc")
 MIROC5_rcp85 <- c("tas_day_MIROC5_rcp85_r1i1p1_20060101-20091231.nc",
                   "tas_day_MIROC5_rcp85_r1i1p1_20100101-20191231.nc",
                   "tas_day_MIROC5_rcp85_r1i1p1_20200101-20291231.nc",
@@ -514,12 +734,13 @@ gcm_files <- list(CMCC_CMS_01, GFDL_CM3_02, GFDL_ESM2G_03, HadGEM2_ES_04,
 ###################################################################
 ###     calling functions on spectral exponent files             ## 
 ###################################################################
-path = folders[i]
+p = folders[i]
 gcm = gcm_models[i]
 
-spec_exp <- create_rasterStack(path = path)
+spec_exp <- create_rasterStack(p = p, gcm = gcm)
+calculate_avg_change(p = p, gcm = gcm)
 
-write.csv(spec_exp, paste(path, gcm, "_spec_exp.csv",  sep = ""), row.names = F)
+write.csv(spec_exp, paste(p, gcm, "_spec_exp.csv",  sep = ""), row.names = F)
           
           
           
