@@ -1,7 +1,7 @@
 ## modifying wget batch scripts to download gcms to compute canada computer
 library(tidyverse)
 
-dir = "data-raw/wget_scripts/wget_tas"
+dir = "data-raw/wget_scripts/wget_tas/"
 
 sh_files <- c("wget_01_CMCC-CESM_historical.sh",
               "wget_01_CMCC-CESM_rcp85.sh",
@@ -48,7 +48,8 @@ link_codes <- c(rep("http://aims3.llnl.gov/thredds/fileServer/", 4), #1,3
                 rep("http://esgf.nci.org.au/thredds/fileServer/", 2), #4
                 rep("http://aims3.llnl.gov/thredds/fileServer/", 2), #5
                 rep("http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/", 6), #6,7,8
-                rep("http://esgf-data1.ceda.ac.uk/thredds/fileServer/", 4), #9,10
+                rep("http://esgf-data1.ceda.ac.uk/thredds/fileServer/", 2), #9
+                rep("https://esgf.ceda.ac.uk/thredds/fileServer/esg_dataroot/", 2), #10
                 rep("http://aims3.llnl.gov/thredds/fileServer",2), #11
                 rep("http://vesg.ipsl.upmc.fr/thredds/fileServer", 4),#12,13
                 rep("http://esgf-data1.diasjp.net/thredds/fileServer/", 6),#14,15,16
