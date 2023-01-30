@@ -33,7 +33,7 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
 begin
 ;--- make a list of all filenames:
 
-	filepath  = "/Users/nikkimoore/Documents/velocities-of-variability/data-raw/04_MPI-ESM-LR/"
+	filepath  = "/Volumes/NIKKI/CMIP5-GCMs/09_MPI-ESM-LR_tos/"
 	filenames = ((/"tos_day_MPI-ESM-LR_historical_r2i1p1_18600101-18691231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_18700101-18791231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_18800101-18891231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_18900101-18991231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19000101-19091231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19100101-19191231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19200101-19291231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19300101-19391231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19400101-19491231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19500101-19591231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19600101-19691231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19700101-19791231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19800101-19891231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_19900101-19991231.nc","tos_day_MPI-ESM-LR_historical_r2i1p1_20000101-20051231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20060101-20091231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20100101-20191231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20200101-20291231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20300101-20391231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20400101-20491231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20500101-20591231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20600101-20691231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20700101-20791231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20800101-20891231.nc","tos_day_MPI-ESM-LR_rcp85_r2i1p1_20900101-21001231.nc"/))
 
 ;--- for each file in filenames, regrid:

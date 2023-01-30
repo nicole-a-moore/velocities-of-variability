@@ -33,8 +33,8 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
 begin
 ;--- make a list of all filenames:
 
-	filepath  = "/Users/nikkimoore/"
-	filenames = ((/"tas_day_ACCESS1-0_historical_r1i1p1_18500101-18741231.nc"/))
+	filepath  = "/Volumes/NIKKI/CMIP5-GCMs/03_GFDL-ESM2G_tos/"
+	filenames = ((/"tos_day_GFDL-ESM2G_historical_r1i1p1_18660101-18701231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_18710101-18751231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_18760101-18801231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_18810101-18851231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_18860101-18901231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_18910101-18951231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_18960101-19001231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19010101-19051231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19060101-19101231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19110101-19151231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19160101-19201231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19210101-19251231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19260101-19301231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19310101-19351231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19360101-19401231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19410101-19451231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19460101-19501231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19510101-19551231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19560101-19601231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19610101-19651231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19660101-19701231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19710101-19751231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19760101-19801231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19810101-19851231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19860101-19901231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19910101-19951231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_19960101-20001231.nc","tos_day_GFDL-ESM2G_historical_r1i1p1_20010101-20051231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20060101-20101231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20110101-20151231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20160101-20201231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20210101-20251231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20260101-20301231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20310101-20351231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20360101-20401231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20410101-20451231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20460101-20501231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20510101-20551231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20560101-20601231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20610101-20651231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20660101-20701231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20710101-20751231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20760101-20801231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20810101-20851231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20860101-20901231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20910101-20951231.nc","tos_day_GFDL-ESM2G_rcp85_r1i1p1_20960101-21001231.nc"/))
 
 ;--- for each file in filenames, regrid:
 	do n=0,dimsizes(filenames)-1
@@ -48,9 +48,9 @@ begin
 
 ;---Get data and lat/lon grid from CMIP5 Grid
     sfile        = addfile(srcFileName,"r")
-    tas       = sfile->tas
-    tas@lat2d = sfile->lat
-    tas@lon2d = sfile->lon
+    tos       = sfile->tos
+    tos@lat2d = sfile->lat
+    tos@lon2d = sfile->lon
 
     Opt                  = True
     Opt@SrcFileName      = filepath + "CMIP5_SCRIP.nc"       ; source file name
@@ -59,7 +59,7 @@ begin
 
     Opt@SrcGridCornerLat = sfile->lat_vertices    ; corners are necessary
     Opt@SrcGridCornerLon = sfile->lon_vertices    ; for "conserve" method
-    Opt@SrcMask2D        = where(.not.ismissing(tas(0,:,:)),1,0)
+    Opt@SrcMask2D        = where(.not.ismissing(tos(0,:,:)),1,0)
     
     Opt@DstGridType      = "1x1"              ; Destination grid
     Opt@DstTitle         = "World Grid 1-degree Resolution"
@@ -124,8 +124,8 @@ begin
 ; Interpolate data from CMIP5 to World 1-degree grid.
 ;----------------------------------------------------------------------
 
-      tas_regrid = ESMF_regrid(tas,Opt)
-      printVarSummary(tas_regrid)
+      tos_regrid = ESMF_regrid(tos,Opt)
+      printVarSummary(tos_regrid)
       
       filename = filepath + "regridded_" + filenames(n)
       
@@ -135,12 +135,12 @@ begin
 	  end if
        
 	  ofile = addfile(filename,"c")          ;-- open file for creation
-  	  ofile->tas  = tas_regrid  
+  	  ofile->tos  = tos_regrid  
 
 ;---Clean up before next time in loop.
-      delete(tas_regrid)
+      delete(tos_regrid)
     end do
 	
-	delete(tas)
+	delete(tos)
 	end do
 end
