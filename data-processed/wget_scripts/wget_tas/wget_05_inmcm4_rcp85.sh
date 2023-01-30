@@ -7,23 +7,23 @@
 
 module load java/13.0.2
   
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20060101-20151231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20060101-20151231.nc'
 
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20160101-20251231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20160101-20251231.nc'
 
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20260101-20351231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20260101-20351231.nc'
 
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20360101-20451231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20360101-20451231.nc'
 
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20460101-20551231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20460101-20551231.nc'
 
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20560101-20651231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20560101-20651231.nc'
 
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20660101-20751231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20660101-20751231.nc'
 
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20760101-20851231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20760101-20851231.nc'
 
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20860101-20951231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20860101-20951231.nc'
 
-wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20960101-21001231.nc'
+wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=SundayLab101! 'http://aims3.llnl.gov/thredds/fileServer/cmip5_css02_data/cmip5/output1/INM/inmcm4/rcp85/day/atmos/day/r1i1p1/tas/1/tas_day_inmcm4_rcp85_r1i1p1_20960101-21001231.nc'
 
