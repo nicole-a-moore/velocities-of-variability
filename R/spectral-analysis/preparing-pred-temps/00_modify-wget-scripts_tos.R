@@ -102,7 +102,7 @@ for (i in 1:length(sh_files)) {
   links = split[which(str_detect(split, link_codes[i]))]
   
   ## turn into wget commands:
-  links = paste("wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password='SundayLab101!'", links, "'\n", sep="")
+  links = paste("wget --user='https://esgf-node.llnl.gov/esgf-idp/openid/nicole_a_moore' --password=''", links, "'\n", sep="")
   links = paste(links, collapse = "\n")
   
   ## now add batch script stuff:
