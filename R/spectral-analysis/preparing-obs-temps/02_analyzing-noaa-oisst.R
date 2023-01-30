@@ -49,9 +49,9 @@ while (i < length(filenames)+1) {
   #####      STANDARDIZE TO 1X1 DEGREE GRID   #####
   ## raster object of desired resolution/extent
   rsst <- resample(sst, r, method = 'bilinear',
-                     filename = paste("data-processed/NOAA-OISST/resampled_sst_",
+                     filename = paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/resampled_sst_",
                                       filenames[i], sep = ""), overwrite = T)
-  names_sst <- append(names_sst, paste("data-processed/NOAA-OISST/resampled_sst_", filenames[i], 
+  names_sst <- append(names_sst, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/resampled_sst_", filenames[i], 
                                        sep = ""))
   
   
@@ -59,11 +59,11 @@ while (i < length(filenames)+1) {
   i = i+1
 }
 
-saveRDS(names_sst, "data-processed/NOAA-OISST/sst_filenames.rds")
+saveRDS(names_sst, "/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/resamp_filenames.rds")
 
 
 ## get paths and filenames 
-files_sst <- readRDS("data-processed/NOAA-OISST/sst_filenames.rds")
+files_sst <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/resamp_filenames.rds")
 
 ## make date vector
 ## first date: 1981/09/01
@@ -169,13 +169,12 @@ reorganize_GCM <- function(filenames) {
             
             ## if first values are missing, get rid of poorly interpolated temps
             if(first(which(is.na(detrended$s_temps))) == 1) {
-              l_detrended[first(which(is.na(detrended$s_temps))):first(which(!is.na(detrended$s_temps)))-1] = NA
+              l_detrended[first(which(is.na(detrended$l_temps))):first(which(!is.na(detrended$l_temps)))-1] = NA
               s_detrended[first(which(is.na(detrended$s_temps))):first(which(!is.na(detrended$s_temps)))-1] = NA
             }
-            
-            l_detrended_temps[y,x,] <- l_detrended
-            s_detrended_temps[y,x,] <- s_detrended ## save time series 
           }
+          l_detrended_temps[y,x,] <- l_detrended
+          s_detrended_temps[y,x,] <- s_detrended ## save time series 
           
           print(paste("Done detrending and interpolating x ", x,  " y ", y, " of chunk #", count,sep = ""))
         }
@@ -185,13 +184,13 @@ reorganize_GCM <- function(filenames) {
     }
     
     ## save:
-    sp_files[count] <- paste("data-processed/NOAA-OISST/noaa_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
+    sp_files[count] <- paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
                              "_lat-", lat_bound1, "-", lat_bound2, ".nc", sep = "")
-    # ArrayToNc(temps_df, file_path = paste(path, "spatial_temps_lon-", lon_bound1,"-", lon_bound2,
-    #                                       "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
-    ArrayToNc(l_detrended_temps, file_path = paste("data-processed/NOAA-OISST/noaa_l-detrended_lon-", lon_bound1,"-", lon_bound2,
+    ArrayToNc(temps_df, file_path = paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
+                                          "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
+    ArrayToNc(l_detrended_temps, file_path = paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_l-detrended_lon-", lon_bound1,"-", lon_bound2,
                                                    "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
-    ArrayToNc(s_detrended_temps, file_path = paste("data-processed/NOAA-OISST/noaa_s-detrended_lon-", lon_bound1,"-", lon_bound2,
+    ArrayToNc(s_detrended_temps, file_path = paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_s-detrended_lon-", lon_bound1,"-", lon_bound2,
                                                    "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
     
     ## advance lat and lon indecies to move to next spatial chunk
@@ -207,7 +206,7 @@ reorganize_GCM <- function(filenames) {
     count = count + 1
   }
   
-  saveRDS(sp_files, paste("data-processed/NOAA-OISST/noaa_sp_files.rds", sep = ""))
+  saveRDS(sp_files, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_sp_files.rds", sep = ""))
   ## returns list of spatial chunk filenames 
   return(sp_files)
 }
@@ -268,7 +267,7 @@ while (count <= 18) {
   temp <- raster(missing_vals[,,1])
   extent(temp) = extent(lon_bound1, lon_bound2, lat_bound2, lat_bound1)
   
-  saveRDS(temp, paste("data-processed/NOAA-OISST/temp_", count, ".rds", sep = ""))
+  saveRDS(temp, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/temp_", count, ".rds", sep = ""))
   
   list_of_chunks[[count]] = temp
  
@@ -292,10 +291,10 @@ while (i < length(list_of_chunks)) {
   i = i+1
 }
 plot(mosaic)
-saveRDS(mosaic, "data-processed/NOAA-OISST/missing-data-count.rds")
+saveRDS(mosaic, "/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/missing-data-count.rds")
 
 ## calculate spectral exponent after getting rid of sea in sst
-sp_files_sst <- readRDS("data-processed/NOAA-OISST/noaa_sp_files.rds")
+sp_files_sst <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_sp_files.rds")
 
 ##############################################
 #####              FUNCTIONS:           ######
@@ -629,14 +628,14 @@ sliding_window_spec_exp <- function(names) {
     
     ## add filename to list:
     if(count == 1) {
-      se_filenames <- paste("data-processed/NOAA-OISST/noaa_spec-exp_long-", 
+      se_filenames <- paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_spec-exp_long-", 
                             lon_index,"-", lon_index + 60, "_lat-",
                             90-lat_index,"-", 90-lat_index-60,
                             ".csv", sep = "")
     }
     else {
       se_filenames <- append(se_filenames,
-                             paste("data-processed/NOAA-OISST/noaa_spec-exp_long-", 
+                             paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_spec-exp_long-", 
                                    lon_index,"-", lon_index + 60,"_lat-",
                                    90-lat_index,"-", 90-lat_index-60,  
                                    ".csv", sep = ""))
@@ -661,12 +660,12 @@ sliding_window_spec_exp <- function(names) {
     count = count + 1
   }
   
-  saveRDS(se_filenames, paste("data-processed/NOAA-OISST/noaa_se_filenames.rds", sep = ""))
+  saveRDS(se_filenames, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/se_filenames.rds", sep = ""))
   
   return(se_filenames)
 }
 
-se_filenames_sst <- readRDS("data-processed/NOAA-OISST/noaa_se_filenames.rds")
+se_filenames_sst <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/se_filenames.rds")
 
 ######################################################################################################################
 #####    make data frame that has lat, lon, first ts noise colour, whole ts noise colour, and change in colour  ######
@@ -698,9 +697,9 @@ while (file <= length(se_filenames)) {
   file = file + 1
 }
 
-saveRDS(data, "data-processed/NOAA-OISST/NOAA_noise-colour.rds")
+saveRDS(data, "/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_noise-colour.rds")
 
-data <- readRDS("data-processed//NOAA-OISST/NOAA_noise-colour.rds")
+data <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_noise-colour.rds")
 
 ## find mean spectral colour across marine environments in 2016 
 data %>%
@@ -709,7 +708,7 @@ data %>%
   unique()%>%
   summarise(mean(s_spec_exp_PSD_low))
 
-## 1.602594
+## 1.335845
 
 ## find 95% quantiles
 data %>%
@@ -725,8 +724,8 @@ data %>%
   summarise(quantile(s_spec_exp_PSD_low, 0.05),
             quantile(s_spec_exp_PSD_low, 0.95))
 
-## min = 1.149833
-## max = 1.997999
+## min = 0.8837043
+## max = 1.91154
 
 ## find min and max spectral change across marine environments 
 data %>%
@@ -735,11 +734,14 @@ data %>%
   summarise(min(s_estimate_PSD_low),
             max(s_estimate_PSD_low))
 
-## min = -0.0484271 per 140 years = -0.1895386/200000 days 
-## max = 0.05200901 per 140 years = 0.2035578/200000 days 
+## min = -0.03409852 per 40 years = -0.467103/200000 days 
+## max = 0.04619845 per 40 years = 0.6328555/200000 days 
 
 
 
+##################################
+#####    probably garbage   ######
+##################################
 
 ####################################################################
 #####    transform spectral exponent data into a rasterStack  ######
@@ -770,7 +772,7 @@ create_rasterStack <- function(se_filenames) {
                                            "9 years", "10 years"))
   
   ## get rid of ones with large chunks of ts missing
-  mosaic <- readRDS("data-processed/NOAA-OISST/missing-data-count.rds")
+  mosaic <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/missing-data-count.rds")
   ## make a mask to get rid of ones with more than 10000 missing values
   gt_10000 <- mosaic
   gt_10000[mosaic >= 10000] <- 1
@@ -910,14 +912,14 @@ create_rasterStack <- function(se_filenames) {
     names(ww_split)
   
   ## save the rasterstack 
-  saveRDS(l_stack_list_PSD_low, paste("data-processed/NOAA-OISST/noaa_l_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_low, paste("data-processed/NOAA-OISST/noaa_s_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(l_stack_list_AWC, paste("data-processed/NOAA-OISST/noaa_l_stack_list_AWC.rds", sep = ""))
-  saveRDS(s_stack_list_AWC, paste("data-processed/NOAA-OISST/noaa_s_stack_list_AWC.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_high, paste("data-processed/NOAA-OISST/noaa_l_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_high, paste("data-processed/NOAA-OISST/noaa_s_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_all, paste("data-processed/NOAA-OISST/noaa_l_stack_list_PSD_all.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_all, paste("data-processed/NOAA-OISST/noaa_s_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_low, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_l_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_low, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_s_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(l_stack_list_AWC, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_l_stack_list_AWC.rds", sep = ""))
+  saveRDS(s_stack_list_AWC, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_s_stack_list_AWC.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_high, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_l_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_high, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_s_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_all, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_l_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_all, paste("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/NOAA-OISST_s_stack_list_PSD_all.rds", sep = ""))
 
   stacks <- list(l_stack_list_PSD_low, s_stack_list_PSD_low, 
                  l_stack_list_AWC, s_stack_list_AWC,
@@ -981,10 +983,10 @@ spec_exp %>%
   labs(x = "Time window start year", y = "Spectral exponent") +
   geom_smooth(method = "lm", se = F) + facet_wrap(~lat_lon)
 
-write.csv(spec_exp, "data-processed/NOAA-OISST/spec_exp_qc.csv", row.names = F)
+write.csv(spec_exp, "/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/spec_exp_qc.csv", row.names = F)
 
 ### comparing resutls gcm to results from observations
-spec_exp_noaa <- read.csv("data-processed/NOAA-OISST/spec_exp_qc.csv")
+spec_exp_noaa <- read.csv("/Volumes/NIKKI/CMIP5-GCMs/NOAA-OISST/spec_exp_qc.csv")
 spec_exp_noaa$dataset <- "NOAA-OISST"
 
 spec_exp_berk <- read.csv("data-processed/BerkeleyEarth/spec_exp_qc.csv")

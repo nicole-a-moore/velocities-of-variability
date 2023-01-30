@@ -72,9 +72,9 @@ while (i < length(filenames)+1) {
   #####      STANDARDIZE TO 1X1 DEGREE GRID   #####
   ## raster object of desired resolution/extent
   rtas <- resample(tas, r, method = 'bilinear',
-                     filename = paste("data-processed/BerkeleyEarth/resampled_tas_",
+                     filename = paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/resampled_tas_",
                                       filenames[i], sep = ""), overwrite = T)
-  names_tas <- append(names_tas, paste("data-processed/BerkeleyEarth/resampled_tas_", filenames[i], 
+  names_tas <- append(names_tas, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/resampled_tas_", filenames[i], 
                                        sep = ""))
   
   
@@ -82,12 +82,11 @@ while (i < length(filenames)+1) {
   i = i+1
 }
 
-saveRDS(names_tas,
-        "data-processed/BerkeleyEarth/tas_filenames.rds")
+saveRDS(names_tas, "/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/tas_filenames.rds")
 
 
 ## get paths and filenames 
-files_tas <- readRDS("data-processed/BerkeleyEarth/tas_filenames.rds")
+files_tas <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/tas_filenames.rds")
 
 ## make date vector
 ## first date: 1880/1/1
@@ -215,13 +214,13 @@ reorganize_GCM <- function(filenames) {
     }
     
     ## save:
-    sp_files[count] <- paste("data-processed/BerkeleyEarth/be_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
+    sp_files[count] <- paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
                              "_lat-", lat_bound1, "-", lat_bound2, ".nc", sep = "")
-    ArrayToNc(temps_df, file_path = paste("data-processed/BerkeleyEarth/be_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
+    ArrayToNc(temps_df, file_path = paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_spatial_temps_lon-", lon_bound1,"-", lon_bound2,
                                           "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
-    ArrayToNc(l_detrended_temps, file_path = paste("data-processed/BerkeleyEarth/be_l-detrended_lon-", lon_bound1,"-", lon_bound2,
+    ArrayToNc(l_detrended_temps, file_path = paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_l-detrended_lon-", lon_bound1,"-", lon_bound2,
                                                    "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
-    ArrayToNc(s_detrended_temps, file_path = paste("data-processed/BerkeleyEarth/be_s-detrended_lon-", lon_bound1,"-", lon_bound2,
+    ArrayToNc(s_detrended_temps, file_path = paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_s-detrended_lon-", lon_bound1,"-", lon_bound2,
                                                    "_lat-", lat_bound1, "-", lat_bound2,".nc", sep = ""))
   
     ## advance lat and lon indecies to move to next spatial chunk
@@ -237,7 +236,7 @@ reorganize_GCM <- function(filenames) {
     count = count + 1
   }
   
-  saveRDS(sp_files, paste("data-processed/BerkeleyEarth/be_sp_files.rds", sep = ""))
+  saveRDS(sp_files, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_sp_files.rds", sep = ""))
   ## returns list of spatial chunk filenames 
   return(sp_files)
 }
@@ -295,7 +294,7 @@ while (count <= 18) {
   temp <- raster(missing_vals[,,1])
   extent(temp) = extent(lon_bound1, lon_bound2, lat_bound2, lat_bound1)
   
-  saveRDS(temp, paste("data-processed/BerkeleyEarth/temp_", count, ".rds", sep = ""))
+  saveRDS(temp, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/temp_", count, ".rds", sep = ""))
   
   list_of_chunks[[count]] = temp
  
@@ -319,10 +318,10 @@ while (i < length(list_of_chunks)) {
   i = i+1
 }
 plot(mosaic)
-saveRDS(mosaic, "data-processed/BerkeleyEarth/missing-data-count.rds")
+saveRDS(mosaic, "/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/missing-data-count.rds")
 
 ## calculate spectral exponent after getting rid of sea in tas
-sp_files_tas <- readRDS("data-processed/BerkeleyEarth/be_sp_files.rds")
+sp_files_tas <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_sp_files.rds")
 
 ##############################################
 #####              FUNCTIONS:           ######
@@ -607,7 +606,7 @@ sliding_window_spec_exp <- function(names) {
       
       x = x + 1
     }
-    
+   
     ## bind rows in list into data frame
     spec_exp_df <- data.frame(do.call(rbind, spec_exp_list), stringsAsFactors = FALSE)
     colnames(spec_exp_df) <- c("l_spec_exp_PSD_low", "s_spec_exp_PSD_low", 
@@ -615,12 +614,12 @@ sliding_window_spec_exp <- function(names) {
                                "l_spec_exp_PSD_high", "s_spec_exp_PSD_high", 
                                "l_spec_exp_PSD_all", "s_spec_exp_PSD_all", 
                                "window_start_year",
-                               "window_stop_year", "lat", "lon", 
+                               "window_stop_year", "lat", "lon", "time_window_width",
                                "s_spec_exp_PSD_low_all", "s_spec_exp_PSD_high_all",
-                               "s_spec_exp_PSD_all_all", "time_window_width")
+                               "s_spec_exp_PSD_all_all")
     
     ## convert numbers to numeric
-    spec_exp_df[,1:15] <- sapply(spec_exp_df[,1:15], as.numeric)
+    spec_exp_df[,c(1:12, 14:16)] <- sapply(spec_exp_df[,c(1:12, 14:16)], as.numeric)
     
     ## regress spectral exponent and extract slope representing change in spectral exponent over time for each location and window width
     l_model_output_PSD_low <- spec_exp_df %>%
@@ -706,14 +705,14 @@ sliding_window_spec_exp <- function(names) {
     
     ## add filename to list:
     if(count == 1) {
-      se_filenames <- paste("data-processed/BerkeleyEarth/be_spec-exp_long-", 
+      se_filenames <- paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_spec-exp_long-", 
                             lon_index,"-", lon_index + 60, "_lat-",
                             90-lat_index,"-", 90-lat_index-60,
                             ".csv", sep = "")
     }
     else {
       se_filenames <- append(se_filenames,
-                             paste("data-processed/BerkeleyEarth/be_spec-exp_long-", 
+                             paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_spec-exp_long-", 
                                    lon_index,"-", lon_index + 60,"_lat-",
                                    90-lat_index,"-", 90-lat_index-60,  
                                    ".csv", sep = ""))
@@ -740,15 +739,15 @@ sliding_window_spec_exp <- function(names) {
     count = count + 1
   }
   
-  saveRDS(se_filenames, paste("data-processed/BerkeleyEarth/be_se_filenames.rds", sep = ""))
+  saveRDS(se_filenames, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/se_filenames_temp.rds", sep = ""))
   
   return(se_filenames)
 }
 
-se_filenames_tas <- readRDS("data-processed/BerkeleyEarth/be_se_filenames.rds")
+se_filenames_tas <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/se_filenames.rds")
 
 ## plot some:
-data <- read.csv(se_filenames_tas[[1]]) %>%
+data <- read.csv(se_filenames_tas[[10]]) %>%
   mutate(lat_lon = paste(lat, lon, sep = "_")) %>%
   filter(time_window_width == "5 years") %>%
   filter(lat_lon %in% unique(lat_lon)[c(6,32,82,56,99,101,85,23,66,
@@ -761,36 +760,36 @@ se_filenames = se_filenames_tas
 file = 1
 while (file <= length(se_filenames)) {
   
-  if(file == 1){
-    data <- read.csv(se_filenames[[file]]) %>%
-      filter(window_start_year %in% c(1880, 2015)) %>%
-      select(lat, lon, time_window_width, window_start_year,
-             s_spec_exp_PSD_high, s_spec_exp_PSD_low, s_spec_exp_PSD_all,
-             s_spec_exp_PSD_high_all, s_spec_exp_PSD_low_all, s_spec_exp_PSD_all_all,
-             s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all) %>%
-      filter(time_window_width == "5 years") %>%
-      unique() 
-  }
-  else {
-    data <- read.csv(se_filenames[[file]]) %>%
-      filter(window_start_year %in% c(1880, 2015)) %>%
-      select(lat, lon, time_window_width, window_start_year,
-             s_spec_exp_PSD_high, s_spec_exp_PSD_low, s_spec_exp_PSD_all,
-             s_spec_exp_PSD_high_all, s_spec_exp_PSD_low_all, s_spec_exp_PSD_all_all,
-             s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all) %>%
-      filter(time_window_width == "5 years") %>%
-      unique() %>%
-      rbind(., data)
+  if(file.exists(se_filenames[[file]])) {
+    if(file == 1){
+      data <- read.csv(se_filenames[[file]]) %>%
+        filter(window_start_year %in% c(1880, 2015)) %>%
+        select(lat, lon, time_window_width, window_start_year,
+               s_spec_exp_PSD_high, s_spec_exp_PSD_low, s_spec_exp_PSD_all,
+               s_spec_exp_PSD_high_all, s_spec_exp_PSD_low_all, s_spec_exp_PSD_all_all,
+               s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all) %>%
+        filter(time_window_width == "5 years") %>%
+        unique() 
+    }
+    else {
+      data <- read.csv(se_filenames[[file]]) %>%
+        filter(window_start_year %in% c(1880, 2015)) %>%
+        select(lat, lon, time_window_width, window_start_year,
+               s_spec_exp_PSD_high, s_spec_exp_PSD_low, s_spec_exp_PSD_all,
+               s_spec_exp_PSD_high_all, s_spec_exp_PSD_low_all, s_spec_exp_PSD_all_all,
+               s_estimate_PSD_high, s_estimate_PSD_low, s_estimate_PSD_all) %>%
+        filter(time_window_width == "5 years") %>%
+        unique() %>%
+        rbind(., data)
+    }
   }
   
   file = file + 1
 }
 
-saveRDS(data, "data-processed/BerkeleyEarth/BE_noise-colour.rds")
+saveRDS(data, "/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_noise-colour.rds")
 
-data <- readRDS("data-processed/BerkeleyEarth/BE_noise-colour.rds")
-
-## TO DO: check why some lat values are NA
+data <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarth_noise-colour.rds")
 
 ## find mean spectral colour across terrestrial environments in 2015 
 data %>%
@@ -799,7 +798,7 @@ data %>%
   unique()%>%
   summarise(mean(s_spec_exp_PSD_low))
 
-## 0.8307651
+## 0.8284292
 
 ## find 95% quantiles
 data %>%
@@ -815,8 +814,8 @@ data %>%
   summarise(quantile(s_spec_exp_PSD_low, 0.05),
             quantile(s_spec_exp_PSD_low, 0.95))
 
-## min = 0.07916834
-## max = 1.507507 
+## min = 0.07505786
+## max = 1.506056 
 
 ## find min and max spectral change across terrestrial environments 
 data %>%
@@ -825,9 +824,14 @@ data %>%
   summarise(min(s_estimate_PSD_low),
             max(s_estimate_PSD_low))
 
-## min = -0.0181565 per 140 years = -0.07106262/200000 days 
-## max = 0.01290973 per 140 years = 0.05052732/200000 days 
+## min = -0.03194815 per 140 years = -0.1250417/200000 days 
+## max = 0.0420622 per 140 years = 0.164627/200000 days 
 
+
+
+##################################
+#####    probably garbage   ######
+##################################
 
 ####################################################################
 #####    transform spectral exponent data into a rasterStack  ######
@@ -838,12 +842,15 @@ create_rasterStack <- function(se_filenames) {
   ## combine all spectral exponent csvs into one big dataframe
   file = 1
   while (file < length(se_filenames) + 1) {
-    if (file == 1) {
-      spec_exp <- read.csv(se_filenames[file])
+    if(file.exists(se_filenames[file])) { 
+      if (file == 1) {
+        spec_exp <- read.csv(se_filenames[file])
+      }
+      else {
+        spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
+      }
     }
-    else {
-      spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
-    }
+    
     print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
     file = file + 1
   }
@@ -858,7 +865,7 @@ create_rasterStack <- function(se_filenames) {
                                            "9 years", "10 years"))
   
   ## get rid of ones with large chunks of ts missing
-  mosaic <- readRDS("data-processed/BerkeleyEarth/missing-data-count.rds")
+  mosaic <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/missing-data-count.rds")
   ## make a mask to get rid of ones with more than 10000 missing values
   gt_10000 <- mosaic
   gt_10000[mosaic >= 10000] <- 1
@@ -998,14 +1005,14 @@ create_rasterStack <- function(se_filenames) {
     names(ww_split)
   
   ## save the rasterstack 
-  saveRDS(l_stack_list_PSD_low, paste("data-processed/BerkeleyEarth/be_l_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_low, paste("data-processed/BerkeleyEarth/be_s_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(l_stack_list_AWC, paste("data-processed/BerkeleyEarth/be_l_stack_list_AWC.rds", sep = ""))
-  saveRDS(s_stack_list_AWC, paste("data-processed/BerkeleyEarth/be_s_stack_list_AWC.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_high, paste("data-processed/BerkeleyEarth/be_l_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_high, paste("data-processed/BerkeleyEarth/be_s_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_all, paste("data-processed/BerkeleyEarth/be_l_stack_list_PSD_all.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_all, paste("data-processed/BerkeleyEarth/be_s_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_low, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarthl_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_low, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarths_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(l_stack_list_AWC, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarthl_stack_list_AWC.rds", sep = ""))
+  saveRDS(s_stack_list_AWC, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarths_stack_list_AWC.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_high, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarthl_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_high, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarths_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_all, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarthl_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_all, paste("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/BerkeleyEarths_stack_list_PSD_all.rds", sep = ""))
 
   stacks <- list(l_stack_list_PSD_low, s_stack_list_PSD_low, 
                  l_stack_list_AWC, s_stack_list_AWC,
@@ -1076,7 +1083,7 @@ spec_exp %>%
 ## example of ts with first half missing
 
 ## look at missingness
-mosaic <- readRDS("data-processed/BerkeleyEarth/missing-data-count.rds")
+mosaic <- readRDS("/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/missing-data-count.rds")
 plot(mosaic)
 hist(values(mosaic))
 lots <- mosaic
@@ -1146,7 +1153,7 @@ sub_spec_exp %>%
   labs(x = "Time window start year", y = "Spectral exponent") +
   geom_smooth(method = "lm", se = F) + facet_wrap(~lat_lon)
 
-write.csv(sub_spec_exp, "data-processed/BerkeleyEarth/spec_exp_qc.csv", row.names = F)
+write.csv(sub_spec_exp, "/Volumes/NIKKI/CMIP5-GCMs/BerkeleyEarth/spec_exp_qc.csv", row.names = F)
 
 
 ## example plots of frankenstein series

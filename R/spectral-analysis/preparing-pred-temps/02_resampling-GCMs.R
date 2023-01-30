@@ -34,7 +34,7 @@ resample_GCM <- function(historical_filenames, rcp85_filenames, path, file) {
     }
     
     ## if GCM has overlap between historical and rcp data, crop data at 2005-21-31 / 2006-01-01
-    if(historical_filenames[file] == "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc") {
+    if(filenames[file] == "tas_day_MIROC5_historical_r1i1p1_20000101-20091231.nc") {
       lastday <- which(str_replace_all(names(og_temps), "X","") == "2005.12.31")
       og_temps <- og_temps[[1:lastday]]
       
@@ -49,7 +49,7 @@ resample_GCM <- function(historical_filenames, rcp85_filenames, path, file) {
     #####      STANDARDIZE TO 1X1 DEGREE GRID   #####
     ## resample temperatures so all GCMs are on a 1 degree x 1 degree grid of the same extent
     new_temps <- resample(og_temps, r, method = 'bilinear',
-                            filename = paste(path, "test_resampled_", filenames[file], sep = ""),
+                            filename = paste(path, "resampled_", filenames[file], sep = ""),
                           overwrite = TRUE)
     
     print(paste0("Done file number: ", file), stdout())

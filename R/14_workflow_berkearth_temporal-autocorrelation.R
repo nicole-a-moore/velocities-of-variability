@@ -1,4 +1,4 @@
-## whole workflow for first GCM  !!!
+## whole workflow for Berkeley Earth  !!!
 library(tidyverse)
 library(raster)
 library(PNWColors)
