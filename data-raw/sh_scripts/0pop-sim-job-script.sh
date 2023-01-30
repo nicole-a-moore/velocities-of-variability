@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --account=def-jsunday
-#SBATCH --mem-per-cpu=32GB
+#SBATCH --mem-per-cpu=64GB
 #SBATCH --time=130:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user='nicole.moore@mail.mcgill.ca'
