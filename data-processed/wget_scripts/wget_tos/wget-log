@@ -1,0 +1,6 @@
+--2023-01-31 11:12:33--  http://esgf-data1.ceda.ac.uk/thredds/fileServer/esg_dataroot/cmip5/output1/MOHC/HadGEM2-ES/historical/day/ocean/day/r1i1p1/v20110131/tos/tos_day_HadGEM2-ES_historical_r1i1p1_18991201-19091130.nc
+Resolving esgf-data1.ceda.ac.uk (esgf-data1.ceda.ac.uk)... 130.246.130.83
+Connecting to esgf-data1.ceda.ac.uk (esgf-data1.ceda.ac.uk)|130.246.130.83|:80... connected.
+HTTP request sent, awaiting response... 404 404
+2023-01-31 11:12:43 ERROR 404: 404.
+

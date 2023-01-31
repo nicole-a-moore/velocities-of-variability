@@ -1,7 +1,7 @@
 # script to download all air GCM air temperature data using wget scripts
 
-sh wget_tos/wget_01_CMCC-CMS_historical.sh
-sh wget_tos/wget_01_CMCC-CMS_rcp85.sh
+#sh wget_tos/wget_01_CMCC-CMS_historical.sh
+#sh wget_tos/wget_01_CMCC-CMS_rcp85.sh
 sh wget_tos/wget_02_GFDL-CM3_historical.sh
 sh wget_tos/wget_02_GFDL-CM3_rcp85.sh
 sh wget_tos/wget_03_GFDL-ESM2G_historical.sh

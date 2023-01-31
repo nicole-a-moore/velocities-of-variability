@@ -33,8 +33,8 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
 begin
 ;--- make a list of all filenames:
 
-	filepath  = "/Volumes/NIKKI/CMIP5-GCMs/06_IPSL-CM5A-MR_tos/"
-	filenames =  (/"tos_day_IPSL-CM5A-MR_historical_r1i1p1_18500101-18991231.nc","tos_day_IPSL-CM5A-MR_historical_r1i1p1_19000101-19491231.nc","tos_day_IPSL-CM5A-MR_historical_r1i1p1_19500101-19991231.nc","tos_day_IPSL-CM5A-MR_historical_r1i1p1_20000101-20051231.nc","tos_day_IPSL-CM5A-MR_rcp85_r1i1p1_20060101-20551231.nc", "tos_day_IPSL-CM5A-MR_rcp85_r1i1p1_20560101-21001231.nc"/))
+	filepath  = "/Volumes/NIKKI/CMIP5-GCMs/08_MIROC5_tos/"
+	filenames =  (/"tos_day_MIROC5_historical_r1i1p1_18600101-18691231.nc","tos_day_MIROC5_historical_r1i1p1_18700101-18791231.nc","tos_day_MIROC5_historical_r1i1p1_18800101-18891231.nc","tos_day_MIROC5_historical_r1i1p1_18900101-18991231.nc","tos_day_MIROC5_historical_r1i1p1_19000101-19091231.nc","tos_day_MIROC5_historical_r1i1p1_19100101-19191231.nc","tos_day_MIROC5_historical_r1i1p1_19200101-19291231.nc","tos_day_MIROC5_historical_r1i1p1_19300101-19391231.nc","tos_day_MIROC5_historical_r1i1p1_19400101-19491231.nc","tos_day_MIROC5_historical_r1i1p1_19500101-19591231.nc","tos_day_MIROC5_historical_r1i1p1_19600101-19691231.nc","tos_day_MIROC5_historical_r1i1p1_19700101-19791231.nc","tos_day_MIROC5_historical_r1i1p1_19800101-19891231.nc","tos_day_MIROC5_historical_r1i1p1_19900101-19991231.nc","tos_day_MIROC5_historical_r1i1p1_20000101-20091231.nc","tos_day_MIROC5_historical_r1i1p1_20100101-20121231.nc","tos_day_MIROC5_rcp85_r1i1p1_20060101-20091231.nc","tos_day_MIROC5_rcp85_r1i1p1_20100101-20191231.nc","tos_day_MIROC5_rcp85_r1i1p1_20200101-20291231.nc","tos_day_MIROC5_rcp85_r1i1p1_20300101-20391231.nc","tos_day_MIROC5_rcp85_r1i1p1_20400101-20491231.nc","tos_day_MIROC5_rcp85_r1i1p1_20500101-20591231.nc","tos_day_MIROC5_rcp85_r1i1p1_20600101-20691231.nc","tos_day_MIROC5_rcp85_r1i1p1_20700101-20791231.nc","tos_day_MIROC5_rcp85_r1i1p1_20800101-20891231.nc","tos_day_MIROC5_rcp85_r1i1p1_20900101-20991231.nc","tos_day_MIROC5_rcp85_r1i1p1_21000101-21001231.nc"/)
 
 ;--- for each file in filenames, regrid:
 	do n=0,dimsizes(filenames)-1
