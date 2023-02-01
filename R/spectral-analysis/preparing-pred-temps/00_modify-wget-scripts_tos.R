@@ -28,11 +28,11 @@ sh_files <- c("wget_01_CMCC-CMS_historical.sh",
 
 link_codes <- c(rep("http://aims3.llnl.gov/thredds/fileServer/", 2), #1
                 rep("http://esgdata.gfdl.noaa.gov/thredds/fileServer/gfdl_dataroot/", 4), #2,3
-                rep("http://esgf-data1.ceda.ac.uk/thredds/fileServer/", 2),#4
+                rep("https://esgf.ceda.ac.uk/thredds/fileServer/", 2),#4
                 rep("http://aims3.llnl.gov/thredds/fileServer/", 2), #5
                 rep("http://vesg.ipsl.upmc.fr/thredds/fileServer/", 2), #6
                 rep("http://esgf-data1.diasjp.net/thredds/fileServer/", 4), #7,8
-                rep("http://esgf-data1.ceda.ac.uk/thredds/fileServer/", 2), # 9
+                rep("https://esgf.ceda.ac.uk/thredds/fileServer/", 2), # 9
                 rep("http://aims3.llnl.gov/thredds/fileServer/", 2), # 10
                 rep("http://esgf-data1.diasjp.net/thredds/fileServer/", 2) #11
                 )
