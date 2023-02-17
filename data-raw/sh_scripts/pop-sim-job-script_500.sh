@@ -9,5 +9,5 @@
 
 module load r/4.0.2 
 
-Rscript 16_forcing-pops-cluster.R 
+Rscript 16_forcing-pops-cluster_500.R 
 

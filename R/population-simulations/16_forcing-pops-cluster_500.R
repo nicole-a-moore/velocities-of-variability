@@ -149,18 +149,17 @@ lambda = c(0.1, 0.5, 0.9)
 K0 = 100
 N0 = 100
 Tmax = 200000
-
 while (col <  length(base_col)) {
   
   start_colour = base_col[col]
   end_colour = base_col[col+1]
   
-  ## run 1000 simulations per model:
+  ## run 500 simulations per model:
   icp = 1
   while (icp <= length(lambda)) {
     print(paste("On base colour ", col, " and icp ", icp, sep = ""))
     
-    ## run 100 simulations per colour:
+    ## run 500 simulations per colour:
     all <- foreach (z = 1:1000, .combine=rbind)  %dopar% {
       
       noise_stable = noise_dec = noise_inc = rep(NA, Tmax)
@@ -226,7 +225,7 @@ while (col <  length(base_col)) {
     
     ## write results of 1000 sims for base colour x icp combo
     write.csv(all, paste("pop-sims_cluster/tvfdpopdynam_icp-", lambda[icp], "_base-col-", 
-                         start_colour, "_20-steps_1000.csv", sep = ""), row.names = F)
+                         start_colour, "_20-steps_1000_local.csv", sep = ""), row.names = F)
     
     icp = icp + 1
   }
