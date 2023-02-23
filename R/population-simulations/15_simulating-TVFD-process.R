@@ -1,5 +1,8 @@
 ## using fractal package to simulate noise with changing spectral exponent 
+library(devtools)
+#devtools::install_github("spkaluzny/ifultools")
 #install.packages("fractal", repos="http://R-Forge.R-project.org")
+
 library(fractal)
 library(tidyverse)
 library(broom)
