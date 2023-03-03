@@ -2,9 +2,12 @@
 ## simulating population dynamics under changes in autocorrelation
 .libPaths(c("~/projects/def-jsunday/nikkim/VoV/packages", .libPaths()))
 library(tidyverse)
-library(fractal)
 library(foreach)
 library(doParallel)
+library(splus2R)
+library(ifultools)
+source("R/population-simulations/fractal_functions.R")
+
 
 ## detect cores
 starts <- rep(100, 40)

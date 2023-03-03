@@ -1,8 +1,10 @@
 library(ggplot2)
 library(shiny)
-library(fractal)
 library(tidyverse)
 library(broom)
+library(splus2R)
+library(ifultools)
+source("fractal_functions.R")
 
 # start_colour = function(){return(1)}
 # end_colour = function(){return(1)}
@@ -283,7 +285,7 @@ ui <- fluidPage(
    
     plotOutput("secondPlot", height = "200px"),
     plotOutput("thirdPlot",  height = "200px"),
-    plotOutput("fifthPlot", height = "200px"),
+    #plotOutput("fifthPlot", height = "200px"),
     
     br(),
     br(),
@@ -300,6 +302,72 @@ ui <- fluidPage(
     br()
     
 )
+
+parabolic_window <- function(series, N) {
+  j = c(1:N)
+  W = c()
+  for (i in j) {
+    W[i] = 1 - ((2*j[i])/(N+1) - 1)^2
+  }
+  #plot(W)
+  return(W)
+}
+
+bridge_detrender <- function(windowed_series, N) {
+  ## regress to get equation of line:
+  data <- data.frame(x = c(1, N), y = windowed_series[c(1,N)])
+  eq = lm(y ~ x, data = data) 
+  coeffs = eq$coeff
+  #plot(windowed_series)
+  #abline(a = windowed_series[1], b = coeffs[2])
+  
+  ## subtract the line from the data
+  df <- data.frame(x = 1:N)
+  predictions <- predict(eq, df)
+  windowed_series = windowed_series - predictions
+  #plot(windowed_series) 
+  
+  return(windowed_series)
+}
+
+spectral_exponent_calculator_PSD <- function(ts_window, l) {
+  # Fourier transform the time series window: 
+  dft <- fft(ts_window)/l
+  amp <- sqrt(Im(dft[-1])^2 + Re(dft[-1])^2) ## get rid of first term (represents DC component - y axis shift)
+  amp <- amp[1:(l/2)]	## remove second half of amplitudes (negative half)
+  freq <- 1:(l/2)/l ## sampling frequency = period(1 day, 2 days, 3 days.... L/2 days) / length of time series 
+  
+  ## create periodogram data by squaring amplitude of FFT output
+  spectral <- data.frame(freq = freq, power = amp^2)
+  
+  # ## plot spectrum:
+  spectral %>%
+    ggplot(aes(x = freq, y = power)) + geom_line() +
+    scale_y_log10() + scale_x_log10() + geom_smooth(method = "lm")
+  
+  ## get estimate of spectral exponent over time series window:
+  ## fit slope to low freqeuncies
+  model_output_low <- spectral %>%
+    filter(freq < 1/8*max(spectral$freq)) %>%
+    lm(., formula = log10(power) ~ log10(freq)) %>%
+    tidy(.) %>%
+    filter(term == "log10(freq)")
+  
+  ## fit slope to high frequencies
+  model_output_high <- spectral %>%
+    filter(freq >= 1/8*max(spectral$freq)) %>%
+    lm(., formula = log10(power) ~ log10(freq)) %>%
+    tidy(.) %>%
+    filter(term == "log10(freq)")
+  
+  ## fit slope for species with generation times < 1year
+  model_output_all <- spectral %>%
+    lm(., formula = log10(power) ~ log10(freq)) %>%
+    tidy(.) %>%
+    filter(term == "log10(freq)")
+  
+  return(list(-model_output_low$estimate, -model_output_high$estimate, -model_output_all$estimate))
+}
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
@@ -605,20 +673,20 @@ server <- function(input, output) {
             labs(y = "Corrected noise", title = "Corrected simulation")
       })
       
-      fifth_plot = eventReactive(input$sim, {
-        ## plot corrected noise
-        new_correction = correct_noise_conditional()
-        
-        ## remove mean and change variance to 4140:
-        new_noise <- new_correction[1:200000]*1/sqrt(var(new_correction[1:200000]))*sqrt(4140)
-        new_noise <- new_noise - mean(new_noise)
-        
-        new_data = data.frame(new_noise = new_noise, "Time" = 1:200000)
-        
-        ggplot(data = new_data, aes(x = Time, y = new_noise)) + geom_line(linewidth = 0.1) + theme_bw() +
-          theme(panel.grid = element_blank()) + 
-          labs(y = "Conditionally-corrected noise", title = "Conditionally-corrected simulation")
-      })
+      # fifth_plot = eventReactive(input$sim, {
+      #   ## plot corrected noise
+      #   new_correction = correct_noise_conditional()
+      #   
+      #   ## remove mean and change variance to 4140:
+      #   new_noise <- new_correction[1:200000]*1/sqrt(var(new_correction[1:200000]))*sqrt(4140)
+      #   new_noise <- new_noise - mean(new_noise)
+      #   
+      #   new_data = data.frame(new_noise = new_noise, "Time" = 1:200000)
+      #   
+      #   ggplot(data = new_data, aes(x = Time, y = new_noise)) + geom_line(linewidth = 0.1) + theme_bw() +
+      #     theme(panel.grid = element_blank()) + 
+      #     labs(y = "Conditionally-corrected noise", title = "Conditionally-corrected simulation")
+      # })
       
       output$secondPlot <- renderPlot({
         second_plot()
@@ -626,9 +694,9 @@ server <- function(input, output) {
       output$thirdPlot <- renderPlot({
         third_plot()
       })
-      output$fifthPlot <- renderPlot({
-        fifth_plot()
-      })
+      # output$fifthPlot <- renderPlot({
+      #   fifth_plot()
+      # })
       
     })
     
@@ -649,6 +717,7 @@ server <- function(input, output) {
                                                        "conditionally-corrected simulation"), 
                                             ordered = TRUE)) %>%
           filter(se_type != "all") %>%
+          filter(ts_type != "conditionally-corrected simulation") %>%
           ggplot(aes(x = window_start_year, y = `Measured spectral exponent`, colour = ts_type)) +
           geom_abline(slope = exp_slope, intercept = start_colour(), colour = "black") +
           geom_point() +
@@ -675,6 +744,7 @@ server <- function(input, output) {
                                                        "8 years", "9 years", "10 years"), 
                                             ordered = TRUE)) %>%
           filter(se_type != "all") %>%
+          filter(ts_type != "conditionally-corrected simulation") %>%
           group_by(time_window_width, ts_type) %>%
           do(tidy(lm(`Measured spectral exponent` ~ window_start_year, data = .), conf.int = TRUE)) %>% 
           filter(term == "window_start_year") %>% 

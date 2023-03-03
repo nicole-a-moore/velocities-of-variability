@@ -1,8 +1,9 @@
 ## using fractal package to simulate noise with changing spectral exponent 
-#install.packages("fractal", repos="http://R-Forge.R-project.org")
-library(fractal)
 library(tidyverse)
 library(broom)
+library(splus2R)
+library(ifultools)
+source("R/population-simulations/fractal_functions.R")
 
 ## function of interest: FDSimulate
 
