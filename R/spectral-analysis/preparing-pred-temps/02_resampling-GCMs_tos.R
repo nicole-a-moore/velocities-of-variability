@@ -3,7 +3,7 @@ library(tidyverse)
 library(raster)
 
 ## most GCMs of tos were resampled in NCL because they were curvilinear
-## however, HadGem GCMs were not, so they were resampled in R
+## however, HadGem and MIROC-ESM-CHEM were not, so they were resampled in R
 
 #################################################
 ###                   FUNCTIONS                ## 
@@ -29,7 +29,8 @@ resample_GCM <- function(historical_filenames, rcp85_filenames, path) {
     #####      STANDARDIZE TO 1X1 DEGREE GRID   #####
     ## resample temperatures so all GCMs are on a 1 degree x 1 degree grid of the same extent
     new_temps <- resample(og_temps, r, method = 'bilinear',
-                          filename = paste(path, "resampled_", filenames[file], sep = ""))
+                          filename = paste(path, "resampled_", filenames[file], sep = ""),
+                          overwrite = TRUE)
     
     print(paste0("Done file number: ", file), stdout())
     file = file + 1
@@ -43,150 +44,17 @@ resample_GCM <- function(historical_filenames, rcp85_filenames, path) {
 #################################################
 ###      setting paths, calling function       ## 
 #################################################
-path = "CMIP5-GCMs/"
+path = "/Volumes/NIKKI/CMIP5-GCMs/"
 
 ## create vector of file folders to put data into
-gcm_models <- c("01_CMCC-CMS_tos",
-                "02_GFDL-CM3_tos",
-                "03_GFDL-ESM2G_tos",
-                "04_HadGEM2-ES_tos",
-                "05_inmcm4_tos",
-                "06_IPSL-CM5A-MR_tos",
-                "07_MIROC-ESM-CHEM_tos",
-                "08_MIROC5_tos",
-                "09_MPI-ESM-LR_tos",
-                "10_MPI-ESM-MR_tos",
-                "11_MRI-CGCM3_tos")
+gcm_models <- c("04_HadGEM2-ES_tos",
+                "07_MIROC-ESM-CHEM_tos")
 
 folders <- paste(path, gcm_models, "/", sep = "")
 
 #################################################
 ###       make list of GCM file names          ## 
 #################################################
-CMCC_CMS_hist <- c("tos_day_CMCC-CMS_historical_r1i1p1_18700101-18791231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_18800101-18891231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_18900101-18991231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19000101-19091231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19100101-19191231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19200101-19291231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19300101-19391231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19400101-19491231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19500101-19591231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19600101-19691231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19700101-19791231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19800101-19891231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_19900101-19991231.nc",
-                   "tos_day_CMCC-CMS_historical_r1i1p1_20000101-20051231.nc")
-CMCC_CMS_rcp85 <- c("tos_day_CMCC-CMS_rcp85_r1i1p1_20060101-20091231.nc",
-                    "tos_day_CMCC-CMS_rcp85_r1i1p1_20100101-20191231.nc",
-                    "tos_day_CMCC-CMS_rcp85_r1i1p1_20200101-20291231.nc",
-                    "tos_day_CMCC-CMS_rcp85_r1i1p1_20300101-20391231.nc",
-                    "tos_day_CMCC-CMS_rcp85_r1i1p1_20400101-20491231.nc",
-                    "tos_day_CMCC-CMS_rcp85_r1i1p1_20500101-20591231.nc",
-                    "tos_day_CMCC-CMS_rcp85_r1i1p1_20600101-20691231.nc",
-                    "tos_day_CMCC-CMS_rcp85_r1i1p1_20700101-20791231.nc",
-                    "tos_day_CMCC-CMS_rcp85_r1i1p1_20800101-20891231.nc",
-                    "tos_day_CMCC-CMS_rcp85_r1i1p1_20900101-21001231.nc")
-CMCC_CMS_01 <- list(CMCC_CMS_hist, CMCC_CMS_rcp85)
-
-GFDL_CM3_hist <- c("tos_day_GFDL-CM3_historical_r1i1p1_18700101-18741231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_18750101-18791231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_18800101-18841231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_18850101-18891231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_18900101-18941231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_18950101-18991231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19000101-19041231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19050101-19091231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19100101-19141231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19150101-19191231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19200101-19241231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19250101-19291231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19300101-19341231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19350101-19391231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19400101-19441231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19450101-19491231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19500101-19541231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19550101-19591231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19600101-19641231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19650101-19691231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19700101-19741231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19750101-19791231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19800101-19841231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19850101-19891231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19900101-19941231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_19950101-19991231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_20000101-20041231.nc",
-                   "tos_day_GFDL-CM3_historical_r1i1p1_20050101-20051231.nc")
-GFDL_CM3_rcp85 <- c("tos_day_GFDL-CM3_rcp85_r1i1p1_20060101-20101231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20110101-20151231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20160101-20201231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20210101-20251231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20260101-20301231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20310101-20351231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20360101-20401231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20410101-20451231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20460101-20501231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20510101-20551231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20560101-20601231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20610101-20651231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20660101-20701231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20710101-20751231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20760101-20801231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20810101-20851231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20860101-20901231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20910101-20951231.nc",
-                    "tos_day_GFDL-CM3_rcp85_r1i1p1_20960101-21001231.nc")
-GFDL_CM3_02 <- list(GFDL_CM3_hist, GFDL_CM3_rcp85)
-
-GFDL_ESM2G_hist <- c("tos_day_GFDL-ESM2G_historical_r1i1p1_18660101-18701231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_18710101-18751231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_18760101-18801231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_18810101-18851231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_18860101-18901231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_18910101-18951231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_18960101-19001231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19010101-19051231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19060101-19101231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19110101-19151231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19160101-19201231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19210101-19251231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19260101-19301231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19310101-19351231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19360101-19401231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19410101-19451231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19460101-19501231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19510101-19551231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19560101-19601231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19610101-19651231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19660101-19701231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19710101-19751231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19760101-19801231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19810101-19851231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19860101-19901231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19910101-19951231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_19960101-20001231.nc",
-                     "tos_day_GFDL-ESM2G_historical_r1i1p1_20010101-20051231.nc")
-GFDL_ESM2G_rcp85 <- c("tos_day_GFDL-ESM2G_rcp85_r1i1p1_20060101-20101231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20110101-20151231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20160101-20201231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20210101-20251231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20260101-20301231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20310101-20351231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20360101-20401231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20410101-20451231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20460101-20501231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20510101-20551231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20560101-20601231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20610101-20651231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20660101-20701231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20710101-20751231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20760101-20801231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20810101-20851231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20860101-20901231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20910101-20951231.nc",
-                      "tos_day_GFDL-ESM2G_rcp85_r1i1p1_20960101-21001231.nc")
-GFDL_ESM2G_03 <- list(GFDL_ESM2G_hist, GFDL_ESM2G_rcp85)
-
 HadGEM2_ES_hist <- c("tos_day_HadGEM2-ES_historical_r1i1p1_18691201-18791130.nc",
                      "tos_day_HadGEM2-ES_historical_r1i1p1_18791201-18891130.nc",
                      "tos_day_HadGEM2-ES_historical_r1i1p1_18891201-18991130.nc",
@@ -216,159 +84,25 @@ HadGEM2_ES_rcp85 <- c("tos_day_HadGEM2-ES_rcp85_r1i1p1_20051201-20101130.nc",
                       "tos_day_HadGEM2-ES_rcp85_r1i1p1_20651201-20701130.nc",
                       "tos_day_HadGEM2-ES_rcp85_r1i1p1_20701201-20751130.nc",
                       "tos_day_HadGEM2-ES_rcp85_r1i1p1_20751201-20851130.nc",
-                      "tos_day_HadGEM2-ES_rcp85_r1i1p1_20851201-20951130.nc",
-                      "tos_day_HadGEM2-ES_rcp85_r1i1p1_20951201-20991130.nc",
-                      "tos_day_HadGEM2-ES_rcp85_r1i1p1_20991201-20991230.nc",
+                      "tos_day_HadGEM2-ES_rcp85_r1i1p1_20851201-20991130.nc",
                       "tos_day_HadGEM2-ES_rcp85_r1i1p1_20991201-21091130.nc")
 HadGEM2_ES_04 <- list(HadGEM2_ES_hist, HadGEM2_ES_rcp85)
 
-inmcm4_hist <- c("tos_day_inmcm4_historical_r1i1p1_18700101-18791231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_18800101-18891231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_18900101-18991231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19000101-19091231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19100101-19191231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19200101-19291231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19300101-19391231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19400101-19491231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19500101-19591231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19600101-19691231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19700101-19791231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19800101-19891231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_19900101-19991231.nc",
-                 "tos_day_inmcm4_historical_r1i1p1_20000101-20051231.nc")
-inmcm4_rcp85 <- c("tos_day_inmcm4_rcp85_r1i1p1_20060101-20151231.nc",
-                  "tos_day_inmcm4_rcp85_r1i1p1_20160101-20251231.nc",
-                  "tos_day_inmcm4_rcp85_r1i1p1_20260101-20351231.nc",
-                  "tos_day_inmcm4_rcp85_r1i1p1_20360101-20451231.nc",
-                  "tos_day_inmcm4_rcp85_r1i1p1_20460101-20551231.nc",
-                  "tos_day_inmcm4_rcp85_r1i1p1_20560101-20651231.nc",
-                  "tos_day_inmcm4_rcp85_r1i1p1_20660101-20751231.nc",
-                  "tos_day_inmcm4_rcp85_r1i1p1_20760101-20851231.nc",
-                  "tos_day_inmcm4_rcp85_r1i1p1_20860101-20951231.nc",
-                  "tos_day_inmcm4_rcp85_r1i1p1_20960101-21001231.nc")
-inmcm4_05 <- list(inmcm4_hist, inmcm4_rcp85)
-
-IPSL_CM5A_MR_hist <- c("tos_day_IPSL-CM5A-MR_historical_r1i1p1_18500101-18991231.nc",
-                       "tos_day_IPSL-CM5A-MR_historical_r1i1p1_19000101-19491231.nc",
-                       "tos_day_IPSL-CM5A-MR_historical_r1i1p1_19500101-19991231.nc",
-                       "tos_day_IPSL-CM5A-MR_historical_r1i1p1_20000101-20051231.nc")
-IPSL_CM5A_MR_rcp85 <- c("tos_day_IPSL-CM5A-MR_rcp85_r1i1p1_20060101-20551231.nc",
-                        "tos_day_IPSL-CM5A-MR_rcp85_r1i1p1_20560101-21001231.nc")
-IPSL_CM5A_MR_06 <- list(IPSL_CM5A_MR_hist, IPSL_CM5A_MR_rcp85)
-
-MIROC_ESM_CHEM_hist <- c('tos_day_MIROC-ESM-CHEM_historical_r1i1p1_18500101-20051231.nc') 
-MIROC_ESM_CHEM_rcp85 <- c("tos_day_MIROC-ESM-CHEM_rcp85_r1i1p1_20060101-21001231.nc")
+MIROC_ESM_CHEM_hist <- c("tos_day_MIROC-ESM-CHEM_historical_r1i1p1_18700101-18891231.nc",
+                         "tos_day_MIROC-ESM-CHEM_historical_r1i1p1_18900101-19091231.nc",
+                         "tos_day_MIROC-ESM-CHEM_historical_r1i1p1_19100101-19291231.nc",
+                         "tos_day_MIROC-ESM-CHEM_historical_r1i1p1_19300101-19491231.nc",
+                         "tos_day_MIROC-ESM-CHEM_historical_r1i1p1_19500101-19691231.nc",
+                         "tos_day_MIROC-ESM-CHEM_historical_r1i1p1_19700101-19891231.nc",
+                         "tos_day_MIROC-ESM-CHEM_historical_r1i1p1_19900101-20051231.nc") 
+MIROC_ESM_CHEM_rcp85 <- c("tos_day_MIROC-ESM-CHEM_rcp85_r1i1p1_20060101-20251231.nc",
+                          "tos_day_MIROC-ESM-CHEM_rcp85_r1i1p1_20260101-20451231.nc",
+                          "tos_day_MIROC-ESM-CHEM_rcp85_r1i1p1_20460101-20651231.nc",
+                          "tos_day_MIROC-ESM-CHEM_rcp85_r1i1p1_20660101-20851231.nc",
+                          "tos_day_MIROC-ESM-CHEM_rcp85_r1i1p1_20860101-21001231.nc")
 MIROC_ESM_CHEM_07 <- list(MIROC_ESM_CHEM_hist, MIROC_ESM_CHEM_rcp85)
 
-MIROC5_hist <- c("tos_day_MIROC5_historical_r1i1p1_18700101-18791231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_18800101-18891231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_18900101-18991231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19000101-19091231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19100101-19191231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19200101-19291231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19300101-19391231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19400101-19491231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19500101-19591231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19600101-19691231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19700101-19791231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19800101-19891231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_19900101-19991231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_20000101-20091231.nc",
-                 "tos_day_MIROC5_historical_r1i1p1_20100101-20121231.nc")
-MIROC5_rcp85 <- c("tos_day_MIROC5_rcp85_r1i1p1_20060101-20091231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_20100101-20191231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_20200101-20291231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_20300101-20391231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_20400101-20491231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_20500101-20591231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_20600101-20691231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_20700101-20791231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_20800101-20891231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_20900101-20991231.nc",
-                  "tos_day_MIROC5_rcp85_r1i1p1_21000101-21001231.nc")
-MIROC5_08 <- list(MIROC5_hist, MIROC5_rcp85)
-
-MPI_ESM_LR_hist <- c("tos_day_MPI-ESM-LR_historical_r1i1p1_18700101-18791231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_18800101-18891231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_18900101-18991231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19000101-19091231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19100101-19191231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19200101-19291231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19300101-19391231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19400101-19491231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19500101-19591231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19600101-19691231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19700101-19791231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19800101-19891231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_19900101-19991231.nc",
-                     "tos_day_MPI-ESM-LR_historical_r1i1p1_20000101-20051231.nc")
-MPI_ESM_LR_rcp85 <- c("tos_day_MPI-ESM-LR_rcp85_r1i1p1_20060101-20091231.nc",
-                      "tos_day_MPI-ESM-LR_rcp85_r1i1p1_20100101-20191231.nc",
-                      "tos_day_MPI-ESM-LR_rcp85_r1i1p1_20200101-20291231.nc",
-                      "tos_day_MPI-ESM-LR_rcp85_r1i1p1_20300101-20391231.nc",
-                      "tos_day_MPI-ESM-LR_rcp85_r1i1p1_20400101-20491231.nc",
-                      "tos_day_MPI-ESM-LR_rcp85_r1i1p1_20500101-20591231.nc",
-                      "tos_day_MPI-ESM-LR_rcp85_r1i1p1_20600101-20691231.nc",
-                      "tos_day_MPI-ESM-LR_rcp85_r1i1p1_20700101-20791231.nc",
-                      "tos_day_MPI-ESM-LR_rcp85_r1i1p1_20800101-20891231.nc",
-                      "tos_day_MPI-ESM-LR_rcp85_r1i1p1_20900101-21001231.nc")
-MPI_ESM_LR_09 <- list(MPI_ESM_LR_hist, MPI_ESM_LR_rcp85)
-
-MPI_ESM_MR_hist <- c("tos_day_MPI-ESM-MR_historical_r1i1p1_18700101-18791231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_18800101-18891231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_18900101-18991231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19000101-19091231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19100101-19191231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19200101-19291231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19300101-19391231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19400101-19491231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19500101-19591231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19600101-19691231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19700101-19791231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19800101-19891231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_19900101-19991231.nc",
-                     "tos_day_MPI-ESM-MR_historical_r1i1p1_20000101-20051231.nc")
-MPI_ESM_MR_rcp85 <- c("tos_day_MPI-ESM-MR_rcp85_r1i1p1_20060101-20091231.nc",
-                      "tos_day_MPI-ESM-MR_rcp85_r1i1p1_20100101-20191231.nc",
-                      "tos_day_MPI-ESM-MR_rcp85_r1i1p1_20200101-20291231.nc",
-                      "tos_day_MPI-ESM-MR_rcp85_r1i1p1_20300101-20391231.nc",
-                      "tos_day_MPI-ESM-MR_rcp85_r1i1p1_20400101-20491231.nc",
-                      "tos_day_MPI-ESM-MR_rcp85_r1i1p1_20500101-20591231.nc",
-                      "tos_day_MPI-ESM-MR_rcp85_r1i1p1_20600101-20691231.nc",
-                      "tos_day_MPI-ESM-MR_rcp85_r1i1p1_20700101-20791231.nc",
-                      "tos_day_MPI-ESM-MR_rcp85_r1i1p1_20800101-20891231.nc",
-                      "tos_day_MPI-ESM-MR_rcp85_r1i1p1_20900101-21001231.nc")
-MPI_ESM_MR_10 <- list(MPI_ESM_MR_hist, MPI_ESM_MR_rcp85)
-
-MRI_CGCM3_hist <- c("tos_day_MRI-CGCM3_historical_r1i1p1_18700101-18791231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_18800101-18891231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_18900101-18991231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19000101-19091231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19100101-19191231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19200101-19291231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19300101-19391231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19400101-19491231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19500101-19591231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19600101-19691231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19700101-19791231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19800101-19891231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_19900101-19991231.nc",
-                    "tos_day_MRI-CGCM3_historical_r1i1p1_20000101-20051231.nc")
-MRI_CGCM3_rcp85 <- c("tos_day_MRI-CGCM3_rcp85_r1i1p1_20060101-20151231.nc",
-                     "tos_day_MRI-CGCM3_rcp85_r1i1p1_20160101-20251231.nc",
-                     "tos_day_MRI-CGCM3_rcp85_r1i1p1_20260101-20351231.nc",
-                     "tos_day_MRI-CGCM3_rcp85_r1i1p1_20360101-20451231.nc",
-                     "tos_day_MRI-CGCM3_rcp85_r1i1p1_20460101-20551231.nc",
-                     "tos_day_MRI-CGCM3_rcp85_r1i1p1_20560101-20651231.nc",
-                     "tos_day_MRI-CGCM3_rcp85_r1i1p1_20660101-20751231.nc",
-                     "tos_day_MRI-CGCM3_rcp85_r1i1p1_20760101-20851231.nc",
-                     "tos_day_MRI-CGCM3_rcp85_r1i1p1_20860101-20951231.nc",
-                     "tos_day_MRI-CGCM3_rcp85_r1i1p1_20960101-21001231.nc")
-MRI_CGCM3_11 <- list(MRI_CGCM3_hist, MRI_CGCM3_rcp85)
-
-gcm_files <- list(CMCC_CMS_01, GFDL_CM3_02, GFDL_ESM2G_03, HadGEM2_ES_04,
-                  inmcm4_05, IPSL_CM5A_MR_06, MIROC_ESM_CHEM_07, MIROC5_08,
-                  MPI_ESM_LR_09, MPI_ESM_MR_10, MRI_CGCM3_11)
+gcm_files <- list(HadGEM2_ES_04, MIROC_ESM_CHEM_07)
 
 #################################################
 ###     calling functions on a GCM             ## 
