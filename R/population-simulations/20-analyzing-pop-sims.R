@@ -140,7 +140,7 @@ while (col <= length(base_col)) {
   while (icp <= length(lambda)) {
     
     filename =  paste("data-processed/pop-sims_semi-stable/tvfdpopdynam_icp-", lambda[icp], "_base-col-", 
-                      start_colour, "_20-steps_500.csv", sep = "")
+                      start_colour, "_20-steps_1000.csv", sep = "")
     
     if(file.exists(filename)) {
       
