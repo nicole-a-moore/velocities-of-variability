@@ -296,3 +296,6 @@ checkVectorType <- function (x, isType = "numeric")
   invisible(NULL)
 }
 
+isVectorAtomic <- function (x) 
+  return(is.atomic(x) & any(c(NROW(x), NCOL(x)) == 1))
+
