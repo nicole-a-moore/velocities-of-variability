@@ -28,7 +28,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, gcm_num)
   ## to satisfy this requirement while avoiding memory exhaustion, reorganize data
   ## go from time chunks spanning all of space to spatial chunks spanning all of time
   ## break into 8 x 60 degree lat x 60 degree lon chunks with data from 1850-2100
-  lon_index = 0
+  lon_index = -180
   lat_index = 90
   count = 1
   sp_files <- c()
@@ -46,18 +46,10 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, gcm_num)
       start <- Sys.time()
       temps <- stack(paths[file])
       
-      ## get dates
-      time = ncvar_get(nc_open(og_names[file]), "time") 
-      
-      ## convert 
-      ## days since 1870-1-1
-      if(gcm_num == 1) {
-        dates <- append(dates, dates <- as.Date(time, origin = '1870-01-01'))
-      }
-      else {
-        ## days since 1850-1-1
-        ## 07
-        dates <- append(dates, dates <- as.Date(time, origin = '1850-01-01'))
+      if(xmax(temps) == 360 & count %in% c(1, 7, 13)) {
+        lon_index = 0
+        lon_bound1 <- lon_index 
+        lon_bound2 <- lon_index + 60
       }
       
       ## crop to new extent within bounds of spatial chunk
@@ -80,6 +72,17 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, gcm_num)
       file = file + 1
     }
 
+    ## get dates 
+    ## days since 1870-1-1
+    if(gcm_num == 1) {
+      dates <- as.Date(1:nlayers(spatial_temps), origin = '1870-01-01')
+    }
+    else {
+      ## days since 1850-1-1
+      ## 07
+      dates <- as.Date(1:nlayers(spatial_temps), origin = '1850-01-01')
+    }
+    
     ## turn into an array:
     temps_df <- as.array(spatial_temps)  
     
@@ -111,7 +114,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, gcm_num)
           ## interpolate if temps are missing
           if(length(which(is.na(local_ts$temp))) != 0 & length(which(is.na(local_ts$temp))) 
              != length(local_ts$temp)) {
-            local_ts$temp <- na_kalman(local_ts$temp, smooth = TRUE, model = "StructTS")
+            local_ts$temp <- imputeTS::na_kalman(local_ts$temp, smooth = TRUE, model = "StructTS")
             temps_df[y,x,] <- local_ts$temp ## save changed time series if it needed changing
           }
           
@@ -157,7 +160,7 @@ reorganize_GCM <- function(historical_filenames, rcp85_filenames, path, gcm_num)
     ## advance lat and lon indecies to move to next spatial chunk
     if (count %in% c(6, 12)) {
       lat_index <- lat_index - 60
-      lon_index <- 0
+      lon_index <- -180
     }
     else {
       lon_index <- lon_index + 60

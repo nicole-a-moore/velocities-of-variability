@@ -108,6 +108,7 @@ spectral_exponent_calculator_AWC <- function(ts_window, N) {
   
   return(b)
 }
+
 ## function to calculate spectral exponent over a time series within sliding windows of varying widths (from 5-10 years) with a time step of one year 
 ## takes as input:
 ##      - a detrended time series

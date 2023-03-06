@@ -10,14 +10,14 @@ if (!"remotes" %in% rownames(installed.packages())) {
 library(VoCC)
 library(tidyverse)
 library(raster)
+library(broom)
 select <- dplyr::select
 
 
-########################################################################
-#####    1.  transform spectral exponent data into a rasterStack  ######
-########################################################################
-## function to convert output from script 04 into 6 rasterStacks (one for each sliding window width, from 5-10 years) that can be used with the gVoCC functions 
-create_rasterStack <- function(p, gcm, gcm_num) {
+#####################################################
+#####    1.  calculate local spectral trends   ######
+#####################################################
+calculate_spectral_trends <- function(p, gcm, gcm_num) {
   
   se_filenames <- readRDS(paste(p, "se_filenames.rds",  sep = ""))
   if(!gcm %in% c("BerkeleyEarth", "NOAA-OISST")) {
@@ -44,6 +44,108 @@ create_rasterStack <- function(p, gcm, gcm_num) {
     spec_exp <- spec_exp %>%
       mutate(lon = ifelse(lon >= 180, lon - 180, lon + 178))
   }
+  
+  spec_exp <- select(spec_exp, -c("term", "l_estimate_PSD_low","l_std.error_PSD_low","l_statistic_PSD_low","l_p.value_PSD_low",
+                     "s_estimate_PSD_low","s_std.error_PSD_low","s_statistic_PSD_low","s_p.value_PSD_low","l_estimate_AWC","l_std.error_AWC",     
+                     "l_statistic_AWC", "l_p.value_AWC","s_estimate_AWC","s_std.error_AWC","s_statistic_AWC","s_p.value_AWC",       
+                     "l_estimate_PSD_high", "l_std.error_PSD_high","l_statistic_PSD_high","l_p.value_PSD_high","s_estimate_PSD_high","s_std.error_PSD_high",
+                     "s_statistic_PSD_high","s_p.value_PSD_high","l_estimate_PSD_all","l_std.error_PSD_all","l_statistic_PSD_all","l_p.value_PSD_all", 
+                     "s_estimate_PSD_all","s_std.error_PSD_all","s_statistic_PSD_all","s_p.value_PSD_all"))
+  
+  ## run regressions 
+  ## regress spectral exponent and extract slope representing change in spectral exponent over time for each location and window width
+  l_model_output_PSD_low <- spec_exp %>%
+    filter(time_window_width == "10 years") %>%
+    group_by(lat, lon, time_window_width) %>%
+    do(tidy(lm(., formula = l_spec_exp_PSD_low ~ window_start_year))) %>%
+    filter(term == "window_start_year")
+  
+  colnames(l_model_output_PSD_low)[5:8] <- paste("l", colnames(l_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
+  
+  s_model_output_PSD_low <- spec_exp %>%
+    group_by(lat, lon, time_window_width) %>%
+    do(tidy(lm(., formula = s_spec_exp_PSD_low ~ window_start_year))) %>%
+    filter(term == "window_start_year")
+  
+  colnames(s_model_output_PSD_low)[5:8] <- paste("s", colnames(s_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
+  
+  l_model_output_PSD_high <- spec_exp %>%
+    filter(time_window_width == "10 years") %>%
+    group_by(lat, lon, time_window_width) %>%
+    do(tidy(lm(., formula = l_spec_exp_PSD_high ~ window_start_year))) %>%
+    filter(term == "window_start_year")
+  
+  colnames(l_model_output_PSD_high)[5:8] <- paste("l", colnames(l_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
+  
+  s_model_output_PSD_high <- spec_exp %>%
+    group_by(lat, lon, time_window_width) %>%
+    do(tidy(lm(., formula = s_spec_exp_PSD_high ~ window_start_year))) %>%
+    filter(term == "window_start_year")
+  
+  colnames(s_model_output_PSD_high)[5:8] <- paste("s", colnames(s_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
+  
+  l_model_output_PSD_all <- spec_exp %>%
+    filter(time_window_width == "10 years") %>%
+    group_by(lat, lon, time_window_width) %>%
+    do(tidy(lm(., formula = l_spec_exp_PSD_all ~ window_start_year))) %>%
+    filter(term == "window_start_year")
+  
+  colnames(l_model_output_PSD_all)[5:8] <- paste("l", colnames(l_model_output_PSD_all)[5:8], "PSD_all", sep = "_")
+  
+  s_model_output_PSD_all <- spec_exp %>%
+    group_by(lat, lon, time_window_width) %>%
+    do(tidy(lm(., formula = s_spec_exp_PSD_all ~ window_start_year))) %>%
+    filter(term == "window_start_year")
+  
+  colnames(s_model_output_PSD_all)[5:8] <- paste("s", colnames(s_model_output_PSD_all)[5:8], "PSD_all", sep = "_")
+  
+  l_model_output_AWC <- spec_exp %>%
+    filter(time_window_width == "10 years") %>%
+    group_by(lat, lon) %>%
+    do(tidy(lm(., formula = l_spec_exp_AWC ~ window_start_year))) %>%
+    filter(term == "window_start_year")
+  
+  colnames(l_model_output_AWC)[4:7] <- paste("l", colnames(l_model_output_AWC)[4:7], "AWC", sep = "_")
+  l_model_output_AWC$time_window_width = "10 years"
+  
+  s_model_output_AWC <- spec_exp %>%
+    group_by(lat, lon) %>%
+    do(tidy(lm(., formula = s_spec_exp_AWC ~ window_start_year))) %>%
+    filter(term == "window_start_year")
+  
+  colnames(s_model_output_AWC)[4:7] <- paste("s", colnames(s_model_output_AWC)[4:7], "AWC", sep = "_")
+  s_model_output_AWC$time_window_width = "10 years"
+  
+  ## bind model output columns to spectral exponent data:
+  spec_exp_df <- full_join(spec_exp, l_model_output_PSD_low) %>%
+    full_join(., s_model_output_PSD_low) %>%
+    full_join(., l_model_output_AWC) %>%
+    full_join(., s_model_output_AWC) %>%
+    full_join(., l_model_output_PSD_high) %>%
+    full_join(., s_model_output_PSD_high) %>%
+    full_join(., l_model_output_PSD_all) %>%
+    full_join(., s_model_output_PSD_all)
+  
+  ## write
+  write.csv(spec_exp_df, paste("data-processed/spectral-change-files/", gcm, "_spec-change-all.csv", sep = ""), row.names = FALSE)
+  
+  return(NA)
+}
+
+
+########################################################################
+#####    2.  transform spectral exponent data into a rasterStack  ######
+########################################################################
+## function to convert output from script 04 into 6 rasterStacks (one for each sliding window width, from 5-10 years) that can be used with the gVoCC functions 
+create_rasterStack <- function(p, gcm, gcm_num) {
+  
+  se_filenames <- readRDS(paste(p, "se_filenames.rds",  sep = ""))
+  if(!gcm %in% c("BerkeleyEarth", "NOAA-OISST")) {
+    se_filenames <- str_replace_all(se_filenames, "CMIP5-GCMs", "/Volumes/NIKKI/CMIP5-GCMs")
+  }
+  
+  ## read in big dataframe of local spectral exps
+  spec_exp <- read.csv(paste("data-processed/spectral-change-files/", gcm, "_spec-change-all.csv", sep = ""))
   
   r <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, 
               crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"),
@@ -208,14 +310,14 @@ create_rasterStack <- function(p, gcm, gcm_num) {
     names(ww_split)
   
   ## save the rasterstack 
-  saveRDS(l_stack_list_PSD_low, paste(p, gcm, "_l_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_low, paste(p, gcm, "_s_stack_list_PSD_low.rds", sep = ""))
-  saveRDS(l_stack_list_AWC, paste(p, gcm, "_l_stack_list_AWC.rds", sep = ""))
-  saveRDS(s_stack_list_AWC, paste(p, gcm, "_s_stack_list_AWC.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_high, paste(p, gcm, "_l_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_high, paste(p, gcm, "_s_stack_list_PSD_high.rds", sep = ""))
-  saveRDS(l_stack_list_PSD_all, paste(p, gcm, "_l_stack_list_PSD_all.rds", sep = ""))
-  saveRDS(s_stack_list_PSD_all, paste(p, gcm, "_s_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_low, paste("data-processed/spectral-change-files/", gcm, "_l_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_low, paste("data-processed/spectral-change-files/", gcm, "_s_stack_list_PSD_low.rds", sep = ""))
+  saveRDS(l_stack_list_AWC, paste("data-processed/spectral-change-files/", gcm, "_l_stack_list_AWC.rds", sep = ""))
+  saveRDS(s_stack_list_AWC, paste("data-processed/spectral-change-files/", gcm, "_s_stack_list_AWC.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_high, paste("data-processed/spectral-change-files/", gcm, "_l_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_high, paste("data-processed/spectral-change-files/", gcm, "_s_stack_list_PSD_high.rds", sep = ""))
+  saveRDS(l_stack_list_PSD_all, paste("data-processed/spectral-change-files/", gcm, "_l_stack_list_PSD_all.rds", sep = ""))
+  saveRDS(s_stack_list_PSD_all, paste("data-processed/spectral-change-files/", gcm, "_s_stack_list_PSD_all.rds", sep = ""))
   
   stacks <- list(l_stack_list_PSD_low, s_stack_list_PSD_low, 
                  l_stack_list_AWC, s_stack_list_AWC,
@@ -285,7 +387,7 @@ df_average_se_over_time <- function(p, gcm, gcm_num) {
     df_high <- gather(df_high, key = "window_number", value = "spec_exp", c(3:ncol(df_high)))
     df_high$exponent_type = "s_PSD_high"
     df_high$time_window_width = widths[num]
-    
+      
     average_low <- df_low %>%
       group_by(window_number) %>% ## group data by window start year
       mutate(mean_spec_exp = mean(spec_exp),
@@ -308,6 +410,7 @@ df_average_se_over_time <- function(p, gcm, gcm_num) {
     
     all = rbind(average_high, average_low)
     all_data = rbind(df_high, df_low)
+    all_ests = rbind(ests_high, ests_low)
     
     if(num == 6) {
       df_awc_s <- data.frame(rasterToPoints(list_tas[[3]]))
@@ -401,8 +504,8 @@ df_average_se_over_time <- function(p, gcm, gcm_num) {
            width = 6, height = 4, device = "png")
     
     ## write out
-    write.csv(all, paste(p, gcm, "_average-se-over-time_", width, ".csv", sep = ""))
-    write.csv(all_data, paste(p, gcm, "_all-se-over-time_", width, ".csv", sep = ""))
+    write.csv(all, paste("data-processed/spectral-change-files/", gcm, "_average-se-over-time_", width, ".csv", sep = ""), row.names = FALSE)
+    write.csv(all_data, paste("data-processed/spectral-change-files/", gcm, "_all-se-over-time_", width, ".csv", sep = ""), row.names = FALSE)
     
     num = num + 1
   }
@@ -490,7 +593,7 @@ raster_avg_change <- function(p, gcm) {
     
     ## save:
     width = str_replace_all(widths[num], " ", "_")
-    saveRDS(raster_tas, paste(p, gcm, "_spectral-change_multifrac_", width, ".rds", sep = ""))
+    saveRDS(raster_tas, paste("data-processed/spectral-change-files/", gcm, "_spectral-change_multifrac_", width, ".rds", sep = ""))
     
     num = num + 1
   }
@@ -528,16 +631,13 @@ folders <- paste(path, gcm_models, "/", sep = "")
 ###################################################################
 ###     calling functions on spectral exponent files             ## 
 ###################################################################
-p = folders[gcm_num]
-gcm = gcm_models[gcm_num]
+for(i in 1:length(gcm_models)) {
+  p = folders[i]
+  gcm = gcm_models[i]
+  
+  calculate_spectral_trends(p = p, gcm = gcm, gcm_num = i)
+  stck = create_rasterStack(p = p, gcm = gcm, gcm_num = i)
+  df_average_se_over_time(p = p, gcm = gcm, gcm_num = i)
+  raster_avg_change(p = p, gcm = gcm)
+}
 
-stck = create_rasterStack(p = p, gcm = gcm, gcm_num = gcm_num)
-df_average_se_over_time(p = p, gcm = gcm, gcm_num = gcm_num)
-raster_avg_change(p = p, gcm = gcm)
-
-
-
-write.csv(spec_exp, paste(p, gcm, "_spec_exp.csv",  sep = ""), row.names = F)
-          
-          
-          
