@@ -296,6 +296,144 @@ checkVectorType <- function (x, isType = "numeric")
   invisible(NULL)
 }
 
-isVectorAtomic <- function (x) 
+isVectorAtomic <- function (x)  {
   return(is.atomic(x) & any(c(NROW(x), NCOL(x)) == 1))
+}
+
+create.signalSeries <- function (x = NULL, position = list(from = 1, by = 1, units = character()), 
+                                             from = NULL, by = NULL, to = NULL, length.out = NULL, units = character(), 
+                                             title.data = character(), documentation = character(), na.rm = TRUE) 
+{
+  if (is(x, "signalSeries")) 
+    return(x)
+  if (is(x, "ts")) {
+    title.data <- deparseText(substitute(x))
+    position <- list(from = start(x)[1], by = deltat(x), 
+                     units = character())
+    x <- as.vector(x)
+    length.out <- length(x)
+  }
+  "fill.missing.position" <- function(x) {
+    defaults <- list(from = 1, by = 1, units = character(0))
+    matches <- which(as.logical(charmatch(names(defaults), 
+                                          names(x))))
+    if (length(matches) < 1) 
+      stop("Invalid position name")
+    else position <- c(defaults[seq(along = defaults)[-matches]], 
+                       x)
+    position
+  }
+  if (is.null(x)) {
+    y <- signalSeries()
+    y@units.position <- position$units
+    y@units <- units
+    y@title <- title.data
+    y@documentation <- documentation
+    return(y)
+  }
+  na.indices <- is.na(x)
+  if (any(na.indices)) {
+    if (!na.rm) 
+      stop("NaNs not allowed in x. Try setting: na.rm=TRUE")
+    x <- x[!na.indices]
+    warning("NaNs removed from x for conversion to signalSeries class")
+  }
+  from.is.null <- is.null(from)
+  to.is.null <- is.null(to)
+  length.is.null <- is.null(length.out)
+  by.is.null <- is.null(by)
+  is.from.an.index.vector <- (is.integer(from) & isVectorAtomic(from) & 
+                                length(from) > 1)
+  if (!length.is.null) {
+    if (length.out < 1) 
+      stop("Length argument must be a positive integer")
+  }
+  position <- fill.missing.position(position)
+  if (from.is.null) 
+    from <- position$from
+  cls <- class(x)
+  if (cls == "signalSeries") {
+    x@title <- title.data
+    x@documentation <- documentation
+    return(x)
+  }
+  if (isVectorAtomic(x)) 
+    y <- as.vector(x)
+  else stop("Input must be a vector, a single-column or single-row matrix,\n      or a named vector")
+  if (is(x, "ts")) {
+    if (is.from.an.index.vector) {
+      tsp.data <- tsp(y)
+      start.data <- tsp.data[1]
+      end.data <- tsp.data[2]
+      freq.data <- tsp.data[3]
+      date.range <- approx(x = c(1, length(y)), y = c(start.data, 
+                                                      end.data), xout = c(from[1], from[length(from)]), 
+                           method = "linear")
+      y <- ts(data = y[from], start = date.range$y[1], 
+              frequency = freq.data)
+    }
+  }
+  else {
+    if (is.from.an.index.vector) 
+      index <- from[from <= length(y)]
+    else {
+      ly <- length(y)
+      pos.all <- seq(from = position$from, by = position$by, 
+                     length = ly)
+      if (!to.is.null && by.is.null) {
+        if (from < to) 
+          index <- which(pos.all >= from & pos.all <= 
+                           to)
+        else index <- which(pos.all >= to & pos.all <= 
+                              from)
+        if (length(index) > length.out) 
+          index <- index[seq(length.out)]
+      }
+      else {
+        if (to.is.null) 
+          to <- pos.all[ly]
+        if (by.is.null) 
+          by <- sign(to - from) * position$by
+        pos.larger <- pos.all[pos.all >= from]
+        closest.from <- pos.larger[order(abs(pos.larger - 
+                                               from))[1]]
+        if (by.is.null) {
+          if (!anyMissing(closest.from)) {
+            if (closest.from != from) 
+              extract <- seq(from = closest.from, by = by, 
+                             to = to)
+            else extract <- seq(from = from, by = by, 
+                                to = to)
+          }
+          else extract <- NA
+        }
+        else extract <- seq(from = from, by = by, to = to)
+        if (from <= max(pos.all)) {
+          index <- pmatch(extract, pos.all)
+          index <- index[!is.na(index)]
+          index <- index[seq(length = min(length.out, 
+                                          length(index)))]
+        }
+        else index <- NA
+      }
+    }
+    if (anyMissing(index) || any(is.null(index))) 
+      stop("Indexing out of range")
+    y <- y[index]
+    new.position = (index - 1) * position$by + position$from
+    y <- signalSeries(data = y, from = new.position[1], 
+                      by = diff(new.position[1:2]), units = units, units.position = position$units)
+  }
+  if (length(y@units) < 1 && !is.null(units)) 
+    y@units <- units
+  if (length(y@title) < 1 && !is.null(title.data)) 
+    y@title <- title.data
+  if (length(y@documentation) < 1 && !is.null(documentation)) 
+    y@documentation <- documentation
+  if (length(y@units.position) < 1 && !is.null(position$units)) 
+    y@units.position <- position$units
+  y
+}
+
+
 
