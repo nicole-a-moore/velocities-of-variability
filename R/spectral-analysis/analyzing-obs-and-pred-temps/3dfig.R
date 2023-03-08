@@ -17,23 +17,23 @@ simulate <- function(n.row, n.col) {
   # initiate the matrix
   prob.n <- matrix(0, nrow=n.row, ncol=n.row)
   
-  x.seq <- seq(from = -0.1250417, to = 0.164627 , length.out = n.row) ## change in spectral exponent
-  y.seq <- seq(from = 0.07505786, to = 1.506056 , length.out = n.col) ## initial colour
+  y.seq <- seq(from = -0.1250417, to = 0.164627 , length.out = n.row) ## change in spectral exponent
+  x.seq <- seq(from = 0.07505786, to = 1.506056 , length.out = n.col) ## initial colour
   
   xx <- dnorm(x.seq, mean=n.row/2, sd=12)
   
-  ## for each change in spectral colour
+  ## for each initial colour in spectral colour
   for (i in 1:n.row) {
-    ## simulate effect of initial colour
-    y <- append(seq(from = 1e2, to = 1e3, length.out = n.row/2),  seq(from = 1e3, to = 1e2, length.out = n.row/2))
-    prob.n[i,] <- y*i
+    ## simulate effect of change 
+    y <- append(seq(from = -0.1250417, to = 0.164627, length.out = n.row/2),  seq(to = -0.1250417, from = 0.164627, length.out = n.row/2))
+    prob.n[i,] <- y*i*1000
   }
   prob.n;
 }
 
-res <- simulate(num.rows, num.cols)
-row.names(res) <- seq(from = -0.1250417, to = 0.164627 , length.out = n.row) 
-colnames(res) <- seq(from = 0.07505786, to = 1.506056 , length.out = n.col)
+res <- simulate(n.row, n.col)
+colnames(res) <- seq(from = -0.1250417, to = 0.164627 , length.out = n.row) 
+row.names(res) <- seq(from = 0.07505786, to = 1.506056 , length.out = n.col)
 
 df <- reshape2::melt(res)
 df$freq = 1:nrow(df)
@@ -78,8 +78,8 @@ fig.nc <- fig.nc %>% add_surface() %>%
 fig.nc
 
 
-plot_ly(y = seq(from = -0.1250417, to = 0.164627 , length.out = n.row),
-        x = seq(from = 0.07505786, to = 1.506056 , length.out = n.col)) %>% 
+plot_ly(x = seq(from = -0.1250417, to = 0.164627 , length.out = n.row),
+        y = seq(from = 0.07505786, to = 1.506056 , length.out = n.col)) %>% 
   add_trace(data = df,  y=df$Var1, x=df$Var2, z=df$value, type="mesh3d") %>%
   # add_surface(
   #   z = res %>% as.matrix(),
