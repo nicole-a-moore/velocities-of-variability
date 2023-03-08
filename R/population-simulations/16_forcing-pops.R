@@ -4,7 +4,7 @@ library(ggplot2)
 library(foreach)
 library(doParallel)
 library(splus2R)
-library(ifultools)
+#library(ifultools)
 source("R/population-simulations/fractal_functions.R")
 
 
@@ -159,7 +159,7 @@ while (col <  length(base_col)) {
   while (icp <= length(lambda)) {
     print(paste("On base colour ", col, " and icp ", icp, sep = ""))
     
-    ## run 100 simulations per colour:
+    ## run 1000 simulations per colour:
     all <- foreach (z = 1:1000, .combine=rbind)  %dopar% {
       
       noise_stable = noise_dec = noise_inc = rep(NA, Tmax)

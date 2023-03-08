@@ -14,127 +14,8 @@ library(broom)
 select <- dplyr::select
 
 
-#####################################################
-#####    1.  calculate local spectral trends   ######
-#####################################################
-calculate_spectral_trends <- function(p, gcm, gcm_num) {
-  
-  se_filenames <- readRDS(paste(p, "se_filenames.rds",  sep = ""))
-  if(!gcm %in% c("BerkeleyEarth", "NOAA-OISST")) {
-    se_filenames <- str_replace_all(se_filenames, "CMIP5-GCMs", "/Volumes/NIKKI/CMIP5-GCMs")
-  }
-  
-  ## combine all spectral exponent csvs into one big dataframe
-  file = 1
-  while (file < length(se_filenames) + 1) {
-    if(file.exists(se_filenames[file])) {
-      if (file == 1) {
-        spec_exp <- read.csv(se_filenames[file])
-      }
-      else {
-        spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
-      }
-    }
-    print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
-    file = file + 1
-  }
-  
-  if(!gcm %in% c("BerkeleyEarth")) {
-    ## change lon so it matches sea surface temperature 
-    spec_exp <- spec_exp %>%
-      mutate(lon = ifelse(lon >= 180, lon - 180, lon + 178))
-  }
-  
-  spec_exp <- select(spec_exp, -c("term", "l_estimate_PSD_low","l_std.error_PSD_low","l_statistic_PSD_low","l_p.value_PSD_low",
-                     "s_estimate_PSD_low","s_std.error_PSD_low","s_statistic_PSD_low","s_p.value_PSD_low","l_estimate_AWC","l_std.error_AWC",     
-                     "l_statistic_AWC", "l_p.value_AWC","s_estimate_AWC","s_std.error_AWC","s_statistic_AWC","s_p.value_AWC",       
-                     "l_estimate_PSD_high", "l_std.error_PSD_high","l_statistic_PSD_high","l_p.value_PSD_high","s_estimate_PSD_high","s_std.error_PSD_high",
-                     "s_statistic_PSD_high","s_p.value_PSD_high","l_estimate_PSD_all","l_std.error_PSD_all","l_statistic_PSD_all","l_p.value_PSD_all", 
-                     "s_estimate_PSD_all","s_std.error_PSD_all","s_statistic_PSD_all","s_p.value_PSD_all"))
-  
-  ## run regressions 
-  ## regress spectral exponent and extract slope representing change in spectral exponent over time for each location and window width
-  l_model_output_PSD_low <- spec_exp %>%
-    filter(time_window_width == "10 years") %>%
-    group_by(lat, lon, time_window_width) %>%
-    do(tidy(lm(., formula = l_spec_exp_PSD_low ~ window_start_year))) %>%
-    filter(term == "window_start_year")
-  
-  colnames(l_model_output_PSD_low)[5:8] <- paste("l", colnames(l_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
-  
-  s_model_output_PSD_low <- spec_exp %>%
-    group_by(lat, lon, time_window_width) %>%
-    do(tidy(lm(., formula = s_spec_exp_PSD_low ~ window_start_year))) %>%
-    filter(term == "window_start_year")
-  
-  colnames(s_model_output_PSD_low)[5:8] <- paste("s", colnames(s_model_output_PSD_low)[5:8], "PSD_low", sep = "_")
-  
-  l_model_output_PSD_high <- spec_exp %>%
-    filter(time_window_width == "10 years") %>%
-    group_by(lat, lon, time_window_width) %>%
-    do(tidy(lm(., formula = l_spec_exp_PSD_high ~ window_start_year))) %>%
-    filter(term == "window_start_year")
-  
-  colnames(l_model_output_PSD_high)[5:8] <- paste("l", colnames(l_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
-  
-  s_model_output_PSD_high <- spec_exp %>%
-    group_by(lat, lon, time_window_width) %>%
-    do(tidy(lm(., formula = s_spec_exp_PSD_high ~ window_start_year))) %>%
-    filter(term == "window_start_year")
-  
-  colnames(s_model_output_PSD_high)[5:8] <- paste("s", colnames(s_model_output_PSD_high)[5:8], "PSD_high", sep = "_")
-  
-  l_model_output_PSD_all <- spec_exp %>%
-    filter(time_window_width == "10 years") %>%
-    group_by(lat, lon, time_window_width) %>%
-    do(tidy(lm(., formula = l_spec_exp_PSD_all ~ window_start_year))) %>%
-    filter(term == "window_start_year")
-  
-  colnames(l_model_output_PSD_all)[5:8] <- paste("l", colnames(l_model_output_PSD_all)[5:8], "PSD_all", sep = "_")
-  
-  s_model_output_PSD_all <- spec_exp %>%
-    group_by(lat, lon, time_window_width) %>%
-    do(tidy(lm(., formula = s_spec_exp_PSD_all ~ window_start_year))) %>%
-    filter(term == "window_start_year")
-  
-  colnames(s_model_output_PSD_all)[5:8] <- paste("s", colnames(s_model_output_PSD_all)[5:8], "PSD_all", sep = "_")
-  
-  l_model_output_AWC <- spec_exp %>%
-    filter(time_window_width == "10 years") %>%
-    group_by(lat, lon) %>%
-    do(tidy(lm(., formula = l_spec_exp_AWC ~ window_start_year))) %>%
-    filter(term == "window_start_year")
-  
-  colnames(l_model_output_AWC)[4:7] <- paste("l", colnames(l_model_output_AWC)[4:7], "AWC", sep = "_")
-  l_model_output_AWC$time_window_width = "10 years"
-  
-  s_model_output_AWC <- spec_exp %>%
-    group_by(lat, lon) %>%
-    do(tidy(lm(., formula = s_spec_exp_AWC ~ window_start_year))) %>%
-    filter(term == "window_start_year")
-  
-  colnames(s_model_output_AWC)[4:7] <- paste("s", colnames(s_model_output_AWC)[4:7], "AWC", sep = "_")
-  s_model_output_AWC$time_window_width = "10 years"
-  
-  ## bind model output columns to spectral exponent data:
-  spec_exp_df <- full_join(spec_exp, l_model_output_PSD_low) %>%
-    full_join(., s_model_output_PSD_low) %>%
-    full_join(., l_model_output_AWC) %>%
-    full_join(., s_model_output_AWC) %>%
-    full_join(., l_model_output_PSD_high) %>%
-    full_join(., s_model_output_PSD_high) %>%
-    full_join(., l_model_output_PSD_all) %>%
-    full_join(., s_model_output_PSD_all)
-  
-  ## write
-  write.csv(spec_exp_df, paste("data-processed/spectral-change-files/", gcm, "_spec-change-all.csv", sep = ""), row.names = FALSE)
-  
-  return(NA)
-}
-
-
 ########################################################################
-#####    2.  transform spectral exponent data into a rasterStack  ######
+#####    1.  transform spectral exponent data into a rasterStack  ######
 ########################################################################
 ## function to convert output from script 04 into 6 rasterStacks (one for each sliding window width, from 5-10 years) that can be used with the gVoCC functions 
 create_rasterStack <- function(p, gcm, gcm_num) {
@@ -144,8 +25,14 @@ create_rasterStack <- function(p, gcm, gcm_num) {
     se_filenames <- str_replace_all(se_filenames, "CMIP5-GCMs", "/Volumes/NIKKI/CMIP5-GCMs")
   }
   
-  ## read in big dataframe of local spectral exps
-  spec_exp <- read.csv(paste("data-processed/spectral-change-files/", gcm, "_spec-change-all.csv", sep = ""))
+  ## combine all spectral exponent data together
+  spec_exp <- c()
+  for (i in 1:length(se_filenames)) {
+    if(file.exists(se_filenames[i])) {
+      spec_exp <- rbind(spec_exp, read.csv(se_filenames[i]))
+    }
+  }
+  spec_exp$window_start_year <- as.numeric(as.character(spec_exp$window_start_year ))
   
   r <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, 
               crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"),
@@ -157,19 +44,19 @@ create_rasterStack <- function(p, gcm, gcm_num) {
     ## get rid of ones with large chunks of ts missing
     mosaic <- readRDS(paste(p, "missing-data-count.rds", sep = ""))
     
-    if(gcm == "NOAA-OISST") {
-      ## change lon so it matches 
-      mosaic = data.frame(rasterToPoints(mosaic))
-      mosaic = mutate(mosaic, x = ifelse(x >= 180, x - 180, x + 178))
-      mosaic <- rasterFromXYZ(mosaic)
-      plot(mosaic)
-    }
-  
+    # if(gcm == "NOAA-OISST") {
+    #   ## change lon so it matches 
+    #   mosaic = data.frame(rasterToPoints(mosaic))
+    #   mosaic = mutate(mosaic, x = ifelse(x >= 180, x - 180, x + 178))
+    #   mosaic <- rasterFromXYZ(mosaic)
+    #   plot(mosaic)
+    # }
+    # 
     ## make a mask to get rid of ones with more than 10000 missing values
     gt_10000 <- mosaic
     gt_10000[mosaic >= 10000] <- 1
     gt_10000[mosaic < 10000] <- NA
-    plot(gt_10000)
+    #plot(gt_10000)
     
     ## get lats and lons 
     gt_10000 <- data.frame(rasterToPoints(gt_10000))
@@ -185,6 +72,11 @@ create_rasterStack <- function(p, gcm, gcm_num) {
   spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels = 
                                          c("5 years", "6 years", "7 years", "8 years",
                                            "9 years", "10 years"))
+  
+  ## fix longitude 
+  if(!gcm %in% c("BerkeleyEarth")) {
+    spec_exp$lon <- ifelse(spec_exp$lon >= 179.5, spec_exp$lon - 179, spec_exp$lon + 180)
+  }
   
   ## split spectral exponent data by window widths:
   ww_split <- split(spec_exp, spec_exp$time_window_width)
@@ -275,7 +167,7 @@ create_rasterStack <- function(p, gcm, gcm_num) {
     
     names(l_temp_stack_PSD_low) <- names(l_temp_stack_PSD_high) <- names(s_temp_stack_PSD_low) <- 
       names(s_temp_stack_PSD_high) <- names(l_temp_stack_AWC) <- names(s_temp_stack_AWC) <- 
-      paste("window", 1:nlayers(l_temp_stack_PSD_low), sep = "_")
+      unique(ww$window_start_year)[which(!is.na(unique(ww$window_start_year)))]
     
     ## save temporary raster stack: 
     if (i == 1) {
@@ -328,23 +220,23 @@ create_rasterStack <- function(p, gcm, gcm_num) {
   return(stacks)
 }
 
-#########################################################################################
-##### 2. calculate average change in spectral exponent for each time series in gcm ######
-#########################################################################################
+#############################################################
+##### 2. calculate average change in spectral exponent ######
+#############################################################
 df_average_se_over_time <- function(p, gcm, gcm_num) {
   
   num = 1
   widths = c("5 years", "6 years", "7 years", "8 years", "9 years", "10 years")
   while(num <= length(widths)) {
     ## read in raster stack layers for the time window 
-    s_stack_tas_PSD_low <- readRDS(paste(p, gcm, "_s_stack_list_PSD_low.rds", sep = ""))[[num]] 
-    s_stack_tas_PSD_high <- readRDS(paste(p, gcm, "_s_stack_list_PSD_high.rds", sep = ""))[[num]] 
+    s_stack_tas_PSD_low <- readRDS(paste("data-processed/spectral-change-files/", gcm, "_s_stack_list_PSD_low.rds", sep = ""))[[num]] 
+    s_stack_tas_PSD_high <- readRDS(paste("data-processed/spectral-change-files/", gcm, "_s_stack_list_PSD_high.rds", sep = ""))[[num]] 
     
     if(num == 6) {
-      s_stack_tas_AWC <- readRDS(paste(p, gcm, "_s_stack_list_AWC.rds", sep = ""))[[6]] 
-      l_stack_tas_PSD_low <- readRDS(paste(p, gcm, "_l_stack_list_PSD_low.rds", sep = ""))[[6]] 
-      l_stack_tas_AWC <- readRDS(paste(p, gcm, "_l_stack_list_AWC.rds", sep = ""))[[6]] 
-      l_stack_tas_PSD_high <- readRDS(paste(p, gcm, "_l_stack_list_PSD_high.rds", sep = ""))[[6]]
+      s_stack_tas_AWC <- readRDS(paste("data-processed/spectral-change-files/", gcm, "_s_stack_list_AWC.rds", sep = ""))[[6]] 
+      l_stack_tas_PSD_low <- readRDS(paste("data-processed/spectral-change-files/", gcm, "_l_stack_list_PSD_low.rds", sep = ""))[[6]] 
+      l_stack_tas_AWC <- readRDS(paste("data-processed/spectral-change-files/", gcm, "_l_stack_list_AWC.rds", sep = ""))[[6]] 
+      l_stack_tas_PSD_high <- readRDS(paste("data-processed/spectral-change-files/", gcm, "_l_stack_list_PSD_high.rds", sep = ""))[[6]]
       
       ## make list of sensitivity layers
       list_tas <- c(s_stack_tas_PSD_low, s_stack_tas_PSD_high, s_stack_tas_AWC,
@@ -379,98 +271,103 @@ df_average_se_over_time <- function(p, gcm, gcm_num) {
     
     ## convert raster layer to data frame
     df_low <- data.frame(rasterToPoints(list_tas[[1]]))
-    df_low <- gather(df_low, key = "window_number", value = "spec_exp", c(3:ncol(df_low)))
+    df_low <- gather(df_low, key = "window_start_year", value = "spec_exp", c(3:ncol(df_low)))
+    df_low$window_start_year <- str_split_fixed(df_low$window_start_year, "X", 2)[,2]
     df_low$exponent_type = "s_PSD_low"
     df_low$time_window_width = widths[num]
    
     df_high <- data.frame(rasterToPoints(list_tas[[2]]))
-    df_high <- gather(df_high, key = "window_number", value = "spec_exp", c(3:ncol(df_high)))
+    df_high <- gather(df_high, key = "window_start_year", value = "spec_exp", c(3:ncol(df_high)))
+    df_high$window_start_year <- str_split_fixed(df_high$window_start_year, "X", 2)[,2]
     df_high$exponent_type = "s_PSD_high"
     df_high$time_window_width = widths[num]
       
     average_low <- df_low %>%
-      group_by(window_number) %>% ## group data by window start year
+      group_by(window_start_year) %>% ## group data by window start year
       mutate(mean_spec_exp = mean(spec_exp),
              sd_spec_exp = sd(spec_exp))  %>% ## calculate average spectral exponent across all locations for each window 
       ungroup() %>%
       select(-x, -y, -spec_exp) %>%
       unique() %>%
-      select(-window_number)
+      select(-window_start_year)
     average_low$year = years
     
     average_high <- df_high %>%
-      group_by(window_number) %>% ## group data by window start year
+      group_by(window_start_year) %>% ## group data by window start year
       mutate(mean_spec_exp = mean(spec_exp),
              sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
       ungroup() %>%
       select(-x, -y, -spec_exp) %>%
       unique() %>%
-      select(-window_number)
+      select(-window_start_year)
     average_high$year = years
     
     all = rbind(average_high, average_low)
     all_data = rbind(df_high, df_low)
-    all_ests = rbind(ests_high, ests_low)
     
     if(num == 6) {
       df_awc_s <- data.frame(rasterToPoints(list_tas[[3]]))
-      df_awc_s <- gather(df_awc_s, key = "window_number", value = "spec_exp", c(3:ncol(df_awc_s)))
+      df_awc_s <- gather(df_awc_s, key = "window_start_year", value = "spec_exp", c(3:ncol(df_awc_s)))
+      df_awc_s$window_start_year <- str_split_fixed(df_awc_s$window_start_year, "X", 2)[,2]
       df_awc_s$exponent_type = "s_AWC"
       df_awc_s$time_window_width = widths[num]
       
       average_awc_s <- df_awc_s %>%
-        group_by(window_number) %>% ## group data by window start year
+        group_by(window_start_year) %>% ## group data by window start year
         mutate(mean_spec_exp = mean(spec_exp),
                sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
         ungroup() %>%
         select(-x, -y, -spec_exp) %>%
         unique() %>%
-        select(-window_number)
+        select(-window_start_year)
       average_awc_s$year = years
       
       df_low_l <- data.frame(rasterToPoints(list_tas[[4]]))
-      df_low_l <- gather(df_low_l, key = "window_number", value = "spec_exp", c(3:ncol(df_low_l)))
+      df_low_l <- gather(df_low_l, key = "window_start_year", value = "spec_exp", c(3:ncol(df_low_l)))
+      df_low_l$window_start_year <- str_split_fixed(df_low_l$window_start_year, "X", 2)[,2]
       df_low_l$exponent_type = "l_PSD_low"
       df_low_l$time_window_width = widths[num]
       
       df_high_l <- data.frame(rasterToPoints(list_tas[[5]]))
-      df_high_l <- gather(df_high_l, key = "window_number", value = "spec_exp", c(3:ncol(df_high_l)))
+      df_high_l <- gather(df_high_l, key = "window_start_year", value = "spec_exp", c(3:ncol(df_high_l)))
+      df_high_l$window_start_year <- str_split_fixed(df_high_l$window_start_year, "X", 2)[,2]
       df_high_l$exponent_type = "l_PSD_high"
       df_high_l$time_window_width = widths[num]
       
       df_awc_l <- data.frame(rasterToPoints(list_tas[[6]]))
-      df_awc_l <- gather(df_awc_l, key = "window_number", value = "spec_exp", c(3:ncol(df_awc_l)))
+      df_awc_l <- gather(df_awc_l, key = "window_start_year", value = "spec_exp", c(3:ncol(df_awc_l)))
+      df_awc_l$window_start_year <- str_split_fixed(df_awc_l$window_start_year, "X", 2)[,2]
       df_awc_l$exponent_type = "l_AWC"
       df_awc_l$time_window_width = widths[num]
       
       average_low_l <- df_low_l %>%
-        group_by(window_number) %>% ## group data by window start year
+        group_by(window_start_year) %>% ## group data by window start year
         mutate(mean_spec_exp = mean(spec_exp),
                sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
         ungroup() %>%
         select(-x, -y, -spec_exp) %>%
         unique() %>%
-        select(-window_number)
+        select(-window_start_year)
       average_low_l$year = years
       
       average_high_l <- df_high_l %>%
-        group_by(window_number) %>% ## group data by window start year
+        group_by(window_start_year) %>% ## group data by window start year
         mutate(mean_spec_exp = mean(spec_exp),
                sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
         ungroup() %>%
         select(-x, -y, -spec_exp) %>%
         unique() %>%
-        select(-window_number)
+        select(-window_start_year)
       average_high_l$year = years
       
       average_awc_l <- df_awc_l %>%
-        group_by(window_number) %>% ## group data by window start year
+        group_by(window_start_year) %>% ## group data by window start year
         mutate(mean_spec_exp = mean(spec_exp),
                sd_spec_exp = sd(spec_exp)) %>% ## calculate average spectral exponent across all locations for each window 
         ungroup() %>%
         select(-x, -y, -spec_exp) %>%
         unique() %>%
-        select(-window_number)
+        select(-window_start_year)
       average_awc_l$year = years
       
       all = rbind(all, average_awc_s) %>%
@@ -483,7 +380,7 @@ df_average_se_over_time <- function(p, gcm, gcm_num) {
         rbind(., df_high_l) %>%
         rbind(., df_awc_l)
       
-      key = data.frame(window_number = unique(df_low$window_number),
+      key = data.frame(window_start_year = unique(df_low$window_start_year),
                        year = years)
       all_data = left_join(all_data, key)
       
@@ -513,93 +410,37 @@ df_average_se_over_time <- function(p, gcm, gcm_num) {
   return(NA)
 }
 
-raster_avg_change <- function(p, gcm) {
-  ## calculate average change in spectral exponent for each time series, across all sliding window widths 
-  se_filenames <- readRDS(paste(p, "se_filenames.rds",  sep = ""))
-  if(!gcm %in% c("BerkeleyEarth", "NOAA-OISST")) {
-    se_filenames <- str_replace_all(se_filenames, "CMIP5-GCMs", "/Volumes/NIKKI/CMIP5-GCMs")
-  }
+###########################################################
+##### 3. calculate local change in spectral exponent ######
+###########################################################
+calculate_spectral_trends <- function(p, gcm, gcm_num) {
   
-  ## combine all spectral exponent csvs into one big dataframe
-  file = 1
-  while (file < length(se_filenames) + 1) {
-    if(file.exists(se_filenames[file])) {
-      if (file == 1) {
-        spec_exp <- read.csv(se_filenames[file])
-      }
-      else {
-        spec_exp <- rbind(spec_exp, read.csv(se_filenames[file]))
-      }
-      print(paste("Reading file #", file, "/", length(se_filenames), sep = ""))
-    }
-    file = file + 1
-  }
-  
-  r <- raster(xmn=-180, xmx=180, ymn=-90, ymx=90, 
-              crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"),
-              res = 1)
-  
-  ## reorder time_window_width so list elements are in order of increasing time window widths:
-  spec_exp$time_window_width <- factor(spec_exp$time_window_width, levels = 
-                                         c("5 years", "6 years", "7 years", "8 years",
-                                           "9 years", "10 years"))
-  
-  ## loop through and save each window width
-  widths = unique(spec_exp$time_window_width)
-  num = 1 
+  data_all <- c()
+  num = 1
+  widths = c("5_years", "6_years", "7_years", "8_years", "9_years", "10_years")
   while(num <= length(widths)) {
     
-    ## get rid of missing time series BE
-    if(gcm %in% c("BerkeleyEarth", "NOAA-OISST")) {
-      ## get rid of ones with large chunks of ts missing
-      mosaic <- readRDS(paste(p, "missing-data-count.rds", sep = ""))
-      
-      if(gcm == "NOAA-OISST") {
-        ## change lon so it matches 
-        mosaic = data.frame(rasterToPoints(mosaic))
-        mosaic = mutate(mosaic, x = ifelse(x >= 180, x - 180, x + 178))
-        mosaic <- rasterFromXYZ(mosaic)
-        plot(mosaic)
-      }
-      
-      ## make a mask to get rid of ones with more than 10000 missing values
-      gt_10000 <- mosaic
-      gt_10000[mosaic >= 10000] <- 1
-      gt_10000[mosaic < 10000] <- NA
-      plot(gt_10000)
-      
-      ## get lats and lons 
-      gt_10000 <- data.frame(rasterToPoints(gt_10000))
-      
-      ## filter spec exp to exclude cells in gt_10000
-      spec_exp <- mutate(spec_exp, lat_lon = paste(lat, lon))
-      gt_10000 <- mutate(gt_10000, lat_lon = paste(y, x))
-      
-      spec_exp <- filter(spec_exp, !lat_lon %in% gt_10000$lat_lon)
-    }
+    data <- read.csv(paste("data-processed/spectral-change-files/", gcm, "_all-se-over-time_", widths[num], ".csv", sep = ""))
     
-    tas <- spec_exp %>%
-      filter(time_window_width == widths[num]) %>%
-      select(lon, lat, l_estimate_PSD_low, s_estimate_PSD_low, l_estimate_PSD_high, s_estimate_PSD_high,
-             l_estimate_AWC, s_estimate_AWC) %>%
-      unique() 
+    ## group by window width, exponent type, location id and calculate trend in spectral exponent 
+    model_output <- data %>%
+      group_by(x, y, time_window_width, exponent_type) %>%
+      do(tidy(lm(., formula = spec_exp ~ window_start_year))) %>%
+      filter(term == "window_start_year") %>%
+      rename("lat" = y, "lon" = x)
     
-    if(gcm != "BerkeleyEarth") {
-      tas <- mutate(tas, lon = ifelse(lon >= 180, lon - 180, lon + 178))
-    }
-      
-    raster_tas <- rasterFromXYZ(tas)
-    raster_tas <- extend(raster_tas, c(0, 360, -90, 90))
+    model_output$gcm = gcm
+    model_output$time_window_width = str_replace_all(widths[num], "\\_", " ")
     
-    ## save:
-    width = str_replace_all(widths[num], " ", "_")
-    saveRDS(raster_tas, paste("data-processed/spectral-change-files/", gcm, "_spectral-change_multifrac_", width, ".rds", sep = ""))
-    
-    num = num + 1
-  }
+   data_all <- rbind(data_all, model_output)
+   num = num + 1
+   }
   
-  return(NA)
+  ## write:
+  write.csv(data_all, paste("data-processed/spectral-change-files/", gcm, "_spec-change-all.csv", sep = ""), row.names = FALSE)
+  return (NA)
 }
+
 
 
 
@@ -635,9 +476,8 @@ for(i in 1:length(gcm_models)) {
   p = folders[i]
   gcm = gcm_models[i]
   
-  calculate_spectral_trends(p = p, gcm = gcm, gcm_num = i)
   stck = create_rasterStack(p = p, gcm = gcm, gcm_num = i)
   df_average_se_over_time(p = p, gcm = gcm, gcm_num = i)
-  raster_avg_change(p = p, gcm = gcm)
+  calculate_spectral_trends(p = p, gcm = gcm, gcm_num = i)
 }
 

@@ -2,6 +2,7 @@
 library(tidyverse)
 library(broom)
 library(splus2R)
+install.packages("ifultools", repos="http://R-Forge.R-project.org")
 library(ifultools)
 source("R/population-simulations/fractal_functions.R")
 
