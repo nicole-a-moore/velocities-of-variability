@@ -3,6 +3,8 @@
 ## and plotting predictions
 library(tidyverse)
 library(PNWColors)
+library(ggExtra)
+library(cowplot)
 
 #################################################
 ###                setting paths               ## 
@@ -49,8 +51,7 @@ while(num <= length(widths)) {
   
   ## now plot them
   ## create colour palette:
-  pal = pnw_palette("Sunset",5, type = "discrete")
-  pnw_palette("Starfish",5, type = "discrete")
+  pal = c("#F3DE8A", "#3FA34D", "#4F86C6")
   
   if(num == 6) {
     plot <- all %>%
@@ -70,7 +71,7 @@ while(num <= length(widths)) {
                                                                        NA))))))) %>%
       mutate(colour = ifelse(gcm == "NOAA-OISST",
                              "Observed sea surface temperature",
-                             ifelse(gcm == "BerkeleyEarth", "Observed air surace temperature",
+                             ifelse(gcm == "BerkeleyEarth", "Observed air surface temperature",
                                     "Model-predicted air surface temperature"))) %>%
       ggplot(., aes(x = year, y = mean_spec_exp, colour = colour, group = group)) +
       theme_light() +
@@ -80,7 +81,7 @@ while(num <= length(widths)) {
       geom_smooth(method = "lm") +
       geom_point() +
       facet_wrap(~exponent_type, nrow = 3) +
-      scale_color_manual(values = pal[c(1,3,5)]) +
+      scale_color_manual(values = pal) +
       theme(legend.position = "bottom")
     
     ggsave(plot, path = "figures/spectral-analysis_GCMs/", 
@@ -98,7 +99,7 @@ while(num <= length(widths)) {
                                     ordered = TRUE)) %>%
       mutate(colour = ifelse(gcm == "NOAA-OISST",
                              "Observed sea surface temperature",
-                             ifelse(gcm == "BerkeleyEarth", "Observed air surace temperature",
+                             ifelse(gcm == "BerkeleyEarth", "Observed air surface temperature",
                                     "Model-predicted air surface temperature"))) %>%
       ggplot(., aes(x = year, y = mean_spec_exp, colour = colour, group = group)) +
       theme_light() +
@@ -108,7 +109,7 @@ while(num <= length(widths)) {
       geom_smooth(method = "lm")  +
       geom_point() +
       facet_wrap(~exponent_type) +
-      scale_color_manual(values = pal[c(1,3,5)]) +
+      scale_color_manual(values = pal) +
       theme(legend.position = "bottom")
     
     ggsave(plot, path = "figures/spectral-analysis_GCMs/", 
@@ -117,21 +118,39 @@ while(num <= length(widths)) {
   }
   
   if(num ==1) {
+    obs <- all %>%
+      filter(exponent_type == "s_PSD_low") %>%
+      mutate(group = gcm) %>%
+      mutate(colour = ifelse(gcm == "NOAA-OISST",
+                             "Observed sea surface temperature",
+                             ifelse(gcm == "BerkeleyEarth", "Observed air surface temperature",
+                                    "Model-predicted air surface temperature"))) %>%
+      mutate(color = factor(.$colour, levels = c("Model-predicted air surface temperature", 
+                                                 "Observed air surface temperature", 
+                                                 "Observed sea surface temperature"),
+                            ordered = TRUE)) %>%
+      filter(colour %in% c( "Observed sea surface temperature", "Observed air surface temperature"))
     plot_mainfig <- all %>%
       filter(exponent_type == "s_PSD_low") %>%
       mutate(group = gcm) %>%
       mutate(colour = ifelse(gcm == "NOAA-OISST",
                              "Observed sea surface temperature",
-                             ifelse(gcm == "BerkeleyEarth", "Observed air surace temperature",
+                             ifelse(gcm == "BerkeleyEarth", "Observed air surface temperature",
                                     "Model-predicted air surface temperature"))) %>%
+      mutate(color = factor(.$colour, levels = c("Model-predicted air surface temperature", 
+                                                 "Observed air surface temperature", 
+                                                 "Observed sea surface temperature"),
+                            ordered = TRUE)) %>%
       ggplot(., aes(x = year, y = mean_spec_exp, colour = colour, group = group)) +
-      theme_light() +
+      theme_light()  +
+      labs(x = "Year", y = "Mean spectral exponent", colour = "") +
+      geom_smooth(method = "lm", se = FALSE) +
       geom_errorbar(aes(ymin = mean_spec_exp - sd_spec_exp, ymax = mean_spec_exp + sd_spec_exp), 
                     alpha = 0.75) +
-      labs(x = "Year", y = "Mean spectral exponent", colour = "") +
       geom_point() +
-      geom_smooth(method = "lm", se = FALSE)  +
-      scale_color_manual(values = pal[c(1,3,5)]) +
+      geom_errorbar(data = obs, aes(ymin = mean_spec_exp - sd_spec_exp, ymax = mean_spec_exp + sd_spec_exp), 
+                    alpha = 0.75) +
+      scale_color_manual(values = pal) +
       theme(panel.grid = element_blank())
   
     ggsave(plot_mainfig, path = "figures/spectral-analysis_GCMs/", 
@@ -160,8 +179,7 @@ while(num <= length(widths)) {
   
   ## now plot them
   ## create colour palette:
-  pal = pnw_palette("Sunset",5, type = "discrete")
-  pnw_palette("Starfish",5, type = "discrete")
+  pal = c("#F3DE8A", "#3FA34D", "#4F86C6")
   
   if(num == 6) {
     plot <- all %>%
@@ -182,13 +200,13 @@ while(num <= length(widths)) {
                                                                        NA))))))) %>%
       mutate(colour = ifelse(gcm == "NOAA-OISST",
                              "Observed\nsea surface\ntemperature",
-                             ifelse(gcm == "BerkeleyEarth", "Observed\nair surace\ntemperature",
+                             ifelse(gcm == "BerkeleyEarth", "Observed\nair surface\ntemperature",
                                     "Model-predicted\nair surface\ntemperature"))) %>%
       ggplot(., aes(x = colour, y = estimate, fill = colour)) + 
       geom_boxplot() +
       theme_light() +
       facet_wrap(~exponent_type) +
-      scale_fill_manual(values = pal[c(1,3,5)]) +
+      scale_fill_manual(values = pal) +
       theme(legend.position = "none") +
       labs(y = "Local change in\nspectral exponent per year", fill = "", x = "")
     
@@ -209,13 +227,13 @@ while(num <= length(widths)) {
                                     ordered = TRUE)) %>%
       mutate(colour = ifelse(gcm == "NOAA-OISST",
                              "Observed\nsea surface\ntemperature",
-                             ifelse(gcm == "BerkeleyEarth", "Observed\nair surace\ntemperature",
+                             ifelse(gcm == "BerkeleyEarth", "Observed\nair surface\ntemperature",
                                     "Model-predicted\nair surface\ntemperature"))) %>%
       ggplot(., aes(x = colour, y = estimate, fill = colour)) + 
       geom_boxplot() +
       theme_light() +
       facet_wrap(~exponent_type) +
-      scale_fill_manual(values = pal[c(1,3,5)]) +
+      scale_fill_manual(values = pal) +
       theme(legend.position = "none") +
       labs(y = "Local change in\nspectral exponent per year", fill = "", x = "")
     
@@ -234,7 +252,7 @@ while(num <= length(widths)) {
       mutate(group = gcm) %>%
       mutate(colour = ifelse(gcm == "NOAA-OISST",
                              "Observed\nsea surface\ntemperature",
-                             ifelse(gcm == "BerkeleyEarth", "Observed\nair surace\ntemperature",
+                             ifelse(gcm == "BerkeleyEarth", "Observed\nair surface\ntemperature",
                                     "Model-predicted\nair surface\ntemperature"))) %>%
       group_by(group) %>%
       mutate(mean = mean(estimate), sd = sd(estimate)) %>%
@@ -243,14 +261,42 @@ while(num <= length(widths)) {
       geom_abline(intercept = 0, slope = 0) +
       geom_boxplot(lwd = 0.3) +
       theme_light() +
-      scale_fill_manual(values = pal[c(1,3,5)]) +
+      scale_fill_manual(values = pal) +
       theme(legend.position = "none", panel.grid = element_blank()) +
       labs(y = "Local change in\nspectral exponent per year", fill = "", x = "")
-    plot_box_mainfig
     
     ggsave(plot_box_mainfig, path = "figures/spectral-analysis_GCMs/", 
-           filename = paste("all-datasets_", widths[num], "_boxplot-mainfig.png", sep = ""), device = "png",
+           filename = paste("all-datasets_", widths[num], "_boxplot-obs-and-pred.png", sep = ""), device = "png",
            width = 3.5, height = 3)
+    
+    ## now make one with only observed temperature
+    plot_box_obs <- all %>%
+      filter(gcm %in% c("BerkeleyEarth", "NOAA-OISST")) %>%
+      filter(exponent_type == "s_PSD_low") %>%
+      filter(time_window_width == str_replace_all(widths[num], "\\_", " ")) %>%
+      mutate(group = gcm) %>%
+      mutate(colour = ifelse(gcm == "NOAA-OISST",
+                             "Observed\nsea surface\ntemperature",
+                             ifelse(gcm == "BerkeleyEarth", "Observed\nair surface\ntemperature", NA))) %>%
+      group_by(group) %>%
+      mutate(mean = mean(estimate), sd = sd(estimate)) %>%
+      ungroup() %>%
+      ggplot(., aes(x = colour, y = estimate, fill = colour, group = colour)) +  
+      geom_abline(intercept = 0, slope = 0) +
+      geom_boxplot(lwd = 0.3) +
+      theme_light() +
+      scale_fill_manual(values = pal[c(2,3)]) +
+      theme(legend.position = "none", panel.grid = element_blank()) +
+      labs(y = "Local change in\nspectral exponent per year", fill = "", x = "") +
+      theme(panel.background = element_rect(fill='transparent'),
+            plot.background = element_rect(fill='transparent', color=NA),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent')) +
+      scale_y_continuous(limits = c(-0.04, 0.04))
+    
+    ggsave(plot_box_obs, path = "figures/spectral-analysis_GCMs/", 
+           filename = paste("all-datasets_", widths[num], "_boxplot-mainfig.png", sep = ""), device = "png",
+           width = 2.5, height = 3, bg = "transparent")
   }
   
   num = num + 1
@@ -345,7 +391,7 @@ while(num <= length(widths)) {
 # all_predictions %>%
 #   mutate(colour = ifelse(gcm == "NOAA-OISST",
 #                          "Observed sea surface temperature",
-#                          ifelse(gcm == "BerkeleyEarth", "Observed air surace temperature",
+#                          ifelse(gcm == "BerkeleyEarth", "Observed air surface temperature",
 #                                 "Model-predicted air surface temperature"))) %>%
 #   ggplot(., aes(x = window_start_year, y = pred_exponent, colour = colour)) +
 #   theme_light() +
@@ -409,7 +455,7 @@ while(num <= length(widths)) {
   all %>%
     mutate(group = ifelse(gcm == "NOAA-OISST",
                            "Observed\nsea surface\ntemperature",
-                           ifelse(gcm == "BerkeleyEarth", "Observed\nair surace\ntemperature",
+                           ifelse(gcm == "BerkeleyEarth", "Observed\nair surface\ntemperature",
                                   "Model-predicted\nair surface\ntemperature"))) %>%
     group_by(lat, lon, group) %>%
     mutate(mean_estimate = mean(estimate, na.rm = TRUE)) %>%
@@ -421,7 +467,7 @@ while(num <= length(widths)) {
     coord_fixed() +
     theme_void() +
     facet_wrap(~group) +
-    scale_fill_gradient2(low = "darkblue", high = "darkred", mid = "#e7d8d3",
+    scale_fill_gradient2(low = "#03045E", high = "#8B2635", mid = "#e7d8d3",
                          midpoint = 0) +
     labs(fill = "Change in\nspectral exponent\n per year")
   
@@ -440,13 +486,99 @@ while(num <= length(widths)) {
     coord_fixed() +
     theme_void() +
     facet_wrap(~group) +
-    scale_fill_gradient2(low = "darkblue", high = "darkred", mid = "#e7d8d3",
+    scale_fill_gradient2(low = "#03045E", high = "#8B2635", mid = "#e7d8d3",
                          midpoint = 0) +
     labs(fill = "Change in\nspectral exponent\nper year")
   
   ggsave(map_comb, path = "figures/spectral-analysis_GCMs/", 
          filename = paste("all-datasets_", widths[num], "_maps-obs-vs-pred.png", sep = ""), device = "png",
          width = 8, height = 2)
+  
+  ## now make one with only observed temperature 
+  data <- all %>%
+    filter(gcm %in% c("BerkeleyEarth", "NOAA-OISST")) %>%
+    group_by(lat, lon) %>%
+    mutate(mean_estimate = mean(estimate, na.rm = TRUE)) %>%
+    ungroup() %>%
+    select(lat, lon, mean_estimate) %>% 
+    distinct() 
+  
+  main <- data %>%
+    ggplot(., aes(x = lon, y = lat, fill = mean_estimate)) +
+    geom_raster() +
+    coord_fixed() +
+    theme_minimal() +
+    # scale_fill_gradient2(low = "#03045E", high = "#8B2635", mid = "#e7d8d3",
+    #                      midpoint = 0) +
+    # scale_fill_gradient2(low = "#979CD8", high = "#FF859B", mid = "#FFFFFF",
+    #                      midpoint = 0, limits = c(-0.04, 0.04), na.value = "grey") +
+    scale_fill_gradient2(low = "#7A81CD", high = "#FF5C7A", mid = "#FFFFFF",
+                         midpoint = 0, limits = c(-0.04, 0.04), na.value = "grey") +
+    labs(fill = "Change in\nspectral exponent\nper year") +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0)),
+                       breaks = c(60, 120, 180, 240, 300),
+                       labels = c( "-120°", "-60°", "0°", "60°", "120°"))+
+    scale_y_continuous(expand = c(0,0),
+                       breaks = c( -60, -30, 0, 30, 60),
+                       labels = c( "-60°", "-30°", "0°", "30°", "60°")) + 
+    labs(x = "Longitude", y = "Latitude") +
+    theme(panel.grid = element_blank(),
+          axis.text = element_text(size = 8),
+          axis.ticks = element_line(linewidth = 0.25))
+    
+  
+  
+  mean_data_lat <- all %>%
+    filter(gcm %in% c("BerkeleyEarth", "NOAA-OISST")) %>%
+    group_by(lat, gcm) %>%
+    mutate(mean_estimate_lat = mean(estimate, na.rm = TRUE), 
+           sd_estimate_lat = sd(estimate, na.rm = TRUE)) %>%
+    ungroup() %>%
+    select(lat, mean_estimate_lat, sd_estimate_lat, gcm) %>% 
+    distinct() %>%
+    arrange(lat)
+  mean_data_lon <- all %>%
+    filter(gcm %in% c("BerkeleyEarth", "NOAA-OISST")) %>%
+    group_by(lon, gcm) %>%
+    mutate(mean_estimate_lon = mean(estimate, na.rm = TRUE),
+           sd_estimate_lon = sd(estimate, na.rm = TRUE)) %>%
+    ungroup() %>%
+    select(lon, mean_estimate_lon, sd_estimate_lon, gcm) %>% 
+    distinct() 
+  
+  xdens <- axis_canvas(main, axis = "x") +
+    geom_ribbon(data = mean_data_lon, aes(x = lon, ymax = mean_estimate_lon+sd_estimate_lon,
+                                             ymin = mean_estimate_lon-sd_estimate_lon,fill = gcm),
+               alpha = 0.3) +
+    geom_path(data = mean_data_lon, aes(x = lon, y = mean_estimate_lon,
+                                         colour = gcm)) +
+    scale_colour_manual(values = c("#3FA34D", "#4F86C6"))  +
+    scale_fill_manual(values = c("#3FA34D", "#4F86C6"))  +
+    geom_abline(intercept = 0, slope = 0, linewidth = 0.25) +
+    theme(panel.grid = element_blank()) +
+    scale_y_continuous(expand = c(0,0)) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0)))
+  
+  ydens <- axis_canvas(main, axis = "y", coord_flip = TRUE) +
+    geom_ribbon(data = mean_data_lat, aes(x = lat, ymax = mean_estimate_lat+sd_estimate_lat,
+                                             ymin = mean_estimate_lat-sd_estimate_lat,
+                                             fill = gcm),
+                   alpha = 0.3) +
+    geom_path(data = mean_data_lat, aes(x = lat, y = mean_estimate_lat,
+                                        colour = gcm)) +
+    coord_flip() +
+    scale_colour_manual(values = c("#3FA34D", "#4F86C6")) +
+    scale_fill_manual(values = c("#3FA34D", "#4F86C6"))  +
+    geom_abline(intercept = 0, slope = 0, linewidth = 0.25) + 
+    theme(panel.grid = element_blank()) 
+  
+  p1 <- insert_xaxis_grob(main, xdens, grid::unit(.1, "null"), position = "top")
+  p2 <- insert_yaxis_grob(p1, ydens, grid::unit(.1, "null"), position = "right")
+  ggdraw(p2)
+  
+  ggsave(p2, path = "figures/spectral-analysis_GCMs/", 
+         filename = paste("all-datasets_", widths[num], "_maps-obs-only-with-means.png", sep = ""), device = "png",
+         width = 9, height = 6)
   
   ## now make one that asks whether direction of change in observed temperatures matches direction of change in predicted temperatures
   map_mismatch <- all %>%
