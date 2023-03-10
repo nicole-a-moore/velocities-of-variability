@@ -443,8 +443,8 @@ while(num <= length(widths)) {
     coord_fixed() +
     theme_void() +
     facet_wrap(~gcm) +
-    scale_fill_gradient2(low = "darkblue", high = "darkred", mid = "#e7d8d3",
-                         midpoint = 0) +
+    scale_fill_gradient2(low = "#7A81CD", high = "#FF5C7A", mid = "#FFFFFF",
+                         midpoint = 0, limits = c(-0.04, 0.04), na.value = "grey") +
     labs(fill = "Change in\nspectral exponent")
   
   ggsave(all_maps, path = "figures/spectral-analysis_GCMs/", 
@@ -467,8 +467,8 @@ while(num <= length(widths)) {
     coord_fixed() +
     theme_void() +
     facet_wrap(~group) +
-    scale_fill_gradient2(low = "#03045E", high = "#8B2635", mid = "#e7d8d3",
-                         midpoint = 0) +
+    scale_fill_gradient2(low = "#7A81CD", high = "#FF5C7A", mid = "#FFFFFF",
+                         midpoint = 0, limits = c(-0.04, 0.04), na.value = "grey") +
     labs(fill = "Change in\nspectral exponent\n per year")
   
   ## now make one that combines Berk and Noaa data 
@@ -486,8 +486,8 @@ while(num <= length(widths)) {
     coord_fixed() +
     theme_void() +
     facet_wrap(~group) +
-    scale_fill_gradient2(low = "#03045E", high = "#8B2635", mid = "#e7d8d3",
-                         midpoint = 0) +
+    scale_fill_gradient2(low = "#7A81CD", high = "#FF5C7A", mid = "#FFFFFF",
+                         midpoint = 0, limits = c(-0.04, 0.04), na.value = "grey") +
     labs(fill = "Change in\nspectral exponent\nper year")
   
   ggsave(map_comb, path = "figures/spectral-analysis_GCMs/", 
