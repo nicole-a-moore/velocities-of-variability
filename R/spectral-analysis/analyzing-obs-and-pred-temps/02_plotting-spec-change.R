@@ -30,6 +30,10 @@ gcm_models <- c("01_CMCC-CMS_tas",
 
 folders <- paste(path, gcm_models, "/", sep = "")
 
+
+## another showing effect of AWC versus PSD, linear versus seasonally detrending on low exponent - 10 year time window
+
+
 ###################################################################
 ###     calling functions on spectral exponent files             ## 
 ###################################################################
@@ -76,9 +80,9 @@ while(num <= length(widths)) {
       ggplot(., aes(x = year, y = mean_spec_exp, colour = colour, group = group)) +
       theme_light() +
       geom_errorbar(aes(ymin = mean_spec_exp - sd_spec_exp, ymax = mean_spec_exp + sd_spec_exp), 
-                    alpha = 0.3) +
+                    alpha = 0.75) +
       labs(x = "Time window start year", y = "Mean spectral exponent", colour = "Dataset:") +
-      geom_smooth(method = "lm") +
+      geom_smooth(method = "lm", se = FALSE) +
       geom_point() +
       facet_wrap(~exponent_type, nrow = 3) +
       scale_color_manual(values = pal) +
@@ -104,9 +108,9 @@ while(num <= length(widths)) {
       ggplot(., aes(x = year, y = mean_spec_exp, colour = colour, group = group)) +
       theme_light() +
       geom_errorbar(aes(ymin = mean_spec_exp - sd_spec_exp, ymax = mean_spec_exp + sd_spec_exp), 
-                    alpha = 0.3) +
+                    alpha = 0.75) +
       labs(x = "Time window start year", y = "Mean spectral exponent", colour = "Dataset:") +
-      geom_smooth(method = "lm")  +
+      geom_smooth(method = "lm", se = FALSE)  +
       geom_point() +
       facet_wrap(~exponent_type) +
       scale_color_manual(values = pal) +
@@ -160,6 +164,92 @@ while(num <= length(widths)) {
   
   num = num + 1
 }
+
+## read in and row bind csvs
+num = 1
+all <- c()
+widths = c("5_years", "6_years", "7_years", "8_years", "9_years", "10_years")
+while(num <= length(widths)) {
+
+  for (i in 1:length(gcm_models)) {
+    p = folders[i]
+    gcm = gcm_models[i]
+    
+    cur <- read.csv(paste("data-processed/spectral-change-files/", gcm, "_average-se-over-time_", widths[num], ".csv", sep = ""))
+    cur$gcm <- gcm
+    cur$time_window_width = str_replace_all(widths[num], "\\_", " ")
+    
+    all <- rbind(all, cur)
+  }
+  
+  num = num + 1
+}
+
+pal_pnw <- pnw_palette("Starfish", 5)
+
+## now make a plot showing effect of time window width + how high and low frequency compare
+plot <- all %>%
+  filter(exponent_type %in% c("s_PSD_high", "s_PSD_low")) %>% ## filter to analyses on seasonally detrended data
+  mutate(group = paste(gcm, exponent_type)) %>%
+  mutate(time_window_width = factor(.$time_window_width, ordered = TRUE, levels = c("5 years", "6 years", "7 years", 
+                                                                                  "8 years", "9 years", "10 years"))) %>%
+  mutate(gcm = ifelse(gcm %in% c("BerkeleyEarth", "NOAA-OISST"), paste("_", gcm, "_", sep = ""), gcm)) %>%
+  mutate(gcm = str_split_fixed(gcm, "\\_", 3)[,2]) %>%
+  mutate(gcm = factor(.$gcm, levels = c("BerkeleyEarth", "NOAA-OISST", "CMCC-CMS","GFDL-CM3","GFDL-ESM2G","HadGEM2-ES","inmcm4","IPSL-CM5A-MR",
+                                        "MIROC-ESM-CHEM", "MIROC5","MPI-ESM-LR",
+                                        "MPI-ESM-MR","MRI-CGCM3"), ordered = TRUE)) %>%
+  ggplot(., aes(x = year, y = mean_spec_exp, colour = exponent_type)) +
+  theme_light() +
+  geom_errorbar(aes(ymin = mean_spec_exp - sd_spec_exp, ymax = mean_spec_exp + sd_spec_exp), 
+                alpha = 0.75) +
+  labs(x = "Time window start year", y = "Mean spectral exponent", colour = "") +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point() +
+  facet_grid(gcm~time_window_width) +
+  scale_color_manual(values = pal_pnw[c(2,4)], labels = c("High-frequency spectral exponent", "Low-frequency spectral exponent")) +
+  theme(legend.position = "bottom", 
+        panel.grid = element_blank(), 
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text.y = element_text(size = 8), strip.text.x = element_text(size = 8))
+
+ggsave(plot, path = "figures/spectral-analysis_GCMs/", 
+       filename = paste("all-datasets_time-window-width-x-high-low.png", sep = ""), device = "png",
+       width = 8, height = 12)
+
+## and now make a plot showing effect of measurement method (PSD, AWC) and detrending data on low frequency exponent 
+plot <- all %>%
+  filter(time_window_width == "10 years") %>% ## filter to 10 year time windows 
+  filter(!exponent_type %in% c("s_PSD_high", "l_PSD_high")) %>%  ## get rid of high frequency exponents 
+  mutate(seasonal_or_linear = ifelse(str_detect(exponent_type, "s_"), "Seasonally-detrended", "Linearly-detrended"),
+         wavelet_or_spectral = ifelse(str_detect(exponent_type, "PSD"), "Spectral analysis", "Wavelet analysis")) %>% ## making grouping variables 
+  mutate(gcm = ifelse(gcm %in% c("BerkeleyEarth", "NOAA-OISST"), paste("_", gcm, "_", sep = ""), gcm)) %>%
+  mutate(gcm = str_split_fixed(gcm, "\\_", 3)[,2]) %>%
+  mutate(gcm = factor(.$gcm, levels = c("BerkeleyEarth", "NOAA-OISST", "CMCC-CMS","GFDL-CM3","GFDL-ESM2G","HadGEM2-ES","inmcm4","IPSL-CM5A-MR",
+                                        "MIROC-ESM-CHEM", "MIROC5","MPI-ESM-LR",
+                                        "MPI-ESM-MR","MRI-CGCM3"), ordered = TRUE)) %>%
+  ggplot(., aes(x = year, y = mean_spec_exp, colour = wavelet_or_spectral)) +
+  theme_light() +
+  geom_errorbar(aes(ymin = mean_spec_exp - sd_spec_exp, ymax = mean_spec_exp + sd_spec_exp), 
+                alpha = 0.75) +
+  labs(x = "Time window start year", y = "Mean spectral exponent", colour = "") +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point() +
+  facet_grid(seasonal_or_linear~gcm) +
+  scale_color_manual(values = pal_pnw[c(1,3)], 
+                     #labels = c("High-frequency spectral exponent", "Low-frequency spectral exponent")
+                     ) +
+  theme(legend.position = "bottom", 
+        panel.grid = element_blank(), 
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text.y = element_text(size = 8), strip.text.x = element_text(size = 8))
+
+ggsave(plot, path = "figures/spectral-analysis_GCMs/", 
+       filename = paste("all-datasets_seasonal-or-linear-x-wave-spec.png", sep = ""), device = "png",
+       width = 12, height = 4)
+
+
+
+
 
 ## make a plot of the distribution of local trends for gcms vs obs
 num = 1
@@ -302,116 +392,6 @@ while(num <= length(widths)) {
   num = num + 1
 }
 
-
-
-
-
-
-
-
-# ## now, fit model and plot model prediction instead of geom_smooth:
-# library(nlme) 
-# library(MuMIn)
-# 
-# ## for each gcm model, fit a model with location as random effect on intercept and slope 
-# data <- c()
-# mod_list <- list()
-# all_predictions <- c()
-# all <- c()
-# for (i in 1:length(gcm_models)) {
-#   
-#   if(i == 7) {
-#     mod_list[[i]] <- NA
-#     
-#     i = i+1
-#   } 
-#   else {
-#     p = folders[i]
-#     gcm = gcm_models[i]
-#     
-#     cur <- read.csv(paste("data-processed/spectral-change-files/", gcm, "_all-se-over-time_5_years.csv", sep = ""))
-#     
-#     cur <- cur %>%
-#       select(x, y, s_spec_exp_PSD_low, window_start_year) %>% ## select only low seasonal spectral exponent slope 
-#       distinct()
-#     
-#     cur$gcm <- gcm
-#     cur$window_number <- gcm
-#     
-#     cur %>%
-#       ggplot(., aes(x = window_start_year, y = s_spec_exp_PSD_low)) +
-#       theme_light() +
-#       labs(x = "Time window start year", y = "Spectral exponent") +
-#       geom_smooth(method = "lm") +
-#       geom_point() 
-#     
-#     ## make unique location id 
-#     cur$loc_id <- paste(cur$lat, cur$lon, sep = "_")
-#     
-#     all <- rbind(all, cur)
-#     
-#     ## get rid of nas:
-#     cur <- filter(cur, !is.na(s_spec_exp_PSD_low))
-#     
-#     mod <- lme(s_spec_exp_PSD_low ~ window_start_year, 
-#                
-#                random = ~window_start_year|loc_id,
-#                
-#                control = lmeControl(msMaxIter = 1000, msMaxEval = 1000),
-#                
-#                data = cur)
-#     
-#     mod_list[[i]] <- mod
-#     
-#     ## r.squaredGLMM(mod)
-#     
-#     ## make predictions
-#     new_data <- data.frame(window_start_year = seq(from = 1871, to = 2100, by = 0.1))
-#     
-#     predictions = predict(mod, new_data, level = 0, se.fit = T, re.form = NA)
-#     
-#     fitted_predictions <- new_data %>%
-#       mutate(pred_exponent = predictions$fit,
-#              pred_exponent_SE = predictions$se.fit)
-#     fitted_predictions$gcm = gcm_models[i]
-#     
-#     all_predictions = rbind(all_predictions, fitted_predictions)
-#     
-#   }
-#   
-# }
-# names(mod_list) <- gcm_models
-# #saveRDS(gcm_models, "data-processed/spectral-change-files/gcm-models.rds")
-# 
-# plot_data <- left_join(all, cur)
-# #saveRDS(plot_data, "data-processed/spectral-change-files/plot-data.rds")
-# 
-# 
-# ## plot the predictions altogether 
-# all_predictions %>%
-#   mutate(colour = ifelse(gcm == "NOAA-OISST",
-#                          "Observed sea surface temperature",
-#                          ifelse(gcm == "BerkeleyEarth", "Observed air surface temperature",
-#                                 "Model-predicted air surface temperature"))) %>%
-#   ggplot(., aes(x = window_start_year, y = pred_exponent, colour = colour)) +
-#   theme_light() +
-#   geom_ribbon(aes(ymin = pred_exponent - pred_exponent_SE, ymax = pred_exponent + pred_exponent_SE,
-#                   group = gcm), 
-#                 alpha = 0.3) +
-#   labs(x = "Time window start year", y = "Spectral exponent", colour = "Dataset:") +
-#  # geom_smooth(method = "lm")  +
-#   geom_point() +
-#   scale_color_manual(values = pal[c(1,3,5)]) +
-#   theme(legend.position = "bottom")
-# 
-# #  geom_point(aes(x = window_start_year, y = mean_spec_exp, colour = colour))
-
-
-
-
-
-
-
 ## now make maps :-)
 num = 1
 widths = c("5_years", "6_years", "7_years", "8_years", "9_years", "10_years")
@@ -438,6 +418,11 @@ while(num <= length(widths)) {
   
   ## now plot them
   all_maps <- all %>%
+    mutate(gcm = ifelse(gcm %in% c("BerkeleyEarth", "NOAA-OISST"), paste("_", gcm, "_", sep = ""), gcm)) %>%
+    mutate(gcm = str_split_fixed(gcm, "\\_", 3)[,2]) %>%
+    mutate(gcm = factor(.$gcm, levels = c("BerkeleyEarth", "NOAA-OISST", "CMCC-CMS","GFDL-CM3","GFDL-ESM2G","HadGEM2-ES","inmcm4","IPSL-CM5A-MR",
+                                          "MIROC-ESM-CHEM", "MIROC5","MPI-ESM-LR",
+                                          "MPI-ESM-MR","MRI-CGCM3"), ordered = TRUE)) %>%
     ggplot(., aes(x = lon, y = lat, fill = estimate)) +
     geom_raster() +
     coord_fixed() +
@@ -445,7 +430,8 @@ while(num <= length(widths)) {
     facet_wrap(~gcm) +
     scale_fill_gradient2(low = "#7A81CD", high = "#FF5C7A", mid = "#FFFFFF",
                          midpoint = 0, limits = c(-0.04, 0.04), na.value = "grey") +
-    labs(fill = "Change in\nspectral exponent")
+    labs(fill = "Change in\nspectral exponent") +
+    theme(panel.background = element_rect(fill = "#ECECEC", colour = "#ECECEC"))
   
   ggsave(all_maps, path = "figures/spectral-analysis_GCMs/", 
          filename = paste("all-datasets_", widths[num], "_maps.png", sep = ""), device = "png",
@@ -670,6 +656,114 @@ while(num <= length(widths)) {
 #   geom_raster() +
 #   coord_fixed() +
 #   theme_void() 
+
+
+
+
+
+
+
+
+
+
+# ## now, fit model and plot model prediction instead of geom_smooth:
+# library(nlme) 
+# library(MuMIn)
+# 
+# ## for each gcm model, fit a model with location as random effect on intercept and slope 
+# data <- c()
+# mod_list <- list()
+# all_predictions <- c()
+# all <- c()
+# for (i in 1:length(gcm_models)) {
+#   
+#   if(i == 7) {
+#     mod_list[[i]] <- NA
+#     
+#     i = i+1
+#   } 
+#   else {
+#     p = folders[i]
+#     gcm = gcm_models[i]
+#     
+#     cur <- read.csv(paste("data-processed/spectral-change-files/", gcm, "_all-se-over-time_5_years.csv", sep = ""))
+#     
+#     cur <- cur %>%
+#       select(x, y, s_spec_exp_PSD_low, window_start_year) %>% ## select only low seasonal spectral exponent slope 
+#       distinct()
+#     
+#     cur$gcm <- gcm
+#     cur$window_number <- gcm
+#     
+#     cur %>%
+#       ggplot(., aes(x = window_start_year, y = s_spec_exp_PSD_low)) +
+#       theme_light() +
+#       labs(x = "Time window start year", y = "Spectral exponent") +
+#       geom_smooth(method = "lm") +
+#       geom_point() 
+#     
+#     ## make unique location id 
+#     cur$loc_id <- paste(cur$lat, cur$lon, sep = "_")
+#     
+#     all <- rbind(all, cur)
+#     
+#     ## get rid of nas:
+#     cur <- filter(cur, !is.na(s_spec_exp_PSD_low))
+#     
+#     mod <- lme(s_spec_exp_PSD_low ~ window_start_year, 
+#                
+#                random = ~window_start_year|loc_id,
+#                
+#                control = lmeControl(msMaxIter = 1000, msMaxEval = 1000),
+#                
+#                data = cur)
+#     
+#     mod_list[[i]] <- mod
+#     
+#     ## r.squaredGLMM(mod)
+#     
+#     ## make predictions
+#     new_data <- data.frame(window_start_year = seq(from = 1871, to = 2100, by = 0.1))
+#     
+#     predictions = predict(mod, new_data, level = 0, se.fit = T, re.form = NA)
+#     
+#     fitted_predictions <- new_data %>%
+#       mutate(pred_exponent = predictions$fit,
+#              pred_exponent_SE = predictions$se.fit)
+#     fitted_predictions$gcm = gcm_models[i]
+#     
+#     all_predictions = rbind(all_predictions, fitted_predictions)
+#     
+#   }
+#   
+# }
+# names(mod_list) <- gcm_models
+# #saveRDS(gcm_models, "data-processed/spectral-change-files/gcm-models.rds")
+# 
+# plot_data <- left_join(all, cur)
+# #saveRDS(plot_data, "data-processed/spectral-change-files/plot-data.rds")
+# 
+# 
+# ## plot the predictions altogether 
+# all_predictions %>%
+#   mutate(colour = ifelse(gcm == "NOAA-OISST",
+#                          "Observed sea surface temperature",
+#                          ifelse(gcm == "BerkeleyEarth", "Observed air surface temperature",
+#                                 "Model-predicted air surface temperature"))) %>%
+#   ggplot(., aes(x = window_start_year, y = pred_exponent, colour = colour)) +
+#   theme_light() +
+#   geom_ribbon(aes(ymin = pred_exponent - pred_exponent_SE, ymax = pred_exponent + pred_exponent_SE,
+#                   group = gcm), 
+#                 alpha = 0.3) +
+#   labs(x = "Time window start year", y = "Spectral exponent", colour = "Dataset:") +
+#  # geom_smooth(method = "lm")  +
+#   geom_point() +
+#   scale_color_manual(values = pal[c(1,3,5)]) +
+#   theme(legend.position = "bottom")
+# 
+# #  geom_point(aes(x = window_start_year, y = mean_spec_exp, colour = colour))
+
+
 
 
 
