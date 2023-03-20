@@ -53,7 +53,7 @@ tvfd <- function(start_colour, end_colour, num_steps, Tmax) {
   alpha_stable = rep(alpha_stable, each = each)[1:200000]
   
   delta_inc = -alpha_inc/-2
-  delta_dec = rev(delta_inc)
+  delta_dec = rev(delta_inc) - 0.95
   delta_stable = -alpha_stable/-2
   
   ## set the innovations variance to unity
