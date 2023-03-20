@@ -29,8 +29,8 @@
      showgrid="false"
      width="296mm"
      inkscape:zoom="0.92055569"
-     inkscape:cx="496.98243"
-     inkscape:cy="544.23649"
+     inkscape:cx="416.5962"
+     inkscape:cy="244.41759"
      inkscape:window-width="1512"
      inkscape:window-height="916"
      inkscape:window-x="802"
@@ -3760,7 +3760,10 @@ oFAGAAAAAAAAAIBEUCgDAAAAAAAAAEAi/P9Y05370pCICgAAAABJRU5ErkJggg==
          y="172.67914">autocorrelation</tspan></text>
     <g
        id="g14543"
-       transform="translate(-2.1166667)">
+       transform="translate(-2.1166667)"
+       inkscape:export-filename="/Users/nikkimoore/Documents/velocities-of-variability/figures/inkscape-files/main-figure_spectral-change.png"
+       inkscape:export-xdpi="800"
+       inkscape:export-ydpi="800">
       <image
          width="162.17809"
          height="108.11871"
