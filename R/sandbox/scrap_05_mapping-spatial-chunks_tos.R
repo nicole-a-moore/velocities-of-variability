@@ -4,12 +4,18 @@ library(tidyverse)
 library(ncdf4)
 
 ## set up file names and paths
-path = "data-raw/"
-gcm_models <- c("01_CMCC-CESM", "02_CMCC-CM", '03_CMCC-CMS', '04_MPI-ESM-LR', '05_MPI-ESM-MR',
-                "06_GFDL-ESM2G", '07_GFDL-CM3', '08_GFDL-ESM2M', '09_HadGEM2-CC', '10_HadGEM2-ES',
-                "11_HadGEM2-AO", '12_IPSL-CM5A-LR', '13_IPSL-CM5B-LR', '14_MIROC5', '15_MIROC5-ESM-CHEM',
-                '16_MIROC5-ESM', "17_inmcm4", '18_CNRM-CM5', "19_MRI-CGCM3", '20_MRI-ESM1',
-                '21_IPSL-CM5A-MR')
+path = "/Volumes/NIKKI/CMIP5-GCMs/"
+gcm_models <- c("01_CMCC-CMS_tos",
+                "02_GFDL-CM3_tos",
+                "03_GFDL-ESM2G_tos",
+                "04_HadGEM2-ES_tos",
+                "05_inmcm4_tos",
+                "06_IPSL-CM5A-MR_tos",
+                "07_MIROC-ESM-CHEM_tos",
+                "08_MIROC5_tos",
+                "09_MPI-ESM-LR_tos",
+                "10_MPI-ESM-MR_tos",
+                "11_MRI-CGCM3_tos")
 
 folders <- paste(path, gcm_models, "/", sep = "")
 
@@ -28,7 +34,7 @@ while (gcm < 10) {
   
   dates <- readRDS(paste(folders[gcm], "date_new_tos.rds", sep = ""))
   
-  date = "05.28"
+  date = "05-28"
   lon_index = -180
   lat_index = 90
   count = 1
@@ -40,7 +46,7 @@ while (gcm < 10) {
     lat_bound1 <- lat_index
     lat_bound2 <- lat_index - 60
     
-    num = which(paste("1871", date, sep = '.') == dates)
+    num = which(paste("1871", date, sep = '-') == dates)
     seq = seq(from = num, to = 83950, by = 365)
     
     ## retrieve spatial chunk from nc file 
