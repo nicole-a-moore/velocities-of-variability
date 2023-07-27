@@ -734,8 +734,8 @@ data %>%
   summarise(min(s_estimate_PSD_low),
             max(s_estimate_PSD_low))
 
-## min = -0.03409852 per 40 years = -0.467103/200000 days 
-## max = 0.04619845 per 40 years = 0.6328555/200000 days 
+## min = -0.03409852 per year = -0.467103/200000 days 
+## max = 0.04619845 per year = 0.6328555/200000 days 
 
 
 

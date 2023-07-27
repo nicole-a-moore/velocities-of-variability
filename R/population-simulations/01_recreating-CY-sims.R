@@ -58,8 +58,9 @@ popmod <- function(t, # number of time steps
   N <- numeric(t)
   N[1] <- N0
   for(i in 2:t){
-    N[i] <- sample(rpois(as.numeric(N[i-1]*exp(1.5*(1 - (N[i-1]/K[i])^lambda[icp]))), n = 1000), 
-                   size = 1)
+    N[i] <- as.numeric(N[i-1]*exp(1.5*(1 - (N[i-1]/K[i])^lambda[icp])))
+    # sample(rpois(as.numeric(N[i-1]*exp(1.5*(1 - (N[i-1]/K[i])^lambda[icp]))), n = 1000), 
+    #        size = 1)
   }
   return(N)
 }

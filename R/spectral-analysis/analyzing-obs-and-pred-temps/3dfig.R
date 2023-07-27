@@ -7,8 +7,16 @@ library(plotly)
 ## max = 1.506056 
 
 ## min and max change:
-## min = -0.03194815 per 140 years = -0.1250417/200000 days 
-## max = 0.0420622 per 140 years = 0.164627/200000 days 
+## min = -0.03194815 per year = -17.50584/200000 days 
+## max = 0.0420622 per year = 23.04778/200000 days 
+
+## 95% quantile colour in marine env:
+## min = 0.8837043
+## max = 1.91154
+
+## min and max change:
+## min = -0.03409852 per year = -18.68412/200000 days
+## max = 0.04619845 per year = 25.31422/200000 days 
 
 
 n.row <- 60
