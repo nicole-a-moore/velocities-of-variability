@@ -827,6 +827,43 @@ data %>%
 ## min = -0.03194815 per 140 years = -0.1250417/200000 days 
 ## max = 0.0420622 per 140 years = 0.164627/200000 days 
 
+## plot low spectral exponent measured across entire time period on a map
+sub = data %>%
+  select(lat, lon, s_spec_exp_PSD_low_all) %>%
+  unique()
+
+sub %>%
+  ggplot(aes(x = lon, y = lat, fill = s_spec_exp_PSD_low_all)) +
+  geom_raster() +
+  coord_fixed() +
+  scale_fill_gradient(high = "#FF5C7A", low = "#FFFFFF", na.value = "grey", limits = c(-0.25, 3)) +
+  labs(fill = "Spectral exponent") +
+  theme(panel.background = element_rect(fill = "#ECECEC", colour = "#ECECEC"))
+
+
+sub_oc <- read.csv("data-processed/NOAA-OISST/spec-exp-map.csv")
+
+sub_oc$lon = ifelse(sub_oc$lon > 180, sub_oc$lon - 360, sub_oc$lon)
+sub$lon = sub$lon-180
+
+sub_oc%>%
+  ggplot(aes(x = lon, y = lat, fill = s_spec_exp_PSD_low)) +
+  geom_raster() +
+  coord_fixed() +
+  scale_fill_gradient(high = "#FF5C7A", low = "#FFFFFF", na.value = "grey",
+                      limits = c(-0.25, 3)) +
+  labs(fill = "Spectral\nexponent") +
+  theme(panel.background = element_blank(),
+        panel.grid = element_blank()) +
+  geom_raster(data = sub, aes(x = lon, y = lat, fill = s_spec_exp_PSD_low_all)) +
+  labs(x = "°Longitude", y = "°Latitude") +
+  scale_x_continuous(breaks = c(-180, -150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150, 180),
+                     expand = c(0,0)) +
+  scale_y_continuous(breaks = c(-90, -60, -30, 0, 30, 60, 90), expand = c(0,0))
+
+ggsave(filename = "map-of-historical-spectral-exponent.png", 
+       path = "figures/proposal", width = 8, height = 6)
+  
 
 
 ##################################
