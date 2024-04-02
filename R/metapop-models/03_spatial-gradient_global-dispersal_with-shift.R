@@ -79,8 +79,8 @@ nrow = 30
 ncol = 10
 
 ## work in latitudinal variation in r
-h = 1 ## half-saturation constant that defines distance at which Eit = 0.5
-s = 1 ## shape parameter defining direction (negative = negative slope) and shape (s > 1 gives signmoid)
+h = 10 ## half-saturation constant that defines distance at which Eit = 0.5
+s = -3 ## shape parameter defining direction (negative = negative slope) and shape (s > 1 gives signmoid)
 Emax = 1 ## set Emax to 1
 n_pops = nrow*ncol # number of grid cells
 lambda = c(0.1, 1) # intraspecifc competition parameter 
@@ -109,18 +109,19 @@ while(beta_curr <= length(betas)) {
     lattice_N_it[1:nrow,1:ncol,1] <- K/2 ## start with population size = carrying capacity / 2
     
     ## position optimum climatic conditions as a row on the lattice (Emax)
-    lattice_E_it[nrow/2,] = Emax
+    lattice_E_it[30/2,] = Emax
     
     ## assume that conditions decline sigmoidally away from this optimum in both directions
-    lattice_E_it[1:(nrow/2-1),] = Emax*(1:(nrow/2-1)/ (1:(nrow/2-1) + h^s))
-    lattice_E_it[(nrow/2+1):nrow,] = Emax*rev(1:(nrow/2) / (1:(nrow/2) + h^s))
-    lattice_E_it[is.na(lattice_E_it)] <- Emax*(1 / (1 + h^s))
+    ## for nrow/10 cells
+    lattice_E_it[1:(30/2-1),] = Emax*rev((1:(30/2-1))^s/ ((1:(30/2-1))^s + h^s))
+    lattice_E_it[(30/2+1):nrow,] = Emax*((1:nrow)^s / ((1:nrow)^s + h^s))[1:(nrow-30/2)]
     # plot(x = 1:nrow, y = lattice_E_it[1:nrow,1])
     
     ## replicate latitudinal gradient 1000 times 
     lattice_E_it_array <- replicate(L, lattice_E_it)
-    ## set growth rate r to equal environmental suitability
+    ## set growth rate r to equal max growth rate*environmental suitability
     lattice_r_array = lattice_E_it_array*r
+    # plot(x = 1:nrow, y = lattice_r_array[1:nrow,1,1])
     
     ## create autocorrelated time series for each cell, 1000 time steps long
     lattice_ac_it = array(dim = c(nrow,ncol,L))
@@ -163,11 +164,17 @@ while(beta_curr <= length(betas)) {
     }
     
     ## let noise affect K for each cell in the lattice
-    lattice_K_it <- K*(1 + lattice_ac_it) ## multiplicative
-    #lattice_K_it <- K + lattice_ac_it ## additive 
-    lattice_K_it[lattice_K_it < 1] = 0.1 ## was 0
+    ## create latitudinal gradient in mean K
+    lattice_K_it <- K*lattice_E_it[,1] + 100*lattice_ac_it ## multiplicative
     #plot(lattice_K_it[1,1,])
     
+    ## older versions:
+    #lattice_K_it <- K*lattice_ac_it ## multiplicative
+    #lattice_K_it <- K + lattice_ac_it ## additive 
+    
+    ## prevent extinction from catastrophe (only allow extinction from demographic stochasticity)
+    lattice_K_it[lattice_K_it < 1] = 0.1 ## was 0
+    #plot(lattice_K_it[1,1,])
     
     ## run at stable climate conditions for 1000 time steps
     t = 1 
@@ -200,7 +207,7 @@ while(beta_curr <= length(betas)) {
           }
           else {
             ## get number of dispersers 
-            dispersers = ceiling(curr_allpops[y,x]*d)
+            dispersers = curr_allpops[y,x]*d
             ## figure out where each one disperses 
             ## start with global dispersal:
             ## randomly sample x and y pairs:
@@ -237,9 +244,8 @@ while(beta_curr <= length(betas)) {
         while(y <= nrow) {
           N = curr_allpops_new[y,x]
           
-          ## calculate new population size
           new_sizes[y,x] = round(as.numeric(N*exp(r_curr[y,x]*(1 - as.complex(N/(K_curr[y,x]))^lambda[icp]))))
-          
+        
           ## add demographic stochasticity
           new_sizes[y,x] = sample(rpois(new_sizes[y,x], n = 1000), size = 1)
           
@@ -261,10 +267,22 @@ while(beta_curr <= length(betas)) {
       N_ext_local = N_ext_local + length(which(new_sizes == 0))
     
       t = t + 1
+      
+      ## on last step, save grid of population sizes
+      if(t == 1000) {
+        # ras <- raster(nrow = 300, ncols = 50, xmn = 0, xmx = 10, ymn = 0, ymx = 300)
+        # values(ras) <- c(t(lattice_N_it[,,t]))
+        # plot(ras)
+       
+        saveRDS(lattice_N_it[,,t], paste0("data-processed/metapop-models/grid_beta", betas[beta_curr], 
+                                          "_p", p[p_curr], "_icp_", lambda[icp], 
+                                          "_population_", rep, ".rds"))
+       
+      }
     }
     
     ## save run:
-    pops_all <- data.frame(loc_Emax = rep(nrow/2,999),
+    pops_all <- data.frame(loc_Emax = rep((nrow/10)/2,999),
                            time = rep(1:length(N_global)),
                            replicate = rep,
                            p = p[p_curr],
@@ -274,18 +292,15 @@ while(beta_curr <= length(betas)) {
                            N_global = N_global,
                            N_ext_local = rep(N_ext_local, 999)) 
     pops_all
-  }
+   }
   
   ## save
   write.csv(all, paste0("data-processed/metapop-models/all_beta", betas[beta_curr], 
-                        "_p", p[p_curr], "_icp_", lambda[icp], "_no-catastrophe_5_additive.csv"), 
+                        "_p", p[p_curr], "_icp_", lambda[icp], "_no-catastrophe_5_additive_gradK.csv"), 
             row.names = FALSE)
 
   print(paste0("Finished p=", p[p_curr], " and beta=", betas[beta_curr]))
-  
-  ## save 
-  #saveRDS(lattice_N_it, paste0("data-processed/metapop-models/lattice_N_it_", betas[beta_curr], ".rds"))
-  
+
   beta_curr = beta_curr + 1
 }
 
@@ -721,7 +736,6 @@ stats %>%
 mod <- lm(num_occupied ~ time_step,
           data = stats)
 summary(mod)
-## no
 
 ## with no noise added, no change in range size and near perfect climate tracking
 ## next: add white noise (K=0) and should see no extinction/change

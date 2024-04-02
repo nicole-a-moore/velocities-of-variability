@@ -1,4 +1,5 @@
 ## building spatially explicit coupled map lattice 
+## in this version, noise affects the growth rate 
 library(tidyverse)
 library(parallel)
 library(foreach)
@@ -41,7 +42,7 @@ one_over_f_synchro <- function(beta, p, n_ts, L){
     noise = as.numeric(dft[1:L]) ## crop the noise series to first L points
     
     ## remove mean and change variance to 0.625^2:
-    noise <- noise*1/sqrt(var(noise))*sqrt(0.625^2)
+    noise <- noise*1/sqrt(var(noise))*sqrt(1)
     noise <- noise - mean(noise)
     
     ## estimate noise colour from a linear regression of power spectrum:
@@ -75,12 +76,12 @@ r = 1.2 ## set maximum growth rate
 K = 100 ## set mean carrying capacity
 d = 0.1 ## set prop of offspring dispersing 
 L = 1000 ## set length of time series 
-nrow = 30
+nrow = 300
 ncol = 10
 
 ## work in latitudinal variation in r
-h = 1 ## half-saturation constant that defines distance at which Eit = 0.5
-s = 1 ## shape parameter defining direction (negative = negative slope) and shape (s > 1 gives signmoid)
+h = 10 ## half-saturation constant that defines distance at which Eit = 0.5
+s = -3 ## shape parameter defining direction (negative = negative slope) and shape (s > 1 gives signmoid)
 Emax = 1 ## set Emax to 1
 n_pops = nrow*ncol # number of grid cells
 lambda = c(0.1, 1) # intraspecifc competition parameter 
@@ -109,18 +110,15 @@ while(beta_curr <= length(betas)) {
     lattice_N_it[1:nrow,1:ncol,1] <- K/2 ## start with population size = carrying capacity / 2
     
     ## position optimum climatic conditions as a row on the lattice (Emax)
-    lattice_E_it[nrow/2,] = Emax
+    lattice_E_it[(nrow/10)/2,] = Emax
     
     ## assume that conditions decline sigmoidally away from this optimum in both directions
-    lattice_E_it[1:(nrow/2-1),] = Emax*(1:(nrow/2-1)/ (1:(nrow/2-1) + h^s))
-    lattice_E_it[(nrow/2+1):nrow,] = Emax*rev(1:(nrow/2) / (1:(nrow/2) + h^s))
-    lattice_E_it[is.na(lattice_E_it)] <- Emax*(1 / (1 + h^s))
+    lattice_E_it[1:((nrow/10)/2-1),] = Emax*rev((1:((nrow/10)/2-1))^s/ ((1:((nrow/10)/2-1))^s + h^s))
+    lattice_E_it[((nrow/10)/2+1):nrow,] = Emax*((1:nrow)^s / ((1:nrow)^s + h^s))[1:(nrow-(nrow/10)/2)]
     # plot(x = 1:nrow, y = lattice_E_it[1:nrow,1])
     
     ## replicate latitudinal gradient 1000 times 
     lattice_E_it_array <- replicate(L, lattice_E_it)
-    ## set growth rate r to equal environmental suitability
-    lattice_r_array = lattice_E_it_array*r
     
     ## create autocorrelated time series for each cell, 1000 time steps long
     lattice_ac_it = array(dim = c(nrow,ncol,L))
@@ -162,12 +160,12 @@ while(beta_curr <= length(betas)) {
       }
     }
     
-    ## let noise affect K for each cell in the lattice
-    lattice_K_it <- K*(1 + lattice_ac_it) ## multiplicative
-    #lattice_K_it <- K + lattice_ac_it ## additive 
-    lattice_K_it[lattice_K_it < 1] = 0.1 ## was 0
-    #plot(lattice_K_it[1,1,])
-    
+    ## let noise affect growth rate for each cell in the lattice
+    ## set growth rate r to equal environmental suitability + autocorrelation
+    lattice_r_array = lattice_E_it_array + lattice_ac_it
+    # ras <- raster(nrow = 300, ncols = 10, xmn = 0, xmx = 10, ymn = 0, ymx = 300)
+    # values(ras) <- c(t(lattice_r_array[,,1]))
+    # plot(ras)
     
     ## run at stable climate conditions for 1000 time steps
     t = 1 
@@ -177,9 +175,6 @@ while(beta_curr <= length(betas)) {
       
       ## get grid of growth rates at time t
       lattice_r_curr <- lattice_r_array[,,t]
-      
-      ## get grid of carrying capacity at time t
-      lattice_K_curr <- lattice_K_it[,,t]
       
       ## get grid of current population size at time t
       lattice_N_curr <- lattice_N_it[,,t]
@@ -229,7 +224,6 @@ while(beta_curr <= length(betas)) {
       ##### REPRODUCE #####
       # for each subpopulation, calculate the new population size after reproduction:
       new_sizes <- matrix(ncol = ncol, nrow = nrow)
-      K_curr = lattice_K_it[,,t]
       r_curr = lattice_r_array[,,t]
       x = 1
       while (x <= ncol) {
@@ -238,7 +232,8 @@ while(beta_curr <= length(betas)) {
           N = curr_allpops_new[y,x]
           
           ## calculate new population size
-          new_sizes[y,x] = round(as.numeric(N*exp(r_curr[y,x]*(1 - as.complex(N/(K_curr[y,x]))^lambda[icp]))))
+          #new_sizes[y,x] = round(as.numeric(N*exp(r_curr[y,x]*(1 - as.complex(N/(K))^lambda[icp]))))
+          new_sizes[y,x] = r_curr[y,x] / (1+abs(1-r_curr[y,x])*N/K)
           
           ## add demographic stochasticity
           new_sizes[y,x] = sample(rpois(new_sizes[y,x], n = 1000), size = 1)
@@ -274,11 +269,16 @@ while(beta_curr <= length(betas)) {
                            N_global = N_global,
                            N_ext_local = rep(N_ext_local, 999)) 
     pops_all
+    
+    ras <- raster(nrow = 300, ncols = 10, xmn = 0, xmx = 10, ymn = 0, ymx = 300)
+    values(ras) <- c(t(lattice_N_it[,,t]))
+    plot(ras)
+    
   }
   
   ## save
   write.csv(all, paste0("data-processed/metapop-models/all_beta", betas[beta_curr], 
-                        "_p", p[p_curr], "_icp_", lambda[icp], "_no-catastrophe_5_additive.csv"), 
+                        "_p", p[p_curr], "_icp_", lambda[icp], "_no-catastrophe_growth-rate.csv"), 
             row.names = FALSE)
 
   print(paste0("Finished p=", p[p_curr], " and beta=", betas[beta_curr]))
